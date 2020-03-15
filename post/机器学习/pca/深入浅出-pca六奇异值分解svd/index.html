@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出 PCA（六）——奇异值分解（SVD）视角 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="说到降维，可能有些同学还听过 SVD，但也许没有理顺它和 PCA 的关系。严格来说， SVD 与降维没有直接关系，它只是每个矩阵都有的性质。即任意一个矩阵 $A$ 都" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E5%85%AD%E5%A5%87%E5%BC%82%E5%80%BC%E5%88%86%E8%A7%A3svd/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出 PCA（六）——奇异值分解（SVD）视角" />
+<meta property="og:description" content="说到降维，可能有些同学还听过 SVD，但也许没有理顺它和 PCA 的关系。严格来说， SVD 与降维没有直接关系，它只是每个矩阵都有的性质。即任意一个矩阵 $A$ 都" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E5%85%AD%E5%A5%87%E5%BC%82%E5%80%BC%E5%88%86%E8%A7%A3svd/" />
+<meta property="article:published_time" content="2019-11-09T15:11:40+08:00" />
+<meta property="article:modified_time" content="2019-11-09T15:11:40+08:00" />
+<meta itemprop="name" content="深入浅出 PCA（六）——奇异值分解（SVD）视角">
+<meta itemprop="description" content="说到降维，可能有些同学还听过 SVD，但也许没有理顺它和 PCA 的关系。严格来说， SVD 与降维没有直接关系，它只是每个矩阵都有的性质。即任意一个矩阵 $A$ 都">
+<meta itemprop="datePublished" content="2019-11-09T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2019-11-09T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="1923">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出 PCA（六）——奇异值分解（SVD）视角"/>
+<meta name="twitter:description" content="说到降维，可能有些同学还听过 SVD，但也许没有理顺它和 PCA 的关系。严格来说， SVD 与降维没有直接关系，它只是每个矩阵都有的性质。即任意一个矩阵 $A$ 都"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出 PCA（六）——奇异值分解（SVD）视角</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2019-11-09 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <p>说到降维，可能有些同学还听过 SVD，但也许没有理顺它和 PCA 的关系。严格来说， SVD 与降维没有直接关系，它只是每个矩阵都有的性质。即任意一个矩阵 $A$ 都可以被分解为如下的样子：</p>
+
+<p><span  class="math">\[A=U\Sigma V^T\]</span></p>
+
+<p>如果 $A$ 是一个 <span  class="math">\(m\times n\)</span> 的矩阵，那么 $U$ 就是一个 $m\times m$ 的单位正交阵，$\Sigma$ 是一个 $m\times n$ 的矩阵，$V$ 是一个 $n\times n$ 的单位正交阵。其中 $\Sigma$ 是一个长方形对角矩阵。长方形对角矩阵的意思就是长的那部分全为零。比如：</p>
+
+<p><span  class="math">\[\begin{pmatrix}5 & 0 & 0 & 0\\ 0 & 4 & 0 & 0\\ 0 & 0 & 1 & 0 \\\end{pmatrix}\]</span></p>
+
+<p>这个对角线元素就是特征值（至于是谁的特征值，我们接下来慢慢推导）。然后同样地，我们取出最大的几个特征值，利用对应的向量就可以实现降维。</p>
+
+<p>网上有很多讲解 SVD 的文章，但讲清楚的极少，或者讲了太多冗余的内容，反而不利于理解。这一小节我们先从数学上理解这种分解的由来，然后经过简单的变换，就能看出它与 PCA 的关系。</p>
+
+<h2 id="svd-的原理与可行性">SVD 的原理与可行性</h2>
+
+<p>对于任意一个矩阵 $A$ ，我们可以让它乘以一组单位正交基组成的矩阵。</p>
+
+<p><span  class="math">\[A\cdot V=S\]</span></p>
+
+<p>矩阵 $S$ 就是原矩阵在新的坐标系下的坐标。如果看了前面几节的内容，对这个变换应该非常熟悉。</p>
+
+<p>将 $V$ 移到等式右边：</p>
+
+<p><span  class="math">\[A=S\cdot V^{-1}\]</span></p>
+
+<p>由于 $V$ 是单位正交阵，所以 <span  class="math">\(V^{-1}=V^T\)</span> 。有：</p>
+
+<p><span  class="math">\[A=S\cdot V^T\]</span></p>
+
+<p>对比我们上面说过的 SVD，我们只需要构造 $U\Sigma$ 使其等于 $S$ 即可。问题是能不能找到这样的两个矩阵，相乘等于 $S$ 呢？</p>
+
+<p>为了直观一点，我们举一个具体的例子：</p>
+
+<p><span  class="math">\[S=\begin{pmatrix}3 & 8 \\ 2 & 2 \\ 9 & 7\end{pmatrix}\]</span></p>
+
+<p>这个矩阵是任意选择的。我们可以很容易地将其变换成如下形式：</p>
+
+<p><span  class="math">\[\begin{pmatrix}3 & 8 \\ 2 & 2 \\ 9 & 7\end{pmatrix}=\begin{pmatrix}\frac{3}{\sqrt{3^2+2^2+9^2}} & \frac{8}{\sqrt{8^2+2^2+7^2}} \\ \frac{2}{\sqrt{3^2+2^2+9^2}} & \frac{2}{\sqrt{8^2+2^2+7^2}} \\ \frac{9}{\sqrt{3^2+2^2+9^2}} & \frac{7}{\sqrt{8^2+2^2+7^2}}\end{pmatrix}\begin{pmatrix}\sqrt{3^2+2^2+9^2} & 0\\0&\sqrt{8^2+2^2+7^2}\end{pmatrix}\]</span></p>
+
+<p>这正对应着 $U\Sigma$ 。</p>
+
+<p>仔细的同学可能马上发现不对劲。上面的定义中，我们说 $U$ 是方阵，而 $\Sigma$ 是长方形对角阵，跟这里不一样。其实在上面的定义中，由于长方形对角阵多出来的部分全为零，导致 $U$ 后面几列完全对运算没有贡献，因此两种写法完全等价。</p>
+
+<p>由此可以看出，任意一个矩阵都可以做这种形式的分解。我们记 $S=U\Sigma$ 为坐标矩阵。再次说明，这个矩阵表示的就是原矩阵在新的坐标系下的坐标。这个概念很重要。</p>
+
+<p>但是，$U$ 和 $\Sigma$ 分别表示什么呢？我们为什么要大费周章地将 $S$ 拆成这两个矩阵的相乘？容易看出来 $U$ 是单位化的 $S$ 。而 $\Sigma$ 对角线的每个元素，表示的是 $S$ 在这一列上的所有值的平方的和再开根号，我们把 $S$ 想像成一个中心化的样本矩阵，那么对角元素的值，就是样本某一列的方差开根号。</p>
+
+<p>那么，在这个坐标系中，按照投影方差的大小，就可以实现降维了。</p>
+
+<h2 id="svd-与-pca-的关系">SVD 与 PCA 的关系</h2>
+
+<p>讲到这里，还是没有理清 SVD 和 PCA 的关系。只是上面的变换到了最后一步出现了投影方差这个概念，似乎可以和 PCA 扯上点关系。</p>
+
+<p>我们仔细思考上面的变换，到了最后一步，得到的投影方差真的是我们前几节求出的那个最大投影方差吗？其实不是的。注意，我们从头到尾都没有考虑过矩阵 $A$ 的协方差，因此这里这个最大的投影方差，并不是我们前几节算出来的那个最大投影方差，而只是在这个新坐标系中，对所有坐标方向而言的最大的投影方差，千万不要混淆。这是因为，最初的坐标变换时的 $V$ 矩阵，是我们随意选取的方向。在这个新的坐标系中，各个维度的协方差也不见得为零。</p>
+
+<p>如果想要达到 PCA 的降维效果，我们在选取 $V$ 时，就要选择 PCA 中的那个方向。这样，SVD 才和 PCA 产生了联系。</p>
+
+<p>也就是说，我们之前是利用样本矩阵的协方差矩阵做对角化来找主成分，现在，我们可以直接利用样本矩阵做 SVD，找出主成分。在工程中的 SVD，都是默认把 $V$ 的方向取为 PCA 的那个方向。</p>
+
+<p>光是这样讲，可能不太直观。我们用公式一推就明白了。</p>
+
+<p>我们设中心化的样本矩阵为 $X=U\Sigma V^T$ 。设协方差矩阵为 $C=X^TX$ （因为已经中心化，所以均值为 0。这里让矩阵中心化是为了看起来方便，不影响推导）。</p>
+
+<p>那么，我们有：</p>
+
+<p><span  class="math">\[\begin{align}C=X^TX=V\Sigma^TU^TU\Sigma V^T=V\Sigma^2V^T\end{align}\]</span></p>
+
+<p>可以看出，SVD 中的那个 $\Sigma$ ，正是之前协方差矩阵中出现那个对角矩阵开根号。这不是巧合。回顾上面讨论的内容，这是数学上的必然。</p>
+
+<p>那么，$U$ 矩阵还有没有用呢？也是有用的。</p>
+
+<p>我们取另一个矩阵 $T=XX^T$ 。有：</p>
+
+<p><span  class="math">\[T=XX^T=U\Sigma V^TV\Sigma^TU^T=U\Sigma^2U^T\]</span></p>
+
+<p>这有什么用？</p>
+
+<p>我们之前求出 $C=V\Sigma^2 V^T$ ，是为了根据特征值找出对应的特征向量，即 $V$ 中的一部分向量，然后让样本矩阵与它相乘，得到新坐标系下的坐标，也就是降维后的样本矩阵。即：$X\cdot V=U\Sigma V^TV=U\Sigma$ 。还记得上面说过的那个很重要的概念吗？$S=U\Sigma$ 为坐标矩阵。这里的 $S$ 不就是 $X\cdot V$ 吗？</p>
+
+<p>而这个 $T$ 又有什么用呢？</p>
+
+<p>我们有：</p>
+
+<p><span  class="math">\[\begin{align}T&=U\Sigma^2 U^T\\TU\Sigma&=U\Sigma^2U^TU\Sigma=U\Sigma\Sigma^2\\T&=(U\Sigma)\Sigma^2(U\Sigma)^{-1}=S\Sigma^2S^{-1}\end{align}\]</span></p>
+
+<p>可以看出，如果对矩阵 $T$ 做相似对角化，那么得到的特征向量组成的矩阵，就直接是我们的坐标矩阵 $S$ 。</p>
+
+<p>所以对 $C$ 做分析的过程叫 <strong>主成分分析</strong> ，而对 $T$ 做分析的过程叫 <strong>主坐标分析</strong> 。两者分析的对象不同，但做的是同一回事。上面我们通过 SVD，非常清晰地看出了两者的联系。</p>
+
+<h2 id="总结">总结</h2>
+
+<p>这一小节一开始我们抛开了 PCA，从底层原理讨论了 SVD 的可行性，然后了解到，在做分解的时候如果根据主成分的方向来选择那个 $V$ 矩阵，那么分解后再去降维，就达到了 PCA 完全一致的效果。</p>
+
+<p>最后我们通过 SVD 等式的一些变换，学习了主成分分析和主坐标分析的联系。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2019-11-09
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%80%E8%A7%A3%E6%9E%90%E8%A7%A3%E4%B8%8E%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D%E6%B3%95/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入浅出线性回归（一）——解析解与梯度下降法</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%BA%94%E6%9C%80%E5%B0%8F%E9%87%8D%E6%9E%84%E4%BB%A3%E4%BB%B7%E8%A7%86%E8%A7%92/">
+            <span class="next-text nav-default">深入浅出 PCA（五）——最小重构代价视角</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

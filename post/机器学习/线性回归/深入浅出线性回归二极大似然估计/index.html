@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出线性回归（二）——极大似然估计 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="上一节中有这样一个式子： \[\large J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\] 这个函数叫做损失函数。我们要找到 $\theta$ 使损失函数达到最小值。用 \((y^{(i)}-\theta^Tx^{(i)})^2\) 表示真实值和估计值之间的距离，然后使所有样本的这个距" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%8C%E6%9E%81%E5%A4%A7%E4%BC%BC%E7%84%B6%E4%BC%B0%E8%AE%A1/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出线性回归（二）——极大似然估计" />
+<meta property="og:description" content="上一节中有这样一个式子： \[\large J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\] 这个函数叫做损失函数。我们要找到 $\theta$ 使损失函数达到最小值。用 \((y^{(i)}-\theta^Tx^{(i)})^2\) 表示真实值和估计值之间的距离，然后使所有样本的这个距" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%8C%E6%9E%81%E5%A4%A7%E4%BC%BC%E7%84%B6%E4%BC%B0%E8%AE%A1/" />
+<meta property="article:published_time" content="2019-11-11T15:11:40+08:00" />
+<meta property="article:modified_time" content="2019-11-11T15:11:40+08:00" />
+<meta itemprop="name" content="深入浅出线性回归（二）——极大似然估计">
+<meta itemprop="description" content="上一节中有这样一个式子： \[\large J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\] 这个函数叫做损失函数。我们要找到 $\theta$ 使损失函数达到最小值。用 \((y^{(i)}-\theta^Tx^{(i)})^2\) 表示真实值和估计值之间的距离，然后使所有样本的这个距">
+<meta itemprop="datePublished" content="2019-11-11T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2019-11-11T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="826">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出线性回归（二）——极大似然估计"/>
+<meta name="twitter:description" content="上一节中有这样一个式子： \[\large J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\] 这个函数叫做损失函数。我们要找到 $\theta$ 使损失函数达到最小值。用 \((y^{(i)}-\theta^Tx^{(i)})^2\) 表示真实值和估计值之间的距离，然后使所有样本的这个距"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出线性回归（二）——极大似然估计</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2019-11-11 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <p>上一节中有这样一个式子：</p>
+
+<p><span  class="math">\[\large J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\]</span></p>
+
+<p>这个函数叫做损失函数。我们要找到 $\theta$ 使损失函数达到最小值。用 <span  class="math">\((y^{(i)}-\theta^Tx^{(i)})^2\)</span> 表示真实值和估计值之间的距离，然后使所有样本的这个距离之和最小，是非常自然的想法。</p>
+
+<p>我们可以从另一个角度来看这个问题。</p>
+
+<p>由于真实值和估计值之间有差值，我们用 <span  class="math">\(\epsilon^{(i)}=y^{(i)}-\theta^Tx^{(i)}\)</span> 表示这个差值。并且，我们假设每个差值是独立同分布的。根据独立同分布的中心极限定理，该差值服从均值为 0，方差为 $\sigma^2$ 的高斯分布。于是有：</p>
+
+<p><span  class="math">\[\large \begin{align}p(\epsilon^{(i)})&=\frac{1}{\sqrt{2\pi}\sigma}\exp(-\frac{(\epsilon^{(i)})^2}{2\sigma^2})\\p(y^{(i)}|x^{(i)};\theta)&=\frac{1}{\sqrt{2\pi}\sigma}\exp(-\frac{(y^{(i)}-\theta^Tx^{(i)})^2}{2\sigma^2})\end{align}\]</span></p>
+
+<p>这个 <span  class="math">\(p(y^{(i)}|x^{(i)};\theta)\)</span> 表示每个样本确定输入和参数后取到真实输出的概率。我们再假设样本之间是独立的，则联合概率就是每个样本这个概率的乘积。</p>
+
+<p><span  class="math">\[\Large L(\theta)=\prod_{i=1}^np(y^{(i)}|x^{(i)};\theta)=\prod_{i=1}^n\frac{1}{\sqrt{2\pi}\sigma}\exp(-\frac{(y^{(i)}-\theta^Tx^{(i)})^2}{2\sigma^2})\]</span></p>
+
+<p>有了这个式子有什么用？我们希望找到 $\theta$ 使这个联合概率最大，这个过程叫做 <strong>极大似然估计(Maximum Likelihood Estimation, MLE)</strong> 。对于第一次接触机器学习的同学来说，这个概念有些陌生。它的意义是，由于在我们的样本中，输入为 $x^{(i)}$ 时，发生的事件是得到了输出 $y^{(i)}$ ，所以我们可以认为，以后每次输入为 $x^{(i)}$ 时，得到的估计值 $f(x^{(i)})$ 加上上面那个随机的差值 <span  class="math">\(\epsilon^{(i)} \)</span> 后等于 <span  class="math">\(y^{(i)}\)</span> 的可能性都最大，而我们就要找出 $\theta$ 满足这样的假设。</p>
+
+<p>显然我们需要对上式进行求导。但是这个连乘很阻碍我们的计算，所以我们通过取对数的方式将其变成连加。</p>
+
+<p><span  class="math">\[\Large \begin{align}\log L(\theta)&=\log \prod_{i=1}^n\frac{1}{\sqrt{2\pi}\sigma}\exp(-\frac{(y^{(i)}-\theta^Tx^{(i)})^2}{2\sigma^2})\\&=\sum_{i=1}^n\log \frac{1}{\sqrt{2\pi}\sigma}\exp(-\frac{(y^{(i)}-\theta^Tx^{(i)})^2}{2\sigma^2})\\&=n\log \frac{1}{\sqrt{2\pi}\sigma}-\frac{1}{\sigma^2}\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\end{align}\]</span></p>
+
+<p>对这个式子求最大值，等价于对</p>
+
+<p><span  class="math">\[\Large \frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\]</span></p>
+
+<p>求最小值。</p>
+
+<p>可以看出，我们用朴素的方法去算真实值与估计值的欧式距离，与用极大似然估计并假设真实值和估计值的差值符合高斯分布的方法是等价的。</p>
+
+<p>那么，如果我们算距离时不用欧式距离，而用绝对值去算，行不行呢？如果我们假设那个差值符合其他分布又会这么样呢？</p>
+
+<p>来试试吧。这一次我们假设差值符合拉普拉斯分布。</p>
+
+<p><span  class="math">\[\large \begin{align}p(\epsilon^{(i)})&=\frac{1}{2\lambda}\exp(-\frac{|\epsilon^{(i)}|}{\lambda})\\p(y^{(i)}|x^{(i)};\theta)&=\frac{1}{2\lambda}\exp(-\frac{|y^{(i)}-\theta^Tx^{(i)}|}{\lambda})\end{align}\]</span></p>
+
+<p><span  class="math">\[\Large \begin{align}\log L(\theta)&=\log \prod_{i=1}^n\frac{1}{2\lambda}\exp(-\frac{|y^{(i)}-\theta^Tx^{(i)}|}{\lambda})\\&=\sum_{i=1}^n\log \frac{1}{2\lambda}\exp(-\frac{|y^{(i)}-\theta^Tx^{(i)}|}{\lambda})\\&=n\log \frac{1}{2\lambda}-\frac{1}{\lambda}\sum_{i=1}^n|y^{(i)}-\theta^Tx^{(i)}|\end{align}\]</span></p>
+
+<p>要让上式取最大值，等价于让</p>
+
+<p><span  class="math">\[\Large \frac{1}{\lambda}\sum_{i=1}^n|y^{(i)}-\theta^Tx^{(i)}|\]</span></p>
+
+<p>取最小值。这正等价于我们对真实值和估计值求距离时使用绝对值而不是欧式距离。</p>
+
+<h2 id="总结">总结</h2>
+
+<p>通过极大似然估计视角，我们可以看出损失函数并不是平白无故写成那样的，它实际上蕴涵着对差值分布的假设，而且我们还假设样本是独立同分布的。通常情况下，我们都认为这个差值服从高斯分布。如果发现真实的样本不符合这样的假设，就不能用线性回归来建模。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2019-11-11
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%89%E6%AD%A3%E5%88%99%E5%8C%96/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入浅出线性回归（三）——正则化</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%80%E8%A7%A3%E6%9E%90%E8%A7%A3%E4%B8%8E%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D%E6%B3%95/">
+            <span class="next-text nav-default">深入浅出线性回归（一）——解析解与梯度下降法</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

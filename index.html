@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="Hugo theme even example site." /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/" />
+  <link href="http://localhost:1313/index.xml" rel="alternate" type="application/rss+xml" title="Even - A super concise theme for Hugo" />
+  <link href="http://localhost:1313/index.xml" rel="feed" type="application/rss+xml" title="Even - A super concise theme for Hugo" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="Even - A super concise theme for Hugo" />
+<meta property="og:description" content="Hugo theme even example site." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="http://localhost:1313/" />
+<meta property="og:updated_time" content="2020-03-15T15:11:40+08:00" />
+<meta itemprop="name" content="Even - A super concise theme for Hugo">
+<meta itemprop="description" content="Hugo theme even example site."><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Even - A super concise theme for Hugo"/>
+<meta name="twitter:description" content="Hugo theme even example site."/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <section id="posts" class="posts">
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-flinkkafkaconsumer%E5%A6%82%E4%BD%95%E7%BB%B4%E6%8A%A4%E5%92%8C%E6%81%A2%E5%A4%8Doffset/">深入Flink源码 - FlinkKafkaConsumer如何维护和恢复offset</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2020-03-15 </span>
+      <div class="post-category">
+          <a href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/"> 大数据 </a>
+          <a href="/categories/flink/"> flink </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      问题的由来 在利用Flink做业务开发时，经常会让Flink从Kafka读取数据进行消费。初始化的代码通常遵循如下范式： 1 2 3 4 5 6 7 8 9 10 11
+    </div>
+    <div class="read-more">
+      <a href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-flinkkafkaconsumer%E5%A6%82%E4%BD%95%E7%BB%B4%E6%8A%A4%E5%92%8C%E6%81%A2%E5%A4%8Doffset/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E5%9B%9B%E4%BB%8E%E6%9C%80%E5%A4%A7%E7%86%B5%E6%A8%A1%E5%9E%8B%E5%88%B0%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%A8%A1%E5%9E%8B/">深入浅出逻辑回归（四）——从最大熵模型到逻辑回归模型</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2019-12-31 </span>
+      <div class="post-category">
+          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      最大熵模型 最大熵模型是一种更加“高屋建瓴”的统计模型。它由最大熵原理推导而来。我们可以认为逻辑回归模型是它的一种特例，稍后我们会做相关推导。
+    </div>
+    <div class="read-more">
+      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E5%9B%9B%E4%BB%8E%E6%9C%80%E5%A4%A7%E7%86%B5%E6%A8%A1%E5%9E%8B%E5%88%B0%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%A8%A1%E5%9E%8B/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%B8%89%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0%E4%BC%B0%E8%AE%A1/">深入浅出逻辑回归（三）——模型参数估计</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2019-12-30 </span>
+      <div class="post-category">
+          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      用 MLE 估计模型参数 对于给定的样本集 \(D=\{(x^{(1)},y^{(1)}),\ (x^{(2)},y^{(2)}),\ \cdots\ ,\ (x^{(N)},y^{(N)})\}\) ，其中 $y^{(i)}\in {0,1}$ 。为了简化，我们令 $P(Y=1|x)=\frac{exp(w\cdot x)}{1+exp(w\cdot x)}=\pi(x),\ P(Y=0|x)=1-\pi(x)$ 。 根据 MLE，我们写出似然函数： \[\large \prod^{N}_{i=1}[\pi(x^{(i)})]^{y^{(i)}}[1-\pi(x^{(i)})]^{1-y^{(i)}}\] 对数似然函数为： \[\large \begin{align}L(w)&=\sum^N_{i=1}[y^{(i)}\log(\pi(x^{(i)}))+(1-y^{(i)})\log(1-\pi(x^{(i)}))]\\&=\sum^N_{i=1}[y^{(i)}\log(\frac{\pi(x^{(i)})}{1-\pi(x^{(i)})})+\log(1-\pi(x^{(i)}))]\\&=\sum^N_{i=1}[y^{(i)}(w\cdot x^{(i)})-\log(1+exp(w\cdot x^{(i)}))]\end{align}\] 然
+    </div>
+    <div class="read-more">
+      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%B8%89%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0%E4%BC%B0%E8%AE%A1/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%BA%8C%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%98%AF%E7%BA%BF%E6%80%A7%E5%88%86%E7%B1%BB%E5%99%A8%E5%90%97/">深入浅出逻辑回归（二）——逻辑回归是线性分类器吗？</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2019-12-29 </span>
+      <div class="post-category">
+          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      上一小节我们得到逻辑回归模型的表达式为： \[\large P(Y=1|x)=\frac{\exp (w\cdot x)}{1+\exp (w\cdot x)}\] 很显然这是一个非线性的函数。它长成这个样子： 看不出逻辑回归模型是线性模型的证据。 逻辑回归
+    </div>
+    <div class="read-more">
+      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%BA%8C%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%98%AF%E7%BA%BF%E6%80%A7%E5%88%86%E7%B1%BB%E5%99%A8%E5%90%97/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%B8%80%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%A8%A1%E5%9E%8B%E9%95%BF%E4%BB%80%E4%B9%88%E6%A0%B7/">深入浅出逻辑回归（一）——逻辑回归模型长什么样</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2019-12-28 </span>
+      <div class="post-category">
+          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      理解逻辑回归模型有多种视角，从不同的视角可以分别看到逻辑回归与其它模型之间的联系与区别。这里还是先从线性回归模型展开，得到逻辑回归模型的公式
+    </div>
+    <div class="read-more">
+      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%B8%80%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%A8%A1%E5%9E%8B%E9%95%BF%E4%BB%80%E4%B9%88%E6%A0%B7/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%89%E6%9C%9F%E6%9C%9B%E9%A3%8E%E9%99%A9%E6%9C%80%E5%B0%8F%E5%8C%96%E8%A7%86%E8%A7%92/">深入浅出朴素贝叶斯（三）——期望风险最小化视角</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2019-12-05 </span>
+      <div class="post-category">
+          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      当我们算出了各个需要的频率后，就可以计算出 $Pr(Category|Document)$ 的相对值（之所以说是相对值，是因为我们没有计算 $Pr(Document)$ ），然后选择 $Pr$ 最大的那个分类。这种做法不仅仅是一
+    </div>
+    <div class="read-more">
+      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%89%E6%9C%9F%E6%9C%9B%E9%A3%8E%E9%99%A9%E6%9C%80%E5%B0%8F%E5%8C%96%E8%A7%86%E8%A7%92/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%BA%8C%E9%87%8D%E6%96%B0%E8%AE%A4%E8%AF%86%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/">深入浅出朴素贝叶斯（二）——重新认识朴素贝叶斯</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2019-12-04 </span>
+      <div class="post-category">
+          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      文档的表示方式 在上一节中，我们先计算了每个单词的 $Pr(Word|Category)$ ，将它们相乘得到 $Pr(Document|Category)$ ，然后计算出 $Pr(Category)$ ，算出 $Pr(Document|Category)\times Pr(Category)$ ，通过每个类别的对比就得到了文档的分类。 最后我们
+    </div>
+    <div class="read-more">
+      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%BA%8C%E9%87%8D%E6%96%B0%E8%AE%A4%E8%AF%86%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%80%E4%BB%8E%E5%9E%83%E5%9C%BE%E9%82%AE%E4%BB%B6%E5%88%86%E7%B1%BB%E5%BC%80%E5%A7%8B/">深入浅出朴素贝叶斯（一）——从垃圾邮件过滤开始</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2019-12-03 </span>
+      <div class="post-category">
+          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      问题的由来 随着电子邮件的普及和超低的发送成本，我们受到越来越多垃圾邮件的困扰，导致真正有价值的邮件被淹没。垃圾邮件的过滤是机器学习非常早期的
+    </div>
+    <div class="read-more">
+      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%80%E4%BB%8E%E5%9E%83%E5%9C%BE%E9%82%AE%E4%BB%B6%E5%88%86%E7%B1%BB%E5%BC%80%E5%A7%8B/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%94%E8%B4%9D%E5%8F%B6%E6%96%AF%E8%A7%86%E8%A7%92/">深入浅出线性回归（五）——贝叶斯视角</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2019-11-14 </span>
+      <div class="post-category">
+          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      频率派和贝叶斯派 在讨论统计与概率时，基于不同的出发点和世界观，衍生出了频率派和贝叶斯派两种流派。简单地说，频率派认为参数是一个固定的值，只不
+    </div>
+    <div class="read-more">
+      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%94%E8%B4%9D%E5%8F%B6%E6%96%AF%E8%A7%86%E8%A7%92/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E5%9B%9B%E6%9C%80%E5%B0%8F%E4%BA%8C%E4%B9%98%E6%B3%95%E7%9A%84%E5%87%A0%E4%BD%95%E8%A7%A3%E9%87%8A/">深入浅出线性回归（四）——最小二乘法的几何解释</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2019-11-13 </span>
+      <div class="post-category">
+          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      回顾第一节的内容。 \[\large J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\] 利用最小二乘法，我们得到了解析解：\(\theta=(X^TX)^{-1}X^TY\) 。 我们当时的解释是，用真实值和估
+    </div>
+    <div class="read-more">
+      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E5%9B%9B%E6%9C%80%E5%B0%8F%E4%BA%8C%E4%B9%98%E6%B3%95%E7%9A%84%E5%87%A0%E4%BD%95%E8%A7%A3%E9%87%8A/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    </section>
+  
+  <nav class="pagination">
+    
+    <a class="next" href="/page/2/">
+        <span class="next-text">下一页</span>
+        <i class="iconfont icon-right"></i>
+      </a>
+  </nav>
+        </div>
+        
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

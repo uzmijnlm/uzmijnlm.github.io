@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出朴素贝叶斯（二）——重新认识朴素贝叶斯 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="文档的表示方式 在上一节中，我们先计算了每个单词的 $Pr(Word|Category)$ ，将它们相乘得到 $Pr(Document|Category)$ ，然后计算出 $Pr(Category)$ ，算出 $Pr(Document|Category)\times Pr(Category)$ ，通过每个类别的对比就得到了文档的分类。 最后我们" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%BA%8C%E9%87%8D%E6%96%B0%E8%AE%A4%E8%AF%86%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出朴素贝叶斯（二）——重新认识朴素贝叶斯" />
+<meta property="og:description" content="文档的表示方式 在上一节中，我们先计算了每个单词的 $Pr(Word|Category)$ ，将它们相乘得到 $Pr(Document|Category)$ ，然后计算出 $Pr(Category)$ ，算出 $Pr(Document|Category)\times Pr(Category)$ ，通过每个类别的对比就得到了文档的分类。 最后我们" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%BA%8C%E9%87%8D%E6%96%B0%E8%AE%A4%E8%AF%86%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/" />
+<meta property="article:published_time" content="2019-12-04T15:11:40+08:00" />
+<meta property="article:modified_time" content="2019-12-04T15:11:40+08:00" />
+<meta itemprop="name" content="深入浅出朴素贝叶斯（二）——重新认识朴素贝叶斯">
+<meta itemprop="description" content="文档的表示方式 在上一节中，我们先计算了每个单词的 $Pr(Word|Category)$ ，将它们相乘得到 $Pr(Document|Category)$ ，然后计算出 $Pr(Category)$ ，算出 $Pr(Document|Category)\times Pr(Category)$ ，通过每个类别的对比就得到了文档的分类。 最后我们">
+<meta itemprop="datePublished" content="2019-12-04T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2019-12-04T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="1436">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出朴素贝叶斯（二）——重新认识朴素贝叶斯"/>
+<meta name="twitter:description" content="文档的表示方式 在上一节中，我们先计算了每个单词的 $Pr(Word|Category)$ ，将它们相乘得到 $Pr(Document|Category)$ ，然后计算出 $Pr(Category)$ ，算出 $Pr(Document|Category)\times Pr(Category)$ ，通过每个类别的对比就得到了文档的分类。 最后我们"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出朴素贝叶斯（二）——重新认识朴素贝叶斯</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2019-12-04 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <h2 id="文档的表示方式">文档的表示方式</h2>
+
+<p>在上一节中，我们先计算了每个单词的 $Pr(Word|Category)$ ，将它们相乘得到 $Pr(Document|Category)$ ，然后计算出 $Pr(Category)$ ，算出 $Pr(Document|Category)\times Pr(Category)$ ，通过每个类别的对比就得到了文档的分类。</p>
+
+<p>最后我们提了几个问题，其中第一个问题是：$Pr(Word|Category)$ 可以用别的方式计算吗，文档有其他表示方式吗？</p>
+
+<p>上一节我们先给定一个分类，然后数出有多少篇文档出现了 $Word$ ，然后除以该分类的文档总数来得到 $Pr(Word|Category)$ 。我们也可以不去重地将该分类的文档做分词，然后用 $Word$ 出现的次数除以总词数，用这个值来表示 $Pr(Word|Category)$ ，并不会影响上一节的推论。</p>
+
+<p>同理，我们可以不去重地对文档做分词，得到 $(Word_1,Word_2,\cdots,Word_n)$ （上一节中去了重），然后来计算 $Pr(Document|Category)$ ，并不影响上一节的推论。</p>
+
+<p>总之，可以自定义一个向量来表示文档 $Document$ ，也可以自定义地选择一种方法计算 $Pr(Word|Category)$ 。更一般地，我们可以任选一种向量 $(x_1, x_2, \cdots, x_n)$ 来表示文档，只要能找到方式计算对应的 $Pr(x|Category)$ 即可。</p>
+
+<p>再来看上一节的第二个问题：能不能通过某种方式直接算出 $Pr(Category|Document)$ ，而不经过贝叶斯定理呢？</p>
+
+<p>$Pr(Category|Document)$ 的含义听起来很简单，即给定一篇文档，它是某分类的概率，感觉好像通过数数算频率也能够算出来。但其实是不行的。不要忘了我们一开始的难点就是没有找到合适的方法去表示一篇文档。而通过数数算频率，顶多能够预测如果出现一模一样的文档时它的分类是什么。</p>
+
+<p>上一小节的推导看起来好像没有什么技术难度，无非就是换了一种表达方式。实际上，我们先找到了一种文档的表示方式，然后，最关键的一步是利用朴素贝叶斯假设将 $Pr(Document|Category)$ 变成了：</p>
+
+<p><span  class="math">\[Pr(Word_1|Category)\times Pr(Word_2|Category)\times\cdots\times Pr(Word_n|Category)\]</span></p>
+
+<p>这样我们能够计算每一个 $Pr(Word|Category)$ 。而我们无法对 $Pr(Category|Document)$ 做这样的变换。</p>
+
+<h2 id="mle-在朴素贝叶斯中的作用">MLE 在朴素贝叶斯中的作用</h2>
+
+<p>上一小节最后两个问题是：贝叶斯分类器是机器学习的模型之一，可是为什么隐隐感觉它和别的模型不一样，好像有些过于简单，为什么没有优化的步骤？以及频率能够表示概率吗？</p>
+
+<p>这两个问题可以一起解答。</p>
+
+<p>首先，用频率表示概率是需要数学上的推导的。以下面这种表示方法为例进行推导：</p>
+
+<p>用 <span  class="math">\(D=\{(x^1, y^1), (x^2,y^2),\cdots,(x^N,y^N)\}\)</span> 表示样本集。其中 $N$ 表示样本个数。$y^i$ 表示分类。<span  class="math">\(x^i=(x^i_1,x^i_2,\cdots,x^i_{m_i})\)</span> 为文档 $i$ 的向量表示，每个特征表示一个单词，$m_i$ 表示文档 $i$ 的单词个数，不去重。</p>
+
+<p>那么其 MLE 目标为：</p>
+
+<p><span  class="math">\[\begin{align}P(D)=\prod_{i=1}^NP(x^i,y^i)&=\prod_{i=1}^NP(x^i|y^i)P(y^i)\\&=\prod_{i=1}^NP(x^i_1,x^i_2,\cdots,x^i_{m_i}|y^i)p(y^i)\\&=\prod_{i=1}^NP(x^i_1|y^i)P(x^i_2|y^i)\cdots P(x^i_{m_i}|y^i)P(y^i)\\&=\prod_{i=1}^N\prod_{j=1}^{m_i}P(x^i_j|y^i)P(y^i)\end{align}\]</span></p>
+
+<p>由于其目标是最大化联合概率，所以朴素贝叶斯模型属于生成模型。</p>
+
+<p>上面用到了朴素贝叶斯假设，所以该模型称为朴素贝叶斯模型。如果从第二行到第三行用了别的假设，便形成了其他的模型。</p>
+
+<p>将上式换一种表达方式：</p>
+
+<p><span  class="math">\[ \prod_{i=1}^N\prod_{j=1}^{m_i}P(x_j^i|y^i)P(y^i)=\prod_{i=1}^N\prod_{j=1}^VP(w_j|y^i)^{N_{ij}}P(y^i)\]</span></p>
+
+<p>其中 <span  class="math">\(w_j\)</span> 表示词表中第 <span  class="math">\(j\)</span> 个单词，词表的意思是样本集中出现的所有单词去重后形成了列表。<span  class="math">\(N_{ij}\)</span> 表示单词 <span  class="math">\(j\)</span> 出现在文档 <span  class="math">\(i\)</span> 中的次数。<span  class="math">\(V\)</span> 表示词表中总词数。等式两边显然是相等的。</p>
+
+<p>跟其他求 MLE 的参数方式一样，将连乘改为连加，即：</p>
+
+<p><span  class="math">\[maximize\ P(D) \Rightarrow maximize\  \sum_{i=1}^N[\sum_{j=1}^VN_{ij}\log P(w_j|y^i)+\log P(y^i)]\]</span></p>
+
+<p>我们用 $K$ 表示类别的总数，有：</p>
+
+<p><span  class="math">\[\begin{align}&\quad\sum_{i=1}^N[\sum_{j=1}^VN_{ij}\log P(w_j|y^i)+\log P(y^i)]\\&=\sum_{k=1}^K\sum_{i:j^i=k}\sum_{j=1}^VN_{ij}\log P(w_j|y^i=k)+\sum_{k=1}^K\sum_{i:y^i=k}\log P(y^i=k)\\&=\sum_{k=1}^K\sum_{i:j^i=k}\sum_{j=1}^VN_{ij}\log \theta_{kj}+\sum_{k=1}^K\sum_{i:y^i=k}\log \pi_k\\&=\sum_{k=1}^K\sum_{i:j^i=k}\sum_{j=1}^VN_{ij}\log \theta_{kj}+\sum_{k=1}^Kn_k\log \pi_k\end{align}\]</span></p>
+
+<p>显然，$\theta_{kj}$ 表示单词 $j$ 在类别 $k$ 出现的概率，$\pi_k$ 表示类别 $k$ 的先验概率，$n_k$ 表示类别 $k$ 中的文档总数。上一节中，我们直觉性地直接用计算频率的方式得到了这两个值，现在我们用最大化 MLE 的方式来求解两者的值。</p>
+
+<p>现在我们的目标是：</p>
+
+<p><span  class="math">\[\large \quad\mathop{\arg\max}_{\Theta}\sum_{k=1}^K\sum_{i:j^i=k}\sum_{j=1}^VN_{ij}\log \theta_{kj}+\sum_{k=1}^Kn_k\log \pi_k\\\  \\\large s.t.\ \sum_{k=1}^K\pi_k=1\, \qquad \sum_{v=1}^V\theta_{kv}=1,k=1,2,\cdots,K\]</span></p>
+
+<p>所以等价于求解：</p>
+
+<p><span  class="math">\[\large \quad\mathop{\arg\max}_{\Theta}\sum_{k=1}^K\sum_{i:j^i=k}\sum_{j=1}^VN_{ij}\log \theta_{kj}+\sum_{k=1}^Kn_k\log \pi_k+\lambda(\sum_{k=1}^K\pi_k-1)+\sum_{k=1}^K\lambda_k(\sum_{v=1}^V\theta_{kv}-1)\]</span></p>
+
+<p>对 $\pi_k$ 求偏导：</p>
+
+<p><span  class="math">\[\Large \frac{\partial L(\theta,\pi,\lambda)}{\partial\pi_k}=\frac{n_k}{\pi_k}+\lambda=0 \quad \Rightarrow\quad   \pi_k=-\frac{n_k}{\lambda}\]</span></p>
+
+<p>因为 <span  class="math">\(\sum_{k=1}^K\pi_k=1\)</span> ，有 <span  class="math">\(\lambda=-\sum_{u=1}^Kn_u\)</span> ，代入上式：<span  class="math">\(\large \pi_k=\frac{n_k}{\sum_{u=1}^Kn_u}\)</span> 。</p>
+
+<p>可以看到，求解出来的 $\pi_k$ 正是用类别为 $k$ 的文档数除以总的文档数。</p>
+
+<p>同理对 $\theta_{kj}$ 求偏导：</p>
+
+<p><span  class="math">\[\Large\frac{\partial L(\theta,\pi,\lambda)}{\partial\theta_{kj}}=\sum_{i:j^i=k}\frac{N_{ij}}{\theta_{kj}}+\lambda_k \quad \Rightarrow \quad \theta_{kj}=-\frac{\sum_{i:y^i=k}N_{ij}}{\lambda_k}\]</span></p>
+
+<p>因为 <span  class="math">\(\sum_{v=1}^V\theta_{kv}=1\)</span> ，有 <span  class="math">\(\lambda_k=-\sum_{j=1}^V\sum_{i:y^i=k}N_{ij}\)</span> ，代入上式：<span  class="math">\(\Large \theta_{kj}=\frac{\sum_{i:y^i=k}N_{ij}}{\sum_{j=1}^V\sum_{i:y^i=k}N_{ij}}\)</span> 。</p>
+
+<p>$\theta_{kj}$ 也正是用单词 $j$ 在类别 $k$ 中出现的次数除以 $k$ 类所有单词的总数。</p>
+
+<p>综上所述，用 MLE 推导出来的参数，正是之前计算出的频率。说明我们的直觉是正确的。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2019-12-04
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%89%E6%9C%9F%E6%9C%9B%E9%A3%8E%E9%99%A9%E6%9C%80%E5%B0%8F%E5%8C%96%E8%A7%86%E8%A7%92/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入浅出朴素贝叶斯（三）——期望风险最小化视角</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%80%E4%BB%8E%E5%9E%83%E5%9C%BE%E9%82%AE%E4%BB%B6%E5%88%86%E7%B1%BB%E5%BC%80%E5%A7%8B/">
+            <span class="next-text nav-default">深入浅出朴素贝叶斯（一）——从垃圾邮件过滤开始</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Even - A super concise theme for Hugo</title>
+    <link>http://localhost:1313/post/</link>
+    <description>Recent content in Posts on Even - A super concise theme for Hugo</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Sun, 15 Mar 2020 15:11:40 +0800</lastBuildDate>
+    
+	<atom:link href="http://localhost:1313/post/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>深入Flink源码 - FlinkKafkaConsumer如何维护和恢复offset</title>
+      <link>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-flinkkafkaconsumer%E5%A6%82%E4%BD%95%E7%BB%B4%E6%8A%A4%E5%92%8C%E6%81%A2%E5%A4%8Doffset/</link>
+      <pubDate>Sun, 15 Mar 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-flinkkafkaconsumer%E5%A6%82%E4%BD%95%E7%BB%B4%E6%8A%A4%E5%92%8C%E6%81%A2%E5%A4%8Doffset/</guid>
+      <description>问题的由来 在利用Flink做业务开发时，经常会让Flink从Kafka读取数据进行消费。初始化的代码通常遵循如下范式： 1 2 3 4 5 6 7 8 9 10 11</description>
+    </item>
+    
+    <item>
+      <title>深入浅出逻辑回归（四）——从最大熵模型到逻辑回归模型</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E5%9B%9B%E4%BB%8E%E6%9C%80%E5%A4%A7%E7%86%B5%E6%A8%A1%E5%9E%8B%E5%88%B0%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%A8%A1%E5%9E%8B/</link>
+      <pubDate>Tue, 31 Dec 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E5%9B%9B%E4%BB%8E%E6%9C%80%E5%A4%A7%E7%86%B5%E6%A8%A1%E5%9E%8B%E5%88%B0%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%A8%A1%E5%9E%8B/</guid>
+      <description>最大熵模型 最大熵模型是一种更加“高屋建瓴”的统计模型。它由最大熵原理推导而来。我们可以认为逻辑回归模型是它的一种特例，稍后我们会做相关推导。</description>
+    </item>
+    
+    <item>
+      <title>深入浅出逻辑回归（三）——模型参数估计</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%B8%89%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0%E4%BC%B0%E8%AE%A1/</link>
+      <pubDate>Mon, 30 Dec 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%B8%89%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0%E4%BC%B0%E8%AE%A1/</guid>
+      <description>用 MLE 估计模型参数 对于给定的样本集 \(D=\{(x^{(1)},y^{(1)}),\ (x^{(2)},y^{(2)}),\ \cdots\ ,\ (x^{(N)},y^{(N)})\}\) ，其中 $y^{(i)}\in {0,1}$ 。为了简化，我们令 $P(Y=1|x)=\frac{exp(w\cdot x)}{1+exp(w\cdot x)}=\pi(x),\ P(Y=0|x)=1-\pi(x)$ 。 根据 MLE，我们写出似然函数： \[\large \prod^{N}_{i=1}[\pi(x^{(i)})]^{y^{(i)}}[1-\pi(x^{(i)})]^{1-y^{(i)}}\] 对数似然函数为： \[\large \begin{align}L(w)&amp;=\sum^N_{i=1}[y^{(i)}\log(\pi(x^{(i)}))+(1-y^{(i)})\log(1-\pi(x^{(i)}))]\\&amp;=\sum^N_{i=1}[y^{(i)}\log(\frac{\pi(x^{(i)})}{1-\pi(x^{(i)})})+\log(1-\pi(x^{(i)}))]\\&amp;=\sum^N_{i=1}[y^{(i)}(w\cdot x^{(i)})-\log(1+exp(w\cdot x^{(i)}))]\end{align}\] 然</description>
+    </item>
+    
+    <item>
+      <title>深入浅出逻辑回归（二）——逻辑回归是线性分类器吗？</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%BA%8C%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%98%AF%E7%BA%BF%E6%80%A7%E5%88%86%E7%B1%BB%E5%99%A8%E5%90%97/</link>
+      <pubDate>Sun, 29 Dec 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%BA%8C%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%98%AF%E7%BA%BF%E6%80%A7%E5%88%86%E7%B1%BB%E5%99%A8%E5%90%97/</guid>
+      <description>上一小节我们得到逻辑回归模型的表达式为： \[\large P(Y=1|x)=\frac{\exp (w\cdot x)}{1+\exp (w\cdot x)}\] 很显然这是一个非线性的函数。它长成这个样子： 看不出逻辑回归模型是线性模型的证据。 逻辑回归</description>
+    </item>
+    
+    <item>
+      <title>深入浅出逻辑回归（一）——逻辑回归模型长什么样</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%B8%80%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%A8%A1%E5%9E%8B%E9%95%BF%E4%BB%80%E4%B9%88%E6%A0%B7/</link>
+      <pubDate>Sat, 28 Dec 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%B8%80%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%A8%A1%E5%9E%8B%E9%95%BF%E4%BB%80%E4%B9%88%E6%A0%B7/</guid>
+      <description>理解逻辑回归模型有多种视角，从不同的视角可以分别看到逻辑回归与其它模型之间的联系与区别。这里还是先从线性回归模型展开，得到逻辑回归模型的公式</description>
+    </item>
+    
+    <item>
+      <title>深入浅出朴素贝叶斯（三）——期望风险最小化视角</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%89%E6%9C%9F%E6%9C%9B%E9%A3%8E%E9%99%A9%E6%9C%80%E5%B0%8F%E5%8C%96%E8%A7%86%E8%A7%92/</link>
+      <pubDate>Thu, 05 Dec 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%89%E6%9C%9F%E6%9C%9B%E9%A3%8E%E9%99%A9%E6%9C%80%E5%B0%8F%E5%8C%96%E8%A7%86%E8%A7%92/</guid>
+      <description>当我们算出了各个需要的频率后，就可以计算出 $Pr(Category|Document)$ 的相对值（之所以说是相对值，是因为我们没有计算 $Pr(Document)$ ），然后选择 $Pr$ 最大的那个分类。这种做法不仅仅是一</description>
+    </item>
+    
+    <item>
+      <title>深入浅出朴素贝叶斯（二）——重新认识朴素贝叶斯</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%BA%8C%E9%87%8D%E6%96%B0%E8%AE%A4%E8%AF%86%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/</link>
+      <pubDate>Wed, 04 Dec 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%BA%8C%E9%87%8D%E6%96%B0%E8%AE%A4%E8%AF%86%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/</guid>
+      <description>文档的表示方式 在上一节中，我们先计算了每个单词的 $Pr(Word|Category)$ ，将它们相乘得到 $Pr(Document|Category)$ ，然后计算出 $Pr(Category)$ ，算出 $Pr(Document|Category)\times Pr(Category)$ ，通过每个类别的对比就得到了文档的分类。 最后我们</description>
+    </item>
+    
+    <item>
+      <title>深入浅出朴素贝叶斯（一）——从垃圾邮件过滤开始</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%80%E4%BB%8E%E5%9E%83%E5%9C%BE%E9%82%AE%E4%BB%B6%E5%88%86%E7%B1%BB%E5%BC%80%E5%A7%8B/</link>
+      <pubDate>Tue, 03 Dec 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%80%E4%BB%8E%E5%9E%83%E5%9C%BE%E9%82%AE%E4%BB%B6%E5%88%86%E7%B1%BB%E5%BC%80%E5%A7%8B/</guid>
+      <description>问题的由来 随着电子邮件的普及和超低的发送成本，我们受到越来越多垃圾邮件的困扰，导致真正有价值的邮件被淹没。垃圾邮件的过滤是机器学习非常早期的</description>
+    </item>
+    
+    <item>
+      <title>深入浅出线性回归（五）——贝叶斯视角</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%94%E8%B4%9D%E5%8F%B6%E6%96%AF%E8%A7%86%E8%A7%92/</link>
+      <pubDate>Thu, 14 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%94%E8%B4%9D%E5%8F%B6%E6%96%AF%E8%A7%86%E8%A7%92/</guid>
+      <description>频率派和贝叶斯派 在讨论统计与概率时，基于不同的出发点和世界观，衍生出了频率派和贝叶斯派两种流派。简单地说，频率派认为参数是一个固定的值，只不</description>
+    </item>
+    
+    <item>
+      <title>深入浅出线性回归（四）——最小二乘法的几何解释</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E5%9B%9B%E6%9C%80%E5%B0%8F%E4%BA%8C%E4%B9%98%E6%B3%95%E7%9A%84%E5%87%A0%E4%BD%95%E8%A7%A3%E9%87%8A/</link>
+      <pubDate>Wed, 13 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E5%9B%9B%E6%9C%80%E5%B0%8F%E4%BA%8C%E4%B9%98%E6%B3%95%E7%9A%84%E5%87%A0%E4%BD%95%E8%A7%A3%E9%87%8A/</guid>
+      <description>回顾第一节的内容。 \[\large J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\] 利用最小二乘法，我们得到了解析解：\(\theta=(X^TX)^{-1}X^TY\) 。 我们当时的解释是，用真实值和估</description>
+    </item>
+    
+    <item>
+      <title>深入浅出线性回归（三）——正则化</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%89%E6%AD%A3%E5%88%99%E5%8C%96/</link>
+      <pubDate>Tue, 12 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%89%E6%AD%A3%E5%88%99%E5%8C%96/</guid>
+      <description>什么是正则化 很多文章都说，为了防止过拟合，我们可以在损失函数后面添加一个正则项。一般有两种正则化： \[\large L1正则化: J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2+\alpha||\theta||_1\] \[\large L2正则化: J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2+\alpha||\theta||_2^2\] 其中\(|</description>
+    </item>
+    
+    <item>
+      <title>深入浅出线性回归（二）——极大似然估计</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%8C%E6%9E%81%E5%A4%A7%E4%BC%BC%E7%84%B6%E4%BC%B0%E8%AE%A1/</link>
+      <pubDate>Mon, 11 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%8C%E6%9E%81%E5%A4%A7%E4%BC%BC%E7%84%B6%E4%BC%B0%E8%AE%A1/</guid>
+      <description>上一节中有这样一个式子： \[\large J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\] 这个函数叫做损失函数。我们要找到 $\theta$ 使损失函数达到最小值。用 \((y^{(i)}-\theta^Tx^{(i)})^2\) 表示真实值和估计值之间的距离，然后使所有样本的这个距</description>
+    </item>
+    
+    <item>
+      <title>深入浅出线性回归（一）——解析解与梯度下降法</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%80%E8%A7%A3%E6%9E%90%E8%A7%A3%E4%B8%8E%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D%E6%B3%95/</link>
+      <pubDate>Sun, 10 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%80%E8%A7%A3%E6%9E%90%E8%A7%A3%E4%B8%8E%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D%E6%B3%95/</guid>
+      <description>线性回归简介 我们手头有一堆样本的输入 \(X=\begin{pmatrix}x_{11} &amp; x_{12} &amp; \cdots &amp; x_{1p} \\ x_{21} &amp; x_{22} &amp; \cdots &amp; x_{2p} \\\vdots &amp; \vdots &amp; &amp; \vdots \\ x_{n1} &amp; x_{n2} &amp; \cdots &amp; x_{np} \end{pmatrix}$ 和输出 $Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_n\end{pmatrix}\) ，想要找到一个线性模型 \(f(X)=X\theta\) 描绘它们之间</description>
+    </item>
+    
+    <item>
+      <title>深入浅出 PCA（六）——奇异值分解（SVD）视角</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E5%85%AD%E5%A5%87%E5%BC%82%E5%80%BC%E5%88%86%E8%A7%A3svd/</link>
+      <pubDate>Sat, 09 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E5%85%AD%E5%A5%87%E5%BC%82%E5%80%BC%E5%88%86%E8%A7%A3svd/</guid>
+      <description>说到降维，可能有些同学还听过 SVD，但也许没有理顺它和 PCA 的关系。严格来说， SVD 与降维没有直接关系，它只是每个矩阵都有的性质。即任意一个矩阵 $A$ 都</description>
+    </item>
+    
+    <item>
+      <title>深入浅出 PCA（五）——最小重构代价视角</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%BA%94%E6%9C%80%E5%B0%8F%E9%87%8D%E6%9E%84%E4%BB%A3%E4%BB%B7%E8%A7%86%E8%A7%92/</link>
+      <pubDate>Fri, 08 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%BA%94%E6%9C%80%E5%B0%8F%E9%87%8D%E6%9E%84%E4%BB%A3%E4%BB%B7%E8%A7%86%E8%A7%92/</guid>
+      <description>上一小节我们通过最大投影方差视角，印证了取出对角化后的协方差矩阵中最大特征值对应的特征向量的合理性。但还有一个问题没有回答，就是降维以后信息</description>
+    </item>
+    
+    <item>
+      <title>深入浅出 PCA（四）——最大投影方差视角</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E5%9B%9B%E6%9C%80%E5%A4%A7%E6%8A%95%E5%BD%B1%E6%96%B9%E5%B7%AE%E8%A7%86%E8%A7%92/</link>
+      <pubDate>Thu, 07 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E5%9B%9B%E6%9C%80%E5%A4%A7%E6%8A%95%E5%BD%B1%E6%96%B9%E5%B7%AE%E8%A7%86%E8%A7%92/</guid>
+      <description>我们已经知道了 PCA 的具体步骤。先求出样本矩阵的协方差矩阵，将其对角化，对角元素从大到小排列，按需求选出最大的几个特征值，找出对应的特征向量，组</description>
+    </item>
+    
+    <item>
+      <title>深入浅出 PCA（三）——协方差矩阵</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%89%E5%8D%8F%E6%96%B9%E5%B7%AE%E7%9F%A9%E9%98%B5/</link>
+      <pubDate>Wed, 06 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%89%E5%8D%8F%E6%96%B9%E5%B7%AE%E7%9F%A9%E9%98%B5/</guid>
+      <description>什么是协方差 对于样本的每一维，我们都可以算出它的平均值 $\mu$ 和方差 $\sigma^2$ 。用期望表示的话，公式如下（用 $x$ 表示样本在这一维的取值）： \[\begin{equation}\mu=E[x]\\\sigma^2=E[(x-E[x])^2]\end{equation}\] 这是最常见的两个</description>
+    </item>
+    
+    <item>
+      <title>深入浅出 PCA（二）——矩阵对角化</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%BA%8C%E7%9F%A9%E9%98%B5%E5%AF%B9%E8%A7%92%E5%8C%96/</link>
+      <pubDate>Tue, 05 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%BA%8C%E7%9F%A9%E9%98%B5%E5%AF%B9%E8%A7%92%E5%8C%96/</guid>
+      <description>什么是 PCA PCA 就是利用正交变换，来对一系列可能相关的变量的观测值进行线性变换，从而投影为一系列线性不相关变量的值，这些不相关变量称为主成分（Pr</description>
+    </item>
+    
+    <item>
+      <title>深入浅出 PCA（一）——降维</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%80%E9%99%8D%E7%BB%B4/</link>
+      <pubDate>Mon, 04 Nov 2019 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%80%E9%99%8D%E7%BB%B4/</guid>
+      <description>简介 PCA（PrincipalComponents Analysis）即主成分分析，是最常用的降维方法。 我们先不用去理解什么是主成分分析，更不</description>
+    </item>
+    
+  </channel>
+</rss>

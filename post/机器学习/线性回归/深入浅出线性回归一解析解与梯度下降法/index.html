@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出线性回归（一）——解析解与梯度下降法 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="线性回归简介 我们手头有一堆样本的输入 \(X=\begin{pmatrix}x_{11} &amp; x_{12} &amp; \cdots &amp; x_{1p} \\ x_{21} &amp; x_{22} &amp; \cdots &amp; x_{2p} \\\vdots &amp; \vdots &amp; &amp; \vdots \\ x_{n1} &amp; x_{n2} &amp; \cdots &amp; x_{np} \end{pmatrix}$ 和输出 $Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_n\end{pmatrix}\) ，想要找到一个线性模型 \(f(X)=X\theta\) 描绘它们之间" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%80%E8%A7%A3%E6%9E%90%E8%A7%A3%E4%B8%8E%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D%E6%B3%95/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出线性回归（一）——解析解与梯度下降法" />
+<meta property="og:description" content="线性回归简介 我们手头有一堆样本的输入 \(X=\begin{pmatrix}x_{11} & x_{12} & \cdots & x_{1p} \\ x_{21} & x_{22} & \cdots & x_{2p} \\\vdots & \vdots & & \vdots \\ x_{n1} & x_{n2} & \cdots & x_{np} \end{pmatrix}$ 和输出 $Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_n\end{pmatrix}\) ，想要找到一个线性模型 \(f(X)=X\theta\) 描绘它们之间" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%80%E8%A7%A3%E6%9E%90%E8%A7%A3%E4%B8%8E%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D%E6%B3%95/" />
+<meta property="article:published_time" content="2019-11-10T15:11:40+08:00" />
+<meta property="article:modified_time" content="2019-11-10T15:11:40+08:00" />
+<meta itemprop="name" content="深入浅出线性回归（一）——解析解与梯度下降法">
+<meta itemprop="description" content="线性回归简介 我们手头有一堆样本的输入 \(X=\begin{pmatrix}x_{11} & x_{12} & \cdots & x_{1p} \\ x_{21} & x_{22} & \cdots & x_{2p} \\\vdots & \vdots & & \vdots \\ x_{n1} & x_{n2} & \cdots & x_{np} \end{pmatrix}$ 和输出 $Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_n\end{pmatrix}\) ，想要找到一个线性模型 \(f(X)=X\theta\) 描绘它们之间">
+<meta itemprop="datePublished" content="2019-11-10T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2019-11-10T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="1330">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出线性回归（一）——解析解与梯度下降法"/>
+<meta name="twitter:description" content="线性回归简介 我们手头有一堆样本的输入 \(X=\begin{pmatrix}x_{11} & x_{12} & \cdots & x_{1p} \\ x_{21} & x_{22} & \cdots & x_{2p} \\\vdots & \vdots & & \vdots \\ x_{n1} & x_{n2} & \cdots & x_{np} \end{pmatrix}$ 和输出 $Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_n\end{pmatrix}\) ，想要找到一个线性模型 \(f(X)=X\theta\) 描绘它们之间"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出线性回归（一）——解析解与梯度下降法</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2019-11-10 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <h2 id="线性回归简介">线性回归简介</h2>
+
+<p>我们手头有一堆样本的输入 <span  class="math">\(X=\begin{pmatrix}x_{11} & x_{12} & \cdots & x_{1p} \\ x_{21} & x_{22} & \cdots & x_{2p} \\\vdots & \vdots & & \vdots \\ x_{n1} & x_{n2} & \cdots & x_{np} \end{pmatrix}$ 和输出 $Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_n\end{pmatrix}\)</span> ，想要找到一个线性模型 <span  class="math">\(f(X)=X\theta\)</span> 描绘它们之间的关系，使得 $f(X)$ 尽可能地等于 $Y$ 。这就是线性回归模型。$X$ 的每一行代表一个样本，一共有 $n$ 个样本，每个样本有 $p$ 个特征。 <span  class="math">\(\theta=\begin{pmatrix}\theta_{1} \\ \theta_{2} \\ \vdots \\ \theta_{p}\end{pmatrix}\)</span> ，表示线性模型的 $p$ 个参数。</p>
+
+<p>显然 $f(X)$ 与 $Y$ 始终存在差异，我们要做的就是找出一组参数，使得差异最小。对于每一个样本，我们用 <span  class="math">\(x^{(i)}=\begin{pmatrix}x_{11} \\ x_{12} \\ \vdots \\ x_{1p} \end{pmatrix}\)</span> 表示输入，用 <span  class="math">\((y^{(i)}-\theta^Tx^{(i)})^2\)</span> 表示这个差异。然后将所有的差异加在一起。有：</p>
+
+<p><span  class="math">\[\large J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\]</span></p>
+
+<p>我们要求这个关于 $\theta$ 的函数的最小值，就要对 $\theta$ 求导，前面加一个 <span  class="math">\(\frac{1}{2}\)</span> 也是为了求导后方便。这个方法叫 <strong>最小二乘法</strong> ，这个函数叫做 <strong>损失函数</strong> 。</p>
+
+<p>将这个式子写成矩阵形式：</p>
+
+<p><span  class="math">\[\large \begin{align}L(\theta)&=\frac{1}{2}(X\theta-Y)^T(X\theta-Y)\\\nabla_{\theta}L(\theta)&=\nabla_{\theta}\frac{1}{2}(X\theta-Y)^T(X\theta-Y)\\&=\nabla_{\theta}\frac{1}{2}(\theta^TX^TX\theta-\theta^TX^TY-Y^TX\theta+Y^TY)\tag{1}\\&=\frac{1}{2}(2X^TX\theta-2X^TY)\tag{2}\\&=X^TX\theta-X^TY\end{align}\]</span></p>
+
+<p>上式中从第 (1) 步到第 (2) 步用到了一些简单的线性代数技巧，这里为了简单起见没有写出中间的步骤。</p>
+
+<p>令 <span  class="math">\(\nabla_{\theta}L(\theta)=X^TX\theta-X^TY=0\)</span> ，得到 <span  class="math">\(\theta=(X^TX)^{-1}X^TY\)</span> 。</p>
+
+<p>看，我们是可以直接通过推导，得到这个模型下精确的解析解的。</p>
+
+<p>不过，有几个问题。</p>
+
+<p>首先，我们不能保证 $X^TX$ 这个矩阵可逆。在什么情况下不可逆呢？比如 $X$ 其中两列线性相关，这样 $X^TX$ 就是不可逆的。这种情况下，我们需要通过降维或添加正则项（后面几节会讲正则化）的方式使其可逆。这样就可以求这个解析解了。</p>
+
+<p>不过即便这样，我们还是不建议去求这个解析解。因为这里要先求出 <span  class="math">\((X^TX)^{-1}\)</span> ，这是一个求逆的运算，在实际场景中因为 $X$ 非常大，对其求逆是一个计算量非常大的过程。而且，这种方式不适合在线训练，因为如果有了新样本，我们想提高模型的准确度，我们仍然要将全体样本纳入公式中进行计算，然后得到这个解析解。</p>
+
+<p>有没有什么办法能够解决计算量大和不能在线训练这两个问题呢？</p>
+
+<h2 id="梯度下降法">梯度下降法</h2>
+
+<p>回到刚才的公式：</p>
+
+<p><span  class="math">\[\large J(\theta)=\frac{1}{2}\sum_{i=1}^n(y^{(i)}-\theta^Tx^{(i)})^2\]</span></p>
+
+<p>注意这里的 $\theta$ 是一个列向量 <span  class="math">\(\theta=\begin{pmatrix}\theta_{1} \\ \theta_{2} \\ \vdots \\ \theta_{j}\\\vdots\\\theta_{p}\end{pmatrix}\)</span> 。我们可以用另一种方式，逐个去求 $\theta_{j}$ 。</p>
+
+<p>对每个 $\theta_{j}$ 求偏导：</p>
+
+<p><span  class="math">\[ \large \frac{\partial J(\theta)}{\partial \theta_{j}}=\frac{1}{n}\sum_{i=1}^n(\theta^Tx^{(i)}-y^{(i)})x_{j}^{(i)}\]</span></p>
+
+<p>所谓梯度下降法，就是对每个 $\theta_{j}$ 进行这样的迭代更新：</p>
+
+<p><span  class="math">\[\large \theta_{j}:=\theta_{j}-\alpha \cdot \nabla \]</span></p>
+
+<p>这里的 $\nabla$ 就是 $\large \frac{\partial J(\theta)}{\partial \theta_{j}}$ 。代入得：</p>
+
+<p><span  class="math">\[\large \theta_{j}:=\theta_{j}-\alpha \frac{1}{n}\sum_{i=1}^n(\theta^Tx^{(i)}-y^{(i)})x_j^{(i)}\]</span></p>
+
+<p>其中 $\alpha$ 是我们在训练过程中人为指定的一个参数，用于表示 $\theta_{j}$ 变化的速度，我们通常叫它“步长”。</p>
+
+<p>对 $j$ 从 1 到 $p$ 都完成了一次更新，就叫完成了一次迭代。然后继续对它们进行更新。整个过程叫做 <strong>批量梯度下降法</strong> 。这样就一定程度上解决了计算量大的问题。</p>
+
+<p>这种方法有个弊端，就是如果样本数 $n$ 非常大，那么每次迭代花费的时间就会很长，计算量仍然比较大，不太适合线上训练。因此有了 <strong>随机梯度下降法</strong> 。如下；</p>
+
+<p><span  class="math">\[\large \theta_{j}:=\theta_{j}-\alpha (\theta^Tx^{(i)}-y^{(i)})x_j^{(i)}\]</span></p>
+
+<p>那么这个 $i$ 取什么值呢？第一轮迭代取 1，第二轮迭代取 2，依此类推。或者每次迭代随机抽取一个样本。这样就解决了线上训练的问题。因为就算在训练过程中新来一个样本，只要抽到了它，我们可以直接拿它来进行迭代，对计算量没有任何影响。</p>
+
+<p>迭代多少次呢？这个可以人为设置次数，也可以通过别的人为指定的规则来决定什么时候停止迭代。</p>
+
+<h2 id="总结">总结</h2>
+
+<p>这一小节我们对线性回归模型有了一个基本的认识。它有一个解析解，但是由于不可逆、计算量大等问题，我们通常不会去求这个解，而是用梯度下降的方式迭代地去找到每一个 $\theta_{j}$ 。</p>
+
+<p>这里需要指出，梯度下降只是求解无约束最优化问题的一种方式，与线性回归没有必然联系。求解无约束最优化问题还有很多其他的方式，它们都可以被用在线性回归模型中去求解 $\theta_{j}$ ，之后会单独写一个系列对此进行讨论。有些文章写得让人以为梯度下降就是线性回归的过程，真是误人子弟了。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2019-11-10
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%8C%E6%9E%81%E5%A4%A7%E4%BC%BC%E7%84%B6%E4%BC%B0%E8%AE%A1/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入浅出线性回归（二）——极大似然估计</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E5%85%AD%E5%A5%87%E5%BC%82%E5%80%BC%E5%88%86%E8%A7%A3svd/">
+            <span class="next-text nav-default">深入浅出 PCA（六）——奇异值分解（SVD）视角</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

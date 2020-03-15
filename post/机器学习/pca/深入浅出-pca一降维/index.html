@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出 PCA（一）——降维 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="简介 PCA（PrincipalComponents Analysis）即主成分分析，是最常用的降维方法。 我们先不用去理解什么是主成分分析，更不" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%80%E9%99%8D%E7%BB%B4/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出 PCA（一）——降维" />
+<meta property="og:description" content="简介 PCA（PrincipalComponents Analysis）即主成分分析，是最常用的降维方法。 我们先不用去理解什么是主成分分析，更不" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%80%E9%99%8D%E7%BB%B4/" />
+<meta property="article:published_time" content="2019-11-04T15:11:40+08:00" />
+<meta property="article:modified_time" content="2019-11-04T15:11:40+08:00" />
+<meta itemprop="name" content="深入浅出 PCA（一）——降维">
+<meta itemprop="description" content="简介 PCA（PrincipalComponents Analysis）即主成分分析，是最常用的降维方法。 我们先不用去理解什么是主成分分析，更不">
+<meta itemprop="datePublished" content="2019-11-04T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2019-11-04T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="1678">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出 PCA（一）——降维"/>
+<meta name="twitter:description" content="简介 PCA（PrincipalComponents Analysis）即主成分分析，是最常用的降维方法。 我们先不用去理解什么是主成分分析，更不"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出 PCA（一）——降维</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2019-11-04 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <h1 id="简介">简介</h1>
+
+<p>PCA（PrincipalComponents Analysis）即主成分分析，是最常用的降维方法。</p>
+
+<p>我们先不用去理解什么是主成分分析，更不用去思考它在机器学习中有什么作用。先来理解什么是降维，以及为什么需要降维。</p>
+
+<h1 id="为什么需要降维">为什么需要降维</h1>
+
+<h2 id="1计算量大">1.计算量大</h2>
+
+<p>我们用 <em>X</em>  表示样本：</p>
+
+<p><span  class="math">\[  {\begin{equation}X = \begin{pmatrix}x_{11} & x_{12} & x_{13} & \cdots & x_{1p} \\ x_{21} & x_{22} & x_{23} & \cdots & x_{2p} \\ \vdots & \vdots & \vdots & & \vdots \\ x_{n1} & x_{n2} & x_{n3} & \cdots & x_{np}\end{pmatrix}\end{equation}} \]</span></p>
+
+<p>这里有  <em>n</em>  个样本，<em>p</em> 个维度。最朴素直观的担忧是，如果 <em>n</em> 和 <em>p</em> 非常大，那么这个矩阵就很难被读取到计算机内存中进行处理和分析。</p>
+
+<p>好在矩阵的运算可以很容易的分解成彼此独立的计算，用分布式架构就能缓解这个问题。不过实际场景中，维数往往多到超过我们的想象。对于计算和存储来说，降维是一种非常好的优化手段。</p>
+
+<h2 id="2-过拟合">2. 过拟合</h2>
+
+<p>维数如果太多，甚至远远超过了样本数，则在模型训练时容易发生过拟合。为什么维数太多会引发过拟合？这其实不是一个显而易见的事情。在数学上有相关推导，不过比较复杂。而且“模型训练”是机器学习中的概念，这里假设我们还没有学习过机器学习，仅仅从几何意义上进行直观理解（非严格的证明）。</p>
+
+<p>假设数据以某种方式分布在一维空间中，值从 0 取到 100。对这个空间中的数据进行取样分析，自然是取得的数据越多、分布越广，越能体现整体分布情况。但由于某种未知原因，我们只取到了值为 0 到 50 的数据，值的范围覆盖到了整个空间的 50%。这时，如果我们手头还是这些数据，但是我们给数据增加一个维度，使其变成二维空间的分布，新的坐标范围也是 0 到 100，手头的数据在新的坐标上也映射为 0 到 50 这个范围。此时我们的数据只覆盖到了整个空间的 50%*50% = 25%。这意味着，这些数据更加不能反映出整体分布，而只能反映出这 25% 空间范围的分布。</p>
+
+<p>维数越多，这种现象越明显。所以在机器学习的模型训练中，我们也说，维数越多，越需要更多的数据。这样才能覆盖更多的特征值范围。</p>
+
+<p>这里可以延伸一点。在线性分类时，样本有时不是线性可分的，我们常常会将其映射到高维空间使其变得线性可分。用上面的角度可以这样理解：维数变多，使得样本在空间中变得更加稀疏，因此更容易找到一个超平面实现分类。可是如果维数过高，样本过于稀疏，你找到的分类器就难说是否能泛化到更广泛的数据上了。如果样本本身还有噪声和异常，那么分类器的泛化能力会更弱。</p>
+
+<h2 id="3矩阵不可逆">3.矩阵不可逆</h2>
+
+<p>这个矩阵指的就是样本的矩阵 <em>X</em>。为什么要讨论它可不可逆？显然是在某些机器学习模型中需要求它的逆（比如线性回归）。这里不展开，只需要知道我们经常会求它的逆。</p>
+
+<p>矩阵是否可逆，其实跟维数本身是没有关系的。但是在实际场景中，我们的样本矩阵 <em>X</em> 中常常会有某些列之间线性相关。 比如某列是用美元表示的价格，另一列是用人民币表示的价格。这种情况下，降维是刚需。</p>
+
+<h2 id="4欧式距离不可用">4.欧式距离不可用</h2>
+
+<p>仍然从几何意义上进行直观的理解。我们只看二维空间和三维空间的例子。</p>
+
+<p><figure><img src="/机器学习/curse_of_dimentionality.png" alt="image alt text"></figure></p>
+
+<p>设上图正方形边长为 $2r$ ，那么它的面积 $S_{总}$ 为 $4r^{2}$ ，其内接圆的面积 $S_{圆}$ 为 $\pi r^2$ 。可以得到 $S_{圆}/S_{总}$ 为 $\pi/4$ 。 立方体的体积 $V_{总}$ 为 $8r^3$，而其内接球的体积 $V_{球}$ 为 $4/3\pi r^3$ 。$V_{球}/V_{总}$ 为 $\pi/6$。可以看到这个比值在不断变小。</p>
+
+<p>事实上，有这样的公式：</p>
+
+<p><span  class="math">\(\LARGE \begin{equation} \frac{V_{hypersphere}}{V_{hypercube}} = \frac{\pi^{d/2}}{d2^{d-1}\Gamma(d/2)} \end{equation}\)</span> $ \rightarrow 0 \ \ as \ \ d \ \rightarrow \infty$</p>
+
+<p>即，维数越大，两者比值越趋近于 0。维度越高，内接球的体积越接近 0。这很违背直觉，但却是数学上可以证明的。同时这也意味着，维度越高，数据越容易分布在整个空间的角落，而不是在球体内。</p>
+
+<p>有这样的结论——维度无限高时，空间中距离最远的两点间的距离，与空间中距离最近的两点间的距离之比等于1。或者说，最大距离减最小距离，与最小距离的比趋近于 0。这使得欧式距离在这样的空间中变得没有意义。欧式距离没有意义会怎么样？会导致 KNN 等模型无法在高维空间应用（因为会计算两点间的距离）。</p>
+
+<p>所以在这种情况下，降维也是刚需。</p>
+
+<h1 id="总结">总结</h1>
+
+<p>高维导致数据稀疏、欧式距离不可用等，统称为“维数灾难（the curse of dimentionality）”，此外，还会导致矩阵不可逆、计算量大等问题。这就是降维的必要性。接下来，将介绍降维技术中最常用的方法——PCA。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2019-11-04
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%BA%8C%E7%9F%A9%E9%98%B5%E5%AF%B9%E8%A7%92%E5%8C%96/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入浅出 PCA（二）——矩阵对角化</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

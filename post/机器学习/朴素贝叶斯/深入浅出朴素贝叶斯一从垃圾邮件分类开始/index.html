@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出朴素贝叶斯（一）——从垃圾邮件过滤开始 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="问题的由来 随着电子邮件的普及和超低的发送成本，我们受到越来越多垃圾邮件的困扰，导致真正有价值的邮件被淹没。垃圾邮件的过滤是机器学习非常早期的" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%80%E4%BB%8E%E5%9E%83%E5%9C%BE%E9%82%AE%E4%BB%B6%E5%88%86%E7%B1%BB%E5%BC%80%E5%A7%8B/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出朴素贝叶斯（一）——从垃圾邮件过滤开始" />
+<meta property="og:description" content="问题的由来 随着电子邮件的普及和超低的发送成本，我们受到越来越多垃圾邮件的困扰，导致真正有价值的邮件被淹没。垃圾邮件的过滤是机器学习非常早期的" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%B8%80%E4%BB%8E%E5%9E%83%E5%9C%BE%E9%82%AE%E4%BB%B6%E5%88%86%E7%B1%BB%E5%BC%80%E5%A7%8B/" />
+<meta property="article:published_time" content="2019-12-03T15:11:40+08:00" />
+<meta property="article:modified_time" content="2019-12-03T15:11:40+08:00" />
+<meta itemprop="name" content="深入浅出朴素贝叶斯（一）——从垃圾邮件过滤开始">
+<meta itemprop="description" content="问题的由来 随着电子邮件的普及和超低的发送成本，我们受到越来越多垃圾邮件的困扰，导致真正有价值的邮件被淹没。垃圾邮件的过滤是机器学习非常早期的">
+<meta itemprop="datePublished" content="2019-12-03T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2019-12-03T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="1055">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出朴素贝叶斯（一）——从垃圾邮件过滤开始"/>
+<meta name="twitter:description" content="问题的由来 随着电子邮件的普及和超低的发送成本，我们受到越来越多垃圾邮件的困扰，导致真正有价值的邮件被淹没。垃圾邮件的过滤是机器学习非常早期的"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出朴素贝叶斯（一）——从垃圾邮件过滤开始</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2019-12-03 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <h2 id="问题的由来">问题的由来</h2>
+
+<p>随着电子邮件的普及和超低的发送成本，我们受到越来越多垃圾邮件的困扰，导致真正有价值的邮件被淹没。垃圾邮件的过滤是机器学习非常早期的应用之一，也取得了非常好的效果。其中最经典的模型是朴素贝叶斯模型。它本质上是一个分类问题——将邮件分为“正常邮件”或“垃圾邮件”。这意味着这些模型也可以解决更一般的分类问题。</p>
+
+<h2 id="早期的解决方案">早期的解决方案</h2>
+
+<p>想要识别出垃圾邮件，非常直觉的做法是制定一些规则。如果大写字母过度使用或是 HTML 用色过于花哨（恶意广告邮件的特征），或者含有一些特定词语（如打折、甩卖等），那么就会被判断为垃圾邮件。这样的缺点显而易见，且不论这样的经验法则是否真的能表示垃圾邮件，如果垃圾邮件的发送者知道了规则，则可以很容易地绕开规则，导致我们可能需要制定更复杂的规则，而过度设计的规则甚至常常将正常邮件归为垃圾邮件。</p>
+
+<p>这就需要一种全新的方式来建立我们的垃圾邮件过滤系统。</p>
+
+<h2 id="基于概率统计的系统">基于概率统计的系统</h2>
+
+<p>不妨用 $Pr(Category|Document)$ 表示一封邮件是垃圾邮件或正常邮件的概率。这里有一个难点，就是我们不知道如何表示一个文档 $Document$ 。毕竟我们想做的肯定不是去判断出现一模一样的文档时它属于什么邮件。不过利用贝叶斯定理，我们有：</p>
+
+<p><span  class="math">\[Pr(A|B)=Pr(B|A)\times Pr(A)/Pr(B)\]</span></p>
+
+<p>在这里，即：</p>
+
+<p><span  class="math">\[Pr(Category|Document)=Pr(Document|Category)\times Pr(Category)/Pr(Document)\]</span></p>
+
+<p>对于任意一个分类 $Category$ ，在计算上式的时候右边的分母都是 $Pr(Document)$ ，因此我们不必计算 $Pr(Document)$ 。</p>
+
+<p>$Pr(Category)$ 表示一种分类出现的概率，直觉上，我们可以用该分类的文档数除以文档总数获得这个值。</p>
+
+<p>$Pr(Document|Category)$ 表示给定一个类别，文档 $Document$ 出现的概率。显然这里还是没办法绕过“如何表示一个文档”这个问题。</p>
+
+<p>不过我们知道文档是由一个个单词组成的，我们可以先去计算 $Pr(Word|Category)$ ，并且我们假设一篇文档中单词之间没有什么关系（这便是朴素贝叶斯假设），那么我们可以先将文档分词再去重，可以用下面的式子表示 $Pr(Document|Category)$ ：</p>
+
+<p><span  class="math">\[\begin{align}Pr(Word_1|Category)\times Pr(Word_2|Category)\times\cdots\times Pr(Word_n|Category)&=Pr(Word_1, Word_2,\cdots,Word_n|Category)\\&=Pr(Document|Category)\end{align}\]</span></p>
+
+<p>$Pr(Word|Category)$ 可以这样计算：给定一个分类，用 $Word$ 在多少篇文档中出现的次数除以该分类的文档总数。这里我们还找到了文档的表示方式，即 $(Word_1,Word_2,\cdots,Word_n)$ 。</p>
+
+<p>由此，我们可以为每一个分类计算 $Pr(Document|Category)\times Pr(Category)$ ，然后比较它们的大小即可。</p>
+
+<h2 id="几个问题">几个问题</h2>
+
+<p>如果不想深究朴素贝叶斯模型的原理的话，用上面的思路去实现一个分类器已经足够了。不过有几个问题值得回顾和思考：</p>
+
+<p>1.$Pr(Word|Category)$ 可以用别的方式计算吗，文档有其他表示方式吗？</p>
+
+<p>2.在上面的步骤中，感觉好像所有值都是通过计算频率直接得到的，那能不能通过某种方式直接算出 $Pr(Category|Document)$ ？</p>
+
+<p>3.贝叶斯分类器是机器学习的模型之一，可是为什么隐隐感觉它和别的模型不一样，好像有些过于简单，为什么没有优化的步骤？</p>
+
+<p>4.事实上还有个非常关键的问题，上面的公式中 $Pr$ 表示的都是概率，而我们通过算出个数相除实际上得到的是基于样本的频率，这个频率能表示概率吗？</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2019-12-03
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF%E4%BA%8C%E9%87%8D%E6%96%B0%E8%AE%A4%E8%AF%86%E6%9C%B4%E7%B4%A0%E8%B4%9D%E5%8F%B6%E6%96%AF/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入浅出朴素贝叶斯（二）——重新认识朴素贝叶斯</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%94%E8%B4%9D%E5%8F%B6%E6%96%AF%E8%A7%86%E8%A7%92/">
+            <span class="next-text nav-default">深入浅出线性回归（五）——贝叶斯视角</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

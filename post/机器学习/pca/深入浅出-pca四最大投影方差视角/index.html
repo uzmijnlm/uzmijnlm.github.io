@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出 PCA（四）——最大投影方差视角 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="我们已经知道了 PCA 的具体步骤。先求出样本矩阵的协方差矩阵，将其对角化，对角元素从大到小排列，按需求选出最大的几个特征值，找出对应的特征向量，组" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E5%9B%9B%E6%9C%80%E5%A4%A7%E6%8A%95%E5%BD%B1%E6%96%B9%E5%B7%AE%E8%A7%86%E8%A7%92/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出 PCA（四）——最大投影方差视角" />
+<meta property="og:description" content="我们已经知道了 PCA 的具体步骤。先求出样本矩阵的协方差矩阵，将其对角化，对角元素从大到小排列，按需求选出最大的几个特征值，找出对应的特征向量，组" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E5%9B%9B%E6%9C%80%E5%A4%A7%E6%8A%95%E5%BD%B1%E6%96%B9%E5%B7%AE%E8%A7%86%E8%A7%92/" />
+<meta property="article:published_time" content="2019-11-07T15:11:40+08:00" />
+<meta property="article:modified_time" content="2019-11-07T15:11:40+08:00" />
+<meta itemprop="name" content="深入浅出 PCA（四）——最大投影方差视角">
+<meta itemprop="description" content="我们已经知道了 PCA 的具体步骤。先求出样本矩阵的协方差矩阵，将其对角化，对角元素从大到小排列，按需求选出最大的几个特征值，找出对应的特征向量，组">
+<meta itemprop="datePublished" content="2019-11-07T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2019-11-07T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="1044">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出 PCA（四）——最大投影方差视角"/>
+<meta name="twitter:description" content="我们已经知道了 PCA 的具体步骤。先求出样本矩阵的协方差矩阵，将其对角化，对角元素从大到小排列，按需求选出最大的几个特征值，找出对应的特征向量，组"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出 PCA（四）——最大投影方差视角</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2019-11-07 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <p>我们已经知道了 PCA 的具体步骤。先求出样本矩阵的协方差矩阵，将其对角化，对角元素从大到小排列，按需求选出最大的几个特征值，找出对应的特征向量，组成一个矩阵，用原样本矩阵乘以这个矩阵，得到的新矩阵就是我们降维过后的矩阵，我们可以在这个矩阵的基础上进行数据分析和训练。</p>
+
+<p>至此我们仅仅讨论了 PCA 的步骤，以及数学上的可行性，但有一个问题并没有讨论——为什么可以选择最大的几个特征值并找出对应的特征向量，就可以用它们来实现降维？任意选择几个特征值可不可以？降维过后，会不会有信息损失？我们对降维后的数据进行分析，能得到准确的结果吗？</p>
+
+<h2 id="最大投影方差">最大投影方差</h2>
+
+<p>我们还是从几何意义上进行直观的理解。</p>
+
+<p>样本点分布在空间中，我们可以将其投影在任意一个方向上，并得到它们在这个方向上的坐标值。投影过后，对它们的坐标值进行统计分析，一定是有些方向的方差大，有些方向的方差小。我们想要找的，就是方差大的那些方向。为什么方差小的方向不好？我们举一个极端的例子。假设有一个方向上，投影过后所有样本点全部落在一个点上了，我们拿到这样一个结果，完全无法对其进行复原，这时信息的损失最为严重。因此方差越大越好。</p>
+
+<p>那么，基于这个思想，我们重新推导一遍 PCA 的步骤。我们现在想要找一个方向，在这个方向上投影方差最大，我们将样本点投影上去信息损失最小。</p>
+
+<p>我们令这个方向的单位向量为 $u$ 。</p>
+
+<p>将样本点中心化后，投影到这个方向：<span  class="math">\((x_{i}-\overline{x})^Tu\)</span> 。$x_{i}$ 表示第 $i$ 个样本点，是一个列向量。$\overline{x}$ 表示均值，也是一个列向量。</p>
+
+<p>所有样本方差的和为：</p>
+
+<p><span  class="math">\[\begin{align} J&=\frac{1}{N-1}\sum_{i=1}^N((x_{i}-\overline{x})^Tu)^2 \\ &=\frac{1}{N-1}\sum_{i=1}^Nu^T(x_{i}-\overline{x})(x_{i}-\overline{x})^Tu \\ &= u^T(\frac{1}{N-1}\sum_{i=1}^N(x_{i}-\overline{x})(x_{i}-\overline{x})^T)u \end{align}\]</span></p>
+
+<p>根据上一节的内容，我们容易看出，中间的 <span  class="math">\(\frac{1}{N-1}\sum_{i=1}^N(x_{i}-\overline{x})(x_{i}-\overline{x})^T\)</span> 正是协方差矩阵 $\Sigma$ 。所以有：</p>
+
+<p><span  class="math">\[J=u^T\Sigma u\]</span></p>
+
+<p>我们的问题变成了求出方向 $u$ 使得 $J$ 最大。即：</p>
+
+<p><span  class="math">\[\hat{u}= \mathop{\arg\max}\limits_{u}u^T\Sigma u \]</span></p>
+
+<p>不要忘记约束条件：$u^Tu=1$ 。</p>
+
+<p>根据拉格朗日乘子法：</p>
+
+<p><span  class="math">\[\begin{align}L(u,\lambda)&=u^T\Sigma u+\lambda(1-u^Tu)\end{align}\]</span></p>
+
+<p><span  class="math">\[\begin{align}\frac{\partial{L}}{\partial{u}}&=2\Sigma u-2\lambda u\end{align}=0\]</span></p>
+
+<p>即：<span  class="math">\(\Sigma u=\lambda u\)</span> 。可以看出， $u$ 就是 $\Sigma$ 关于特征值 $\lambda$ 的特征向量。这里会求出多个结果，我们取出一个 $u$ 使 $u^T\Sigma u$ 最大即可。</p>
+
+<p>这里求出的这个 $u$ ，就是我们上一节的方法中求出的对角协方差矩阵中最大的特征值对应的特征向量。如果我们想要找出多个向量，用同样的思想，在构造 $J$ 函数的时候变通一下就好了。</p>
+
+<p>这一节，我们没有用去求协方差矩阵，也没有做对角化，仅仅从最大投影方差的视角，就得到了和上一节一样的结果。说明我们上一节得到的对角协方差矩阵，不仅仅是达成了维度之间线性无关的目标，而且最大特征值对应的特征向量的方向，正是我们单独去求最大投影方差时得到的那个方向。这是数学上的必然结果。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2019-11-07
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%BA%94%E6%9C%80%E5%B0%8F%E9%87%8D%E6%9E%84%E4%BB%A3%E4%BB%B7%E8%A7%86%E8%A7%92/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入浅出 PCA（五）——最小重构代价视角</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%89%E5%8D%8F%E6%96%B9%E5%B7%AE%E7%9F%A9%E9%98%B5/">
+            <span class="next-text nav-default">深入浅出 PCA（三）——协方差矩阵</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

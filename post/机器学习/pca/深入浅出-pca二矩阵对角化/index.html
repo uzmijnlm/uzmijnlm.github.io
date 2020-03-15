@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出 PCA（二）——矩阵对角化 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="什么是 PCA PCA 就是利用正交变换，来对一系列可能相关的变量的观测值进行线性变换，从而投影为一系列线性不相关变量的值，这些不相关变量称为主成分（Pr" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%BA%8C%E7%9F%A9%E9%98%B5%E5%AF%B9%E8%A7%92%E5%8C%96/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出 PCA（二）——矩阵对角化" />
+<meta property="og:description" content="什么是 PCA PCA 就是利用正交变换，来对一系列可能相关的变量的观测值进行线性变换，从而投影为一系列线性不相关变量的值，这些不相关变量称为主成分（Pr" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%BA%8C%E7%9F%A9%E9%98%B5%E5%AF%B9%E8%A7%92%E5%8C%96/" />
+<meta property="article:published_time" content="2019-11-05T15:11:40+08:00" />
+<meta property="article:modified_time" content="2019-11-05T15:11:40+08:00" />
+<meta itemprop="name" content="深入浅出 PCA（二）——矩阵对角化">
+<meta itemprop="description" content="什么是 PCA PCA 就是利用正交变换，来对一系列可能相关的变量的观测值进行线性变换，从而投影为一系列线性不相关变量的值，这些不相关变量称为主成分（Pr">
+<meta itemprop="datePublished" content="2019-11-05T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2019-11-05T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="1374">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出 PCA（二）——矩阵对角化"/>
+<meta name="twitter:description" content="什么是 PCA PCA 就是利用正交变换，来对一系列可能相关的变量的观测值进行线性变换，从而投影为一系列线性不相关变量的值，这些不相关变量称为主成分（Pr"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出 PCA（二）——矩阵对角化</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2019-11-05 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <h2 id="什么是-pca">什么是 PCA</h2>
+
+<p>PCA 就是利用正交变换，来对一系列可能相关的变量的观测值进行线性变换，从而投影为一系列线性不相关变量的值，这些不相关变量称为主成分（Principal Components）。</p>
+
+<p>这是很多书上的解释，也是维基百科的定义，并没有那么好理解。不过我们可以了解到，这一系列变换是线性变换。事实上，这个线性变化是——求出样本的协方差矩阵，然后将其对角化。这些对角线元素就是所谓的“主成分”，将其从大到小排列，按需求取出最大的几个，并且取出对应的特征向量，用原样本矩阵乘以这些特征向量，就得到了新的矩阵，实现了降维。</p>
+
+<p>可能对于不熟悉 PCA 的同学来说还是很绕。觉得绕，可能是因为对线性代数或者协方差不够熟悉。PCA 的变换过程利用的是线性代数的基本知识。这一节简单回顾一下这部分内容。相信把这一节内容搞懂，就理解 PCA 的内涵了。</p>
+
+<h2 id="矩阵对角化">矩阵对角化</h2>
+
+<p>先来回顾一下矩阵中的特征值与特征向量。</p>
+
+<p>设 $A$ 为一 $n$ 阶方阵，如果存在数 $\lambda_{0}$ 和非零向量 $\xi$ ，使得 <span  class="math">\(\begin{equation} A\xi = \lambda_{0}\xi \end{equation}\)</span> ，则称 $\lambda_{0}$ 为 $A$ 的一个特征值，而 $\xi$ 称为 $A$ 的属于特征值 $\lambda_{0}$ 的一个特征向量。</p>
+
+<p>很多书上没讲特征值和特征向量有什么意义。有兴趣的同学可以自己去查阅，它们在不同领域都有着极为深刻的内涵。我们在这里只需要知道，一个方阵乘以一个向量，其实就是对这个向量做了一个线性变换，这里的线性变换等价于对这个向量做了一个拉伸/缩放。</p>
+
+<p>对于一个 $n$ 阶的<strong>实对称矩阵</strong> $A$，它的全部特征值为 $\lambda_{1}$ ，$\lambda_{2}$ ，$\cdots$ ，$\lambda_{n}$ ，存在一个正交矩阵 $U$ 使得 <span  class="math">\(\begin{equation}U^{-1}AU = diag[\lambda_{1}, \lambda_{2}, \cdots, \lambda_{n}]\end{equation}\)</span> 。这个 $U$ 怎么求呢？首先我们求出特征值，然后求出对应的特征向量，将这些向量单位化正交化后组成的矩阵就是 $U$ 了。并且，由于 $A$ 是实对称矩阵，还可以得到 <span  class="math">\(U^TAU=U^{-1}AU=diag[\lambda_{1}, \lambda_{2}, \cdots, \lambda_{n}]\)</span> 。得到 $U^TAU$ 这种形式有什么用呢？因为这是一个二次型。我们通过一个例子来说明二次型的几何意义。</p>
+
+<p>我们给出一个方程 <span  class="math">\(x^2+xy+y^2=1\)</span> ，光看方程，我们看不出来这是个什么形状。但我们可以给等式左边做个变量替换。将系数写成矩阵形式：</p>
+
+<p><span  class="math">\[\begin{matrix}\ & x & y\\ x & 1 & 0.5 \\ y & 0.5 & 1\end{matrix}\]</span></p>
+
+<p>设这个矩阵为 $A$ 。那么方程可以写成：</p>
+
+<p><span  class="math">\[\begin{pmatrix}x & y\end{pmatrix}\begin{pmatrix}1 & 0.5 \\ 0.5 & 1\end{pmatrix}\begin{pmatrix}x\\y\end{pmatrix}=1\]</span></p>
+
+<p>这里的 $A$ 就是一个实二次型矩阵，我们将它对角化，有：</p>
+
+<p><span  class="math">\[\begin{pmatrix}x & y\end{pmatrix}\begin{pmatrix}0.707 & -0.707 \\ 0.707 & 0.707\end{pmatrix}\begin{pmatrix}1.5 & 0 \\ 0 & 0.5\end{pmatrix}\begin{pmatrix}0.707 & 0.707 \\ -0.707 & 0.707\end{pmatrix}\begin{pmatrix}x\\y\end{pmatrix}=1\]</span></p>
+
+<p>进一步，让：</p>
+
+<p><span  class="math">\[M=\begin{pmatrix}x & y\end{pmatrix}\begin{pmatrix}0.707 & -0.707 \\ 0.707 & 0.707\end{pmatrix}=\begin{pmatrix}m & n\end{pmatrix}\]</span></p>
+
+<p>那么有：</p>
+
+<p><span  class="math">\[\begin{pmatrix}0.707 & 0.707 \\ -0.707 & 0.707\end{pmatrix}\begin{pmatrix}x\\y\end{pmatrix}=M^T=\begin{pmatrix}m \\ n\end{pmatrix}\]</span></p>
+
+<p>原方程变为：</p>
+
+<p><span  class="math">\[\begin{pmatrix}m & n\end{pmatrix}\begin{pmatrix}1.5 & 0 \\ 0 & 0.5\end{pmatrix}\begin{pmatrix}m\\n\end{pmatrix}=1\]</span></p>
+
+<p>写成一般形式：<span  class="math">\(1.5m^2+0.5n^2=1\)</span> 。这就很容易看出来是个椭圆了。为什么做了变量替换以后就看出来是个椭圆了？变量替换的几何意义是什么？</p>
+
+<p>上面的矩阵 <span  class="math">\(\begin{pmatrix}0.707 & -0.707 \\ 0.707 & 0.707\end{pmatrix}\)</span> 可以写成 <span  class="math">\(\begin{pmatrix}\xi_1 & \xi_2\end{pmatrix}\)</span> ，<span  class="math">\(\xi_1\)</span> 和 <span  class="math">\(\xi_2\)</span> 是利用上面讲过求特征向量的方法求出的一组单位正交基。$\begin{pmatrix}x &amp; y\end{pmatrix}\xi_n$ 就表示向量 $\begin{pmatrix}x&amp;y\end{pmatrix}$ 在这个基上的投影。那么 $\begin{pmatrix}m &amp; n\end{pmatrix}$ 就表示 $\begin{pmatrix}x &amp; y\end{pmatrix}$ 在新的这组基下的坐标。所以说，我们是在这组新的基下观察看出来它是个椭圆。为什么能够直接看出来是个椭圆，是因为经过变换后，系数矩阵变成对角矩阵了。这就是矩阵对角化的一个应用，可以让原本不容易观察的图形变得容易观察。</p>
+
+<h2 id="总结">总结</h2>
+
+<p>这一小节的内容与 PCA 和降维都没有直接关系，仅仅复习了线性代数的知识。</p>
+
+<p>梳理一下上面讨论的内容。</p>
+
+<p>如果我们拿到了一个实对称矩阵 $A$，那么就可以将它对角化，并且写成二次型的形式 $A=U\Lambda U^T$ 。其中 $\Lambda$ 是由其特征值组成的对角矩阵，$U$ 是由对应的特征向量经过单位化和正交化后组成的单位正交阵。这在 PCA 的过程中至关重要。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2019-11-05
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%89%E5%8D%8F%E6%96%B9%E5%B7%AE%E7%9F%A9%E9%98%B5/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入浅出 PCA（三）——协方差矩阵</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%80%E9%99%8D%E7%BB%B4/">
+            <span class="next-text nav-default">深入浅出 PCA（一）——降维</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>
