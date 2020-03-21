@@ -6,7 +6,7 @@
     <description>Recent content in Categories on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Fri, 20 Mar 2020 15:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Fri, 20 Mar 2020 16:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/categories/index.xml" rel="self" type="application/rss+xml" />
     
@@ -14,7 +14,7 @@
     <item>
       <title>flink</title>
       <link>http://localhost:1313/categories/flink/</link>
-      <pubDate>Fri, 20 Mar 2020 15:11:40 +0800</pubDate>
+      <pubDate>Fri, 20 Mar 2020 16:11:40 +0800</pubDate>
       
       <guid>http://localhost:1313/categories/flink/</guid>
       <description></description>
@@ -23,7 +23,7 @@
     <item>
       <title>大数据</title>
       <link>http://localhost:1313/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/</link>
-      <pubDate>Fri, 20 Mar 2020 15:11:40 +0800</pubDate>
+      <pubDate>Fri, 20 Mar 2020 16:11:40 +0800</pubDate>
       
       <guid>http://localhost:1313/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/</guid>
       <description></description>

@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Flink源码 - 并行度与最大并行度 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="Flink关于并行度有两个概念——并行度与最大并行度。在做业务代码的开发时，算子后面可以跟setMaxParallelism或者setPar" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Flink源码 - 并行度与最大并行度" />
+<meta property="og:description" content="Flink关于并行度有两个概念——并行度与最大并行度。在做业务代码的开发时，算子后面可以跟setMaxParallelism或者setPar" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/" />
+<meta property="article:published_time" content="2020-03-20T16:11:40+08:00" />
+<meta property="article:modified_time" content="2020-03-20T16:11:40+08:00" />
+<meta itemprop="name" content="深入Flink源码 - 并行度与最大并行度">
+<meta itemprop="description" content="Flink关于并行度有两个概念——并行度与最大并行度。在做业务代码的开发时，算子后面可以跟setMaxParallelism或者setPar">
+<meta itemprop="datePublished" content="2020-03-20T16:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-03-20T16:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="6858">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Flink源码 - 并行度与最大并行度"/>
+<meta name="twitter:description" content="Flink关于并行度有两个概念——并行度与最大并行度。在做业务代码的开发时，算子后面可以跟setMaxParallelism或者setPar"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Flink源码 - 并行度与最大并行度</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-03-20 </span>
+        <div class="post-category">
+            <a href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/"> 大数据 </a>
+            <a href="/categories/flink/"> flink </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#为什么要有最大并行度">为什么要有最大并行度</a></li>
+    <li><a href="#为什么不能修改最大并行度">为什么不能修改最大并行度</a></li>
+    <li><a href="#并行度改变时keyedstate文件元信息的重分配">并行度改变时KeyedState文件元信息的重分配</a></li>
+    <li><a href="#keyedstate的恢复">KeyedState的恢复</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <p>Flink关于并行度有两个概念——并行度与最大并行度。在做业务代码的开发时，算子后面可以跟setMaxParallelism或者setParallelism，在配置中也可对其进行设置。</p>
+<p>这两者在Flink状态管理和恢复过程中起着重要作用。</p>
+<h2 id="为什么要有最大并行度">为什么要有最大并行度</h2>
+<p>最大并行度的概念主要是针对KeyedState提出的。通过对Checkpoint写入和读取流程的分析，我们可以设想一下，在改变了算子并行度的情况下，让我们自己实现KeyedState的恢复，应该如何做？</p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/withoutKeyGroup.png" alt="withoutKeyGroup"></p>
+<p>一般逻辑是像上图一样。设原来有3个并行度，经过keyBy操作后，key为0、3、6……的数据到了Subtask 0中，key为1、4、7……的数据到了Subtask 1中，key为2、5、8……的数据到了Subtask 2中。在checkpoint阶段，每个并行实例独立进行状态数据的存储，于是，数据写入到文件后如上图排列。</p>
+<p>当并行度改为4后重启，这时涉及到状态数据的分配问题。能不能直接将0、3、6……这些数据放入新的Subtask 0，将1、4、7……放入Subtask 1，将2、5、8……放入Subtask 2，然后Subtask 3中没有数据呢？显然是不行的。因为之后当有新的数据到来时，会按照新的并行度来选择进入到哪个并行实例。算法如上图底部所示，先对key取hash，然后度并行度取余得到并行实例的索引。这样的分配是没有意义的。</p>
+<p>显然，正确的做法是，对状态数据文件中的每个key计算hash并取余，算出它应该被加载到哪个并行实例中。一般在真实场景中，key的量是巨大的，这个计算过程比较慢；另外一个更糟糕的结果，如上图所示，是当新的并行实例去拉取数据时，会出现非常多的随机IO，并且请求数也是巨大的，网络IO效率非常低。</p>
+<p>为了对此过程进行优化，Flink提出了最大并行度的概念。最大并行度的个数表示有多少个KeyGroup。如下图所示：</p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/withKeyGroup.png" alt="withKeyGroup"></p>
+<p>比如有10个KeyGroup。有了这个概念，整个过程就变得非常不一样。首先，数据不是按照key去决定它被分配到哪个Subtask。它会先根据key决定它属于哪个KeyGroup。key为1、11……的数据属于KeyGroup 1，key为2、12……的数据属于KeyGroup 2，以此类推。然后，会根据最大并行度和并行度计算出每个Subtask负责哪部分KeyGroup。当并行度为3时，KeyGroup 0～KeyGroup 3由Subtask 0负责，KeyGroup 4~KeyGroup 6由Subtask 1负责，KeyGroup 7~KeyGroup 9由Subtask 2负责。这样，每条数据就知道自己应该分配到哪个并行实例。在checkpoint写入时，仍然时每个并行实例单独写入，在写入时，每个KeyGroup的数据排列在一起，如上图所示。</p>
+<p>当并行度改变时，不需要计算每个key要被分配到哪个并行实例，而只计算每个KeyGroup应该被分配到哪里。并行度变成4时，KeyGroup 0~KeyGroup 2由新的Subtask 0负责，KeyGroup 3~KeyGroup4由Subtask 1负责，KeyGroup 5~KeyGroup 7由Subtask 2负责，剩下的由Subtask 3负责。因此，在读取时，少了大量随机IO，变成了顺序IO。Subtask 0只需要发一次请求就获得了所有数据，而Subtask 1的数据在两个文件中，也只需要发送两次请求就获得了所有数据。</p>
+<h2 id="为什么不能修改最大并行度">为什么不能修改最大并行度</h2>
+<p>在分析checkpoint文件恢复的源码过程中，看到Flink做了判断，在设置了最大并行度的情况下，如果最大并行度与checkpoint中相比发生了改变，直接抛异常。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">if</span> <span class="o">(</span><span class="n">operatorState</span><span class="o">.</span><span class="na">getMaxParallelism</span><span class="o">(</span><span class="o">)</span> <span class="o">!</span><span class="o">=</span> <span class="n">executionJobVertex</span><span class="o">.</span><span class="na">getMaxParallelism</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+
+   <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">executionJobVertex</span><span class="o">.</span><span class="na">isMaxParallelismConfigured</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">// if the max parallelism was not explicitly specified by the user, we derive it from the state
+</span><span class="c1"></span>
+      <span class="n">LOG</span><span class="o">.</span><span class="na">debug</span><span class="o">(</span><span class="s">&#34;Overriding maximum parallelism for JobVertex {} from {} to {}&#34;</span><span class="o">,</span>
+         <span class="n">executionJobVertex</span><span class="o">.</span><span class="na">getJobVertexId</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="n">executionJobVertex</span><span class="o">.</span><span class="na">getMaxParallelism</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="n">operatorState</span><span class="o">.</span><span class="na">getMaxParallelism</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+
+      <span class="n">executionJobVertex</span><span class="o">.</span><span class="na">setMaxParallelism</span><span class="o">(</span><span class="n">operatorState</span><span class="o">.</span><span class="na">getMaxParallelism</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="c1">// if the max parallelism was explicitly specified, we complain on mismatch
+</span><span class="c1"></span>      <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalStateException</span><span class="o">(</span><span class="s">&#34;The maximum parallelism (&#34;</span> <span class="o">+</span>
+         <span class="n">operatorState</span><span class="o">.</span><span class="na">getMaxParallelism</span><span class="o">(</span><span class="o">)</span> <span class="o">+</span> <span class="s">&#34;) with which the latest &#34;</span> <span class="o">+</span>
+         <span class="s">&#34;checkpoint of the execution job vertex &#34;</span> <span class="o">+</span> <span class="n">executionJobVertex</span> <span class="o">+</span>
+         <span class="s">&#34; has been taken and the current maximum parallelism (&#34;</span> <span class="o">+</span>
+         <span class="n">executionJobVertex</span><span class="o">.</span><span class="na">getMaxParallelism</span><span class="o">(</span><span class="o">)</span> <span class="o">+</span> <span class="s">&#34;) changed. This &#34;</span> <span class="o">+</span>
+         <span class="s">&#34;is currently not supported.&#34;</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这是因为，数据是根据key的hash值决定它属于哪个KeyGroup的。如果最大并行度发生改变（且设并行度未发生改变这种简单场景），那么恢复后新到来的数据很可能与之前相同key的数据不属于同一个KeyGroup，而由于最大并行度发生了改变，每个并行实例所负责的KeyGroup也会发生改变，后果是新来的数据与之前相同key的数据会在不同的Subtask中。这就会造成业务上的错误。</p>
+<h2 id="并行度改变时keyedstate文件元信息的重分配">并行度改变时KeyedState文件元信息的重分配</h2>
+<p>业务代码核心逻辑如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">DataStream</span><span class="o">&lt;</span><span class="n">Tuple2</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">,</span><span class="n">Integer</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">dataStream</span> <span class="o">=</span>
+        <span class="n">env</span><span class="o">.</span><span class="na">addSource</span><span class="o">(</span><span class="k">new</span> <span class="n">SourceFunction</span><span class="o">&lt;</span><span class="n">Tuple2</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">,</span><span class="n">Integer</span><span class="o">&gt;</span><span class="o">&gt;</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kd">private</span> <span class="kt">boolean</span> <span class="n">running</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+            <span class="kd">private</span> <span class="kt">int</span> <span class="n">key</span><span class="o">;</span>
+            <span class="kd">private</span> <span class="kt">int</span> <span class="n">value</span><span class="o">;</span>
+            <span class="kd">private</span> <span class="n">Random</span> <span class="n">random</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Random</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+            <span class="nd">@Override</span>
+            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">(</span><span class="n">SourceContext</span><span class="o">&lt;</span><span class="n">Tuple2</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">,</span><span class="n">Integer</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">sourceContext</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+                <span class="k">while</span> <span class="o">(</span><span class="n">running</span><span class="o">)</span><span class="o">{</span>
+                    <span class="n">key</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="na">nextInt</span><span class="o">(</span><span class="n">5</span><span class="o">)</span><span class="o">;</span>
+                    <span class="n">sourceContext</span><span class="o">.</span><span class="na">collect</span><span class="o">(</span><span class="k">new</span> <span class="n">Tuple2</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="n">key</span><span class="o">,</span><span class="n">value</span><span class="o">+</span><span class="o">+</span><span class="o">)</span> <span class="o">)</span><span class="o">;</span>
+                    <span class="n">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="n">100</span><span class="o">)</span><span class="o">;</span>
+                <span class="o">}</span>
+            <span class="o">}</span>
+
+            <span class="nd">@Override</span>
+            <span class="kd">public</span> <span class="kt">void</span> <span class="nf">cancel</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">running</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span><span class="o">)</span><span class="o">.</span><span class="na">name</span><span class="o">(</span><span class="s">&#34;source&#34;</span><span class="o">)</span><span class="o">.</span><span class="na">uid</span><span class="o">(</span><span class="s">&#34;source&#34;</span><span class="o">)</span><span class="o">;</span>
+
+<span class="n">dataStream</span>
+        <span class="o">.</span><span class="na">keyBy</span><span class="o">(</span><span class="n">tuple</span> <span class="o">-</span><span class="o">&gt;</span> <span class="n">tuple</span><span class="o">.</span><span class="na">f0</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">map</span><span class="o">(</span><span class="k">new</span> <span class="n">StateMap</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">.</span><span class="na">name</span><span class="o">(</span><span class="s">&#34;map&#34;</span><span class="o">)</span><span class="o">.</span><span class="na">uid</span><span class="o">(</span><span class="s">&#34;map&#34;</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">print</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">name</span><span class="o">(</span><span class="s">&#34;print&#34;</span><span class="o">)</span><span class="o">.</span><span class="na">uid</span><span class="o">(</span><span class="s">&#34;print&#34;</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>source端不断产生Tuple2类型的数据，key为0-4的随机数，value从0开始递增。经过keyBy操作后，对其进行map操作。map的逻辑如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">StateMap</span> <span class="kd">extends</span> <span class="n">RichMapFunction</span><span class="o">&lt;</span><span class="n">Tuple2</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">,</span><span class="n">Integer</span><span class="o">&gt;</span><span class="o">,</span><span class="n">String</span><span class="o">&gt;</span> <span class="o">{</span>
+    <span class="kd">private</span> <span class="kd">transient</span> <span class="n">ListState</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">&gt;</span> <span class="n">listState</span><span class="o">;</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">open</span><span class="o">(</span><span class="n">Configuration</span> <span class="n">parameters</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+        <span class="n">ListStateDescriptor</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">&gt;</span> <span class="n">lsd</span> <span class="o">=</span>
+                <span class="k">new</span> <span class="n">ListStateDescriptor</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="s">&#34;list&#34;</span><span class="o">,</span> <span class="n">TypeInformation</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="n">Integer</span><span class="o">.</span><span class="na">class</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+        <span class="n">listState</span> <span class="o">=</span> <span class="n">getRuntimeContext</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">getListState</span><span class="o">(</span><span class="n">lsd</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="n">String</span> <span class="nf">map</span><span class="o">(</span><span class="n">Tuple2</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">,</span><span class="n">Integer</span><span class="o">&gt;</span> <span class="n">value</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+        <span class="n">listState</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">value</span><span class="o">.</span><span class="na">f1</span><span class="o">)</span><span class="o">;</span>
+        <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="na">f0</span><span class="o">+</span><span class="s">&#34;-&#34;</span><span class="o">+</span><span class="n">value</span><span class="o">.</span><span class="na">f1</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="nd">@Override</span>
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">close</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+        <span class="n">listState</span><span class="o">.</span><span class="na">clear</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>就是将那个递增的value存入一个ListState中。</p>
+<p>将程序并行度设为2，最大并行度为10，设置checkpoint后运行起来。然后停止任务，修改程序并行度到3，最大并行度不变，从之前的checkpoint文件重启。</p>
+<p>直接进入到StateAssignmentOperation.assignStates方法观察从_metadata文件中读取到的内容：</p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/operatorStates.png" alt="operatorStates"></p>
+<p>可以看到这个算子中的operatorSubtaskStates字段有两个元素，表示两个并行度。每个并行实例中存储的文件元信息如下：</p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/operatorStates2.png" alt="operatorStates2"></p>
+<p>这个算子只有managedKeyedState，所以观察managedKeyedState中的内容：</p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/operatorStates3.png" alt="operatorStates3"></p>
+<p>可以看到里面的元素是KeyGroupsStateHandle类型，该类中有一个groupRangeOffsets字段，保存了它负责的KeyGroup的范围（KeyGroup 5~KeyGroup 9），另外就是一个offsets数组，记录的是每个KeyGroup在文件中的位置。</p>
+<p>与managedOperatorState中的元素不太一样，managedOperatorState中的元素类型是OperatorStreamStateHandle，而这个类有两个字段，第二个字段类似，保存的是文件路径，而第一个字段是一个Map，key为状态名称，value是StateMetaInfo类型，记录了Mode（UNION、SPLIT_DISTRIBUTE、BROADCAST）和offsets数组。这里的offsets数组维护的是PartitionableListState中internalList里每个元素写到文件中的位置。</p>
+<p>由此可以看出，KeyedState没有Mode的概念，而且KeyGroupsStateHandle类没有保存KeyedState的名称，仅仅保存了每个KeyGroup开始的位置。</p>
+<p>接下来在StateAssignmentOperation.assignAttemptState方法中，一开始就需要计算出这个ExecutionJobVertex上每个并行实例所负责的KeyGroup范围。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kt">int</span> <span class="n">newParallelism</span> <span class="o">=</span> <span class="n">executionJobVertex</span><span class="o">.</span><span class="na">getParallelism</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+<span class="n">List</span><span class="o">&lt;</span><span class="n">KeyGroupRange</span><span class="o">&gt;</span> <span class="n">keyGroupPartitions</span> <span class="o">=</span> <span class="n">createKeyGroupPartitions</span><span class="o">(</span>
+   <span class="n">executionJobVertex</span><span class="o">.</span><span class="na">getMaxParallelism</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+   <span class="n">newParallelism</span><span class="o">)</span><span class="o">;</span>
+
+
+<span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyGroupRange</span><span class="o">&gt;</span> <span class="nf">createKeyGroupPartitions</span><span class="o">(</span><span class="kt">int</span> <span class="n">numberKeyGroups</span><span class="o">,</span> <span class="kt">int</span> <span class="n">parallelism</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">Preconditions</span><span class="o">.</span><span class="na">checkArgument</span><span class="o">(</span><span class="n">numberKeyGroups</span> <span class="o">&gt;</span><span class="o">=</span> <span class="n">parallelism</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyGroupRange</span><span class="o">&gt;</span> <span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="n">parallelism</span><span class="o">)</span><span class="o">;</span>
+
+   <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">parallelism</span><span class="o">;</span> <span class="o">+</span><span class="o">+</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">result</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">KeyGroupRangeAssignment</span><span class="o">.</span><span class="na">computeKeyGroupRangeForOperatorIndex</span><span class="o">(</span><span class="n">numberKeyGroups</span><span class="o">,</span> <span class="n">parallelism</span><span class="o">,</span> <span class="n">i</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+   <span class="k">return</span> <span class="n">result</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>具体算法不重要，只需知道结果：</p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/result.png" alt="result"></p>
+<p>0~3一组，4~6一组，7~9一组。通过上面的截图其实可以看到，之前的分组是0~4一组，5~9一组。在下面的reDistributeKeyedStates方法中，会将这个分组结果作为参数传入。而在分析checkpoint读写流程的文章中，分析过reDistributePartitionableStates方法，该方法并没有将这个结果作为参数传入，可以确定最大并行度、KeyGroup这些概念与OperatorState的重分配是没有关系的。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">reDistributeKeyedStates</span><span class="o">(</span>
+      <span class="n">List</span><span class="o">&lt;</span><span class="n">OperatorState</span><span class="o">&gt;</span> <span class="n">oldOperatorStates</span><span class="o">,</span>
+      <span class="kt">int</span> <span class="n">newParallelism</span><span class="o">,</span>
+      <span class="n">List</span><span class="o">&lt;</span><span class="n">OperatorID</span><span class="o">&gt;</span> <span class="n">newOperatorIDs</span><span class="o">,</span>
+      <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyGroupRange</span><span class="o">&gt;</span> <span class="n">newKeyGroupPartitions</span><span class="o">,</span>
+      <span class="n">Map</span><span class="o">&lt;</span><span class="n">OperatorInstanceID</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">newManagedKeyedState</span><span class="o">,</span>
+      <span class="n">Map</span><span class="o">&lt;</span><span class="n">OperatorInstanceID</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">newRawKeyedState</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+   <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">operatorIndex</span> <span class="o">=</span> <span class="n">0</span><span class="o">;</span> <span class="n">operatorIndex</span> <span class="o">&lt;</span> <span class="n">newOperatorIDs</span><span class="o">.</span><span class="na">size</span><span class="o">(</span><span class="o">)</span><span class="o">;</span> <span class="n">operatorIndex</span><span class="o">+</span><span class="o">+</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">OperatorState</span> <span class="n">operatorState</span> <span class="o">=</span> <span class="n">oldOperatorStates</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">operatorIndex</span><span class="o">)</span><span class="o">;</span>
+      <span class="kt">int</span> <span class="n">oldParallelism</span> <span class="o">=</span> <span class="n">operatorState</span><span class="o">.</span><span class="na">getParallelism</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">subTaskIndex</span> <span class="o">=</span> <span class="n">0</span><span class="o">;</span> <span class="n">subTaskIndex</span> <span class="o">&lt;</span> <span class="n">newParallelism</span><span class="o">;</span> <span class="n">subTaskIndex</span><span class="o">+</span><span class="o">+</span><span class="o">)</span> <span class="o">{</span>
+         <span class="n">OperatorInstanceID</span> <span class="n">instanceID</span> <span class="o">=</span> <span class="n">OperatorInstanceID</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="n">subTaskIndex</span><span class="o">,</span> <span class="n">newOperatorIDs</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">operatorIndex</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+         <span class="n">Tuple2</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">subKeyedStates</span> <span class="o">=</span> <span class="n">reAssignSubKeyedStates</span><span class="o">(</span>
+            <span class="n">operatorState</span><span class="o">,</span>
+            <span class="n">newKeyGroupPartitions</span><span class="o">,</span>
+            <span class="n">subTaskIndex</span><span class="o">,</span>
+            <span class="n">newParallelism</span><span class="o">,</span>
+            <span class="n">oldParallelism</span><span class="o">)</span><span class="o">;</span>
+         <span class="n">newManagedKeyedState</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">instanceID</span><span class="o">,</span> <span class="n">subKeyedStates</span><span class="o">.</span><span class="na">f0</span><span class="o">)</span><span class="o">;</span>
+         <span class="n">newRawKeyedState</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">instanceID</span><span class="o">,</span> <span class="n">subKeyedStates</span><span class="o">.</span><span class="na">f1</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个方法的核心逻辑比较简单，就是遍历该ExecutionJobVertex中的每个算子，遍历该算子的每个新的并行实例，给新的并行实例分配文件元信息。</p>
+<p>分析内层循环中的reAssignSubKeyedStates方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="n">Tuple2</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="nf">reAssignSubKeyedStates</span><span class="o">(</span>
+      <span class="n">OperatorState</span> <span class="n">operatorState</span><span class="o">,</span>
+      <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyGroupRange</span><span class="o">&gt;</span> <span class="n">keyGroupPartitions</span><span class="o">,</span>
+      <span class="kt">int</span> <span class="n">subTaskIndex</span><span class="o">,</span>
+      <span class="kt">int</span> <span class="n">newParallelism</span><span class="o">,</span>
+      <span class="kt">int</span> <span class="n">oldParallelism</span><span class="o">)</span> <span class="o">{</span>
+
+   <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span> <span class="n">subManagedKeyedState</span><span class="o">;</span>
+   <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span> <span class="n">subRawKeyedState</span><span class="o">;</span>
+
+   <span class="k">if</span> <span class="o">(</span><span class="n">newParallelism</span> <span class="o">=</span><span class="o">=</span> <span class="n">oldParallelism</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">operatorState</span><span class="o">.</span><span class="na">getState</span><span class="o">(</span><span class="n">subTaskIndex</span><span class="o">)</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+         <span class="n">subManagedKeyedState</span> <span class="o">=</span> <span class="n">operatorState</span><span class="o">.</span><span class="na">getState</span><span class="o">(</span><span class="n">subTaskIndex</span><span class="o">)</span><span class="o">.</span><span class="na">getManagedKeyedState</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">asList</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+         <span class="n">subRawKeyedState</span> <span class="o">=</span> <span class="n">operatorState</span><span class="o">.</span><span class="na">getState</span><span class="o">(</span><span class="n">subTaskIndex</span><span class="o">)</span><span class="o">.</span><span class="na">getRawKeyedState</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">asList</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+         <span class="n">subManagedKeyedState</span> <span class="o">=</span> <span class="n">Collections</span><span class="o">.</span><span class="na">emptyList</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+         <span class="n">subRawKeyedState</span> <span class="o">=</span> <span class="n">Collections</span><span class="o">.</span><span class="na">emptyList</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span>
+   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="n">subManagedKeyedState</span> <span class="o">=</span> <span class="n">getManagedKeyedStateHandles</span><span class="o">(</span><span class="n">operatorState</span><span class="o">,</span> <span class="n">keyGroupPartitions</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">subTaskIndex</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+      <span class="n">subRawKeyedState</span> <span class="o">=</span> <span class="n">getRawKeyedStateHandles</span><span class="o">(</span><span class="n">operatorState</span><span class="o">,</span> <span class="n">keyGroupPartitions</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">subTaskIndex</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+
+   <span class="k">if</span> <span class="o">(</span><span class="n">subManagedKeyedState</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">(</span><span class="o">)</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">subRawKeyedState</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">return</span> <span class="k">new</span> <span class="n">Tuple2</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="n">Collections</span><span class="o">.</span><span class="na">emptyList</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="n">Collections</span><span class="o">.</span><span class="na">emptyList</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="k">return</span> <span class="k">new</span> <span class="n">Tuple2</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="n">subManagedKeyedState</span><span class="o">,</span> <span class="n">subRawKeyedState</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>与OperatorState类似，也是分为了并行度不变与改变这两种情况。并行度不变时直接赋值即可。并行度改变时，调用getManagedKeyedStateHandles。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span> <span class="nf">getManagedKeyedStateHandles</span><span class="o">(</span>
+   <span class="n">OperatorState</span> <span class="n">operatorState</span><span class="o">,</span>
+   <span class="n">KeyGroupRange</span> <span class="n">subtaskKeyGroupRange</span><span class="o">)</span> <span class="o">{</span>
+
+   <span class="kd">final</span> <span class="kt">int</span> <span class="n">parallelism</span> <span class="o">=</span> <span class="n">operatorState</span><span class="o">.</span><span class="na">getParallelism</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+   <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span> <span class="n">subtaskKeyedStateHandles</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+
+   <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">parallelism</span><span class="o">;</span> <span class="n">i</span><span class="o">+</span><span class="o">+</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">operatorState</span><span class="o">.</span><span class="na">getState</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+
+         <span class="n">Collection</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span> <span class="n">keyedStateHandles</span> <span class="o">=</span> <span class="n">operatorState</span><span class="o">.</span><span class="na">getState</span><span class="o">(</span><span class="n">i</span><span class="o">)</span><span class="o">.</span><span class="na">getManagedKeyedState</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+         <span class="k">if</span> <span class="o">(</span><span class="n">subtaskKeyedStateHandles</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">subtaskKeyedStateHandles</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="n">parallelism</span> <span class="o">*</span> <span class="n">keyedStateHandles</span><span class="o">.</span><span class="na">size</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+         <span class="o">}</span>
+
+         <span class="n">extractIntersectingState</span><span class="o">(</span>
+            <span class="n">keyedStateHandles</span><span class="o">,</span>
+            <span class="n">subtaskKeyGroupRange</span><span class="o">,</span>
+            <span class="n">subtaskKeyedStateHandles</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+
+   <span class="k">return</span> <span class="n">subtaskKeyedStateHandles</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>先获取旧的并行度，然后对旧的并行度进行循环。每循环一次，就把以前一个并行实例负责的文件元数据取出来，看其中的KeyGroup范围有没有与新的并行实例负责的部分重合，如果有的话就把该handle对象赋给新的并行实例。主要思想就是寻找交叉的部分，在extractIntersectingState方法中。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">extractIntersectingState</span><span class="o">(</span>
+   <span class="n">Collection</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span> <span class="n">originalSubtaskStateHandles</span><span class="o">,</span>
+   <span class="n">KeyGroupRange</span> <span class="n">rangeToExtract</span><span class="o">,</span>
+   <span class="n">List</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span> <span class="n">extractedStateCollector</span><span class="o">)</span> <span class="o">{</span>
+
+   <span class="k">for</span> <span class="o">(</span><span class="n">KeyedStateHandle</span> <span class="n">keyedStateHandle</span> <span class="o">:</span> <span class="n">originalSubtaskStateHandles</span><span class="o">)</span> <span class="o">{</span>
+
+      <span class="k">if</span> <span class="o">(</span><span class="n">keyedStateHandle</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+
+         <span class="n">KeyedStateHandle</span> <span class="n">intersectedKeyedStateHandle</span> <span class="o">=</span> <span class="n">keyedStateHandle</span><span class="o">.</span><span class="na">getIntersection</span><span class="o">(</span><span class="n">rangeToExtract</span><span class="o">)</span><span class="o">;</span>
+
+         <span class="k">if</span> <span class="o">(</span><span class="n">intersectedKeyedStateHandle</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">extractedStateCollector</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">intersectedKeyedStateHandle</span><span class="o">)</span><span class="o">;</span>
+         <span class="o">}</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>比如要给新的并行实例中的第二个并行实例赋值时，它负责的KeyGroup范围是4~6。进入到这个方法中rangeToExtract表示的就是4~6。此时originalSubtaskStateHandles表示的是旧并行实例中的第一个，包含0~4的元信息。因此keyedStateHandle.getIntersection方法就会将旧并行实例中KeyGroup 4的信息取出来构造成一个新的KeyedStateHandle对象。</p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/intersectedKeyedStateHandle.png" alt="intersectedKeyedStateHandle"></p>
+<p>就这样经过多层循环，给每个新的并行实例找到交叉部分并交由新的并行实例维护。</p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/newManagedKeyedStateCompleted.png" alt="newManagedKeyedStateCompleted"></p>
+<p>这样，新的并行实例就知道自己应该去哪些文件取数据，并且知道自己要取的KeyGroup在文件的什么位置。</p>
+<h2 id="keyedstate的恢复">KeyedState的恢复</h2>
+<p>状态数据的恢复由每个Task自己执行。在StreamTaskStateInitializerImpl.streamOperatorStateContext方法中：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">keyedStatedBackend</span> <span class="o">=</span> <span class="n">keyedStatedBackend</span><span class="o">(</span>
+   <span class="n">keySerializer</span><span class="o">,</span>
+   <span class="n">operatorIdentifierText</span><span class="o">,</span>
+   <span class="n">prioritizedOperatorSubtaskStates</span><span class="o">,</span>
+   <span class="n">streamTaskCloseableRegistry</span><span class="o">,</span>
+   <span class="n">metricGroup</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这一操作将状态数据加载到了内存中。继续上面的例子，这里的prioritizedOperatorSubtaskStates内容如下：</p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/prioritizedOperatorSubtaskStates.png" alt="prioritizedOperatorSubtaskStates"></p>
+<p>接下来重点分析keyedStatedBackend方法将状态数据存入了哪个对象进行维护。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="n">AbstractKeyedStateBackend</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="nf">keyedStatedBackend</span><span class="o">(</span>
+   <span class="n">TypeSerializer</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="n">keySerializer</span><span class="o">,</span>
+   <span class="n">String</span> <span class="n">operatorIdentifierText</span><span class="o">,</span>
+   <span class="n">PrioritizedOperatorSubtaskState</span> <span class="n">prioritizedOperatorSubtaskStates</span><span class="o">,</span>
+   <span class="n">CloseableRegistry</span> <span class="n">backendCloseableRegistry</span><span class="o">,</span>
+   <span class="n">MetricGroup</span> <span class="n">metricGroup</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+   <span class="kd">final</span> <span class="n">KeyGroupRange</span> <span class="n">keyGroupRange</span> <span class="o">=</span> <span class="n">KeyGroupRangeAssignment</span><span class="o">.</span><span class="na">computeKeyGroupRangeForOperatorIndex</span><span class="o">(</span>
+      <span class="n">taskInfo</span><span class="o">.</span><span class="na">getMaxNumberOfParallelSubtasks</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+      <span class="n">taskInfo</span><span class="o">.</span><span class="na">getNumberOfParallelSubtasks</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+      <span class="n">taskInfo</span><span class="o">.</span><span class="na">getIndexOfThisSubtask</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+   <span class="n">BackendRestorerProcedure</span><span class="o">&lt;</span><span class="n">AbstractKeyedStateBackend</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span><span class="o">,</span> <span class="n">KeyedStateHandle</span><span class="o">&gt;</span> <span class="n">backendRestorer</span> <span class="o">=</span>
+      <span class="k">new</span> <span class="n">BackendRestorerProcedure</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span>
+         <span class="o">(</span><span class="n">stateHandles</span><span class="o">)</span> <span class="o">-</span><span class="o">&gt;</span> <span class="n">stateBackend</span><span class="o">.</span><span class="na">createKeyedStateBackend</span><span class="o">(</span>
+            <span class="n">environment</span><span class="o">,</span>
+            <span class="n">environment</span><span class="o">.</span><span class="na">getJobID</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+            <span class="n">operatorIdentifierText</span><span class="o">,</span>
+            <span class="n">keySerializer</span><span class="o">,</span>
+            <span class="n">taskInfo</span><span class="o">.</span><span class="na">getMaxNumberOfParallelSubtasks</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+            <span class="n">keyGroupRange</span><span class="o">,</span>
+            <span class="n">environment</span><span class="o">.</span><span class="na">getTaskKvStateRegistry</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+            <span class="n">TtlTimeProvider</span><span class="o">.</span><span class="na">DEFAULT</span><span class="o">,</span>
+            <span class="n">metricGroup</span><span class="o">,</span>
+            <span class="n">stateHandles</span><span class="o">,</span>
+            <span class="n">cancelStreamRegistryForRestore</span><span class="o">)</span><span class="o">,</span>
+         <span class="n">backendCloseableRegistry</span><span class="o">,</span>
+         <span class="n">logDescription</span><span class="o">)</span><span class="o">;</span>
+
+   <span class="k">try</span> <span class="o">{</span>
+      <span class="k">return</span> <span class="n">backendRestorer</span><span class="o">.</span><span class="na">createAndRestore</span><span class="o">(</span>
+         <span class="n">prioritizedOperatorSubtaskStates</span><span class="o">.</span><span class="na">getPrioritizedManagedKeyedState</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+     
+     <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+       
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>KeyedState要获得该并行实例 所负责的KeyGroup的范围。这里是调用了KeyGroupRangeAssignment.computeKeyGroupRangeForOperatorIndex方法去获得。与之前在JobManager端重分配时调用的那个方法是同一个方法。</p>
+<p>中间过程与OperatorState类似，直接分析createKeyedStateBackend方法，即BackendRestorerProcedure构造方法的第一个参数中那个方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="n">AbstractKeyedStateBackend</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="nf">createKeyedStateBackend</span><span class="o">(</span>
+   <span class="n">Environment</span> <span class="n">env</span><span class="o">,</span>
+   <span class="n">JobID</span> <span class="n">jobID</span><span class="o">,</span>
+   <span class="n">String</span> <span class="n">operatorIdentifier</span><span class="o">,</span>
+   <span class="n">TypeSerializer</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="n">keySerializer</span><span class="o">,</span>
+   <span class="kt">int</span> <span class="n">numberOfKeyGroups</span><span class="o">,</span>
+   <span class="n">KeyGroupRange</span> <span class="n">keyGroupRange</span><span class="o">,</span>
+   <span class="n">TaskKvStateRegistry</span> <span class="n">kvStateRegistry</span><span class="o">,</span>
+   <span class="n">TtlTimeProvider</span> <span class="n">ttlTimeProvider</span><span class="o">,</span>
+   <span class="n">MetricGroup</span> <span class="n">metricGroup</span><span class="o">,</span>
+   <span class="nd">@Nonnull</span> <span class="n">Collection</span><span class="o">&lt;</span><span class="n">KeyedStateHandle</span><span class="o">&gt;</span> <span class="n">stateHandles</span><span class="o">,</span>
+   <span class="n">CloseableRegistry</span> <span class="n">cancelStreamRegistry</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BackendBuildingException</span> <span class="o">{</span>
+
+   <span class="n">TaskStateManager</span> <span class="n">taskStateManager</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="na">getTaskStateManager</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">LocalRecoveryConfig</span> <span class="n">localRecoveryConfig</span> <span class="o">=</span> <span class="n">taskStateManager</span><span class="o">.</span><span class="na">createLocalRecoveryConfig</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">HeapPriorityQueueSetFactory</span> <span class="n">priorityQueueSetFactory</span> <span class="o">=</span>
+      <span class="k">new</span> <span class="n">HeapPriorityQueueSetFactory</span><span class="o">(</span><span class="n">keyGroupRange</span><span class="o">,</span> <span class="n">numberOfKeyGroups</span><span class="o">,</span> <span class="n">128</span><span class="o">)</span><span class="o">;</span>
+
+   <span class="k">return</span> <span class="k">new</span> <span class="n">HeapKeyedStateBackendBuilder</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span>
+      <span class="n">kvStateRegistry</span><span class="o">,</span>
+      <span class="n">keySerializer</span><span class="o">,</span>
+      <span class="n">env</span><span class="o">.</span><span class="na">getUserClassLoader</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+      <span class="n">numberOfKeyGroups</span><span class="o">,</span>
+      <span class="n">keyGroupRange</span><span class="o">,</span>
+      <span class="n">env</span><span class="o">.</span><span class="na">getExecutionConfig</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+      <span class="n">ttlTimeProvider</span><span class="o">,</span>
+      <span class="n">stateHandles</span><span class="o">,</span>
+      <span class="n">AbstractStateBackend</span><span class="o">.</span><span class="na">getCompressionDecorator</span><span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">getExecutionConfig</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">,</span>
+      <span class="n">localRecoveryConfig</span><span class="o">,</span>
+      <span class="n">priorityQueueSetFactory</span><span class="o">,</span>
+      <span class="n">isUsingAsynchronousSnapshots</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+      <span class="n">cancelStreamRegistry</span><span class="o">)</span><span class="o">.</span><span class="na">build</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>仍然将文件元信息保存到了AbstractKeyedStateBackendBuilder的restoreStateHandles字段中。进入build方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">HeapKeyedStateBackend</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="nf">build</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BackendBuildingException</span> <span class="o">{</span>
+   <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">StateTable</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="o">?</span><span class="o">,</span> <span class="o">?</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">registeredKVStates</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HashMap</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">HeapPriorityQueueSnapshotRestoreWrapper</span><span class="o">&gt;</span> <span class="n">registeredPQStates</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HashMap</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">CloseableRegistry</span> <span class="n">cancelStreamRegistryForBackend</span> <span class="o">=</span> <span class="k">new</span> <span class="n">CloseableRegistry</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">HeapSnapshotStrategy</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="n">snapshotStrategy</span> <span class="o">=</span> <span class="n">initSnapshotStrategy</span><span class="o">(</span>
+      <span class="n">asynchronousSnapshots</span><span class="o">,</span> <span class="n">registeredKVStates</span><span class="o">,</span> <span class="n">registeredPQStates</span><span class="o">,</span> <span class="n">cancelStreamRegistryForBackend</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">InternalKeyContext</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="n">keyContext</span> <span class="o">=</span> <span class="k">new</span> <span class="n">InternalKeyContextImpl</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span>
+      <span class="n">keyGroupRange</span><span class="o">,</span>
+      <span class="n">numberOfKeyGroups</span>
+   <span class="o">)</span><span class="o">;</span>
+   <span class="n">HeapRestoreOperation</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="n">restoreOperation</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HeapRestoreOperation</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span>
+      <span class="n">restoreStateHandles</span><span class="o">,</span>
+      <span class="n">keySerializerProvider</span><span class="o">,</span>
+      <span class="n">userCodeClassLoader</span><span class="o">,</span>
+      <span class="n">registeredKVStates</span><span class="o">,</span>
+      <span class="n">registeredPQStates</span><span class="o">,</span>
+      <span class="n">cancelStreamRegistry</span><span class="o">,</span>
+      <span class="n">priorityQueueSetFactory</span><span class="o">,</span>
+      <span class="n">keyGroupRange</span><span class="o">,</span>
+      <span class="n">numberOfKeyGroups</span><span class="o">,</span>
+      <span class="n">snapshotStrategy</span><span class="o">,</span>
+      <span class="n">keyContext</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">try</span> <span class="o">{</span>
+      <span class="n">restoreOperation</span><span class="o">.</span><span class="na">restore</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="n">BackendBuildingException</span><span class="o">(</span><span class="s">&#34;Failed when trying to restore heap backend&#34;</span><span class="o">,</span> <span class="n">e</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+   <span class="k">return</span> <span class="k">new</span> <span class="n">HeapKeyedStateBackend</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span>
+      <span class="n">kvStateRegistry</span><span class="o">,</span>
+      <span class="n">keySerializerProvider</span><span class="o">.</span><span class="na">currentSchemaSerializer</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+      <span class="n">userCodeClassLoader</span><span class="o">,</span>
+      <span class="n">executionConfig</span><span class="o">,</span>
+      <span class="n">ttlTimeProvider</span><span class="o">,</span>
+      <span class="n">cancelStreamRegistryForBackend</span><span class="o">,</span>
+      <span class="n">keyGroupCompressionDecorator</span><span class="o">,</span>
+      <span class="n">registeredKVStates</span><span class="o">,</span>
+      <span class="n">registeredPQStates</span><span class="o">,</span>
+      <span class="n">localRecoveryConfig</span><span class="o">,</span>
+      <span class="n">priorityQueueSetFactory</span><span class="o">,</span>
+      <span class="n">snapshotStrategy</span><span class="o">,</span>
+      <span class="n">keyContext</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里也与OperatorState的处理思路类似。构造了registeredKVStates、registeredPQStates，将它们封装到snapshotStrategy对象中，同时将它们封装到restoreOperation中。最后将registeredKVStates、registeredPQStates、snapshotStrategy封装到HeapKeyedStateBackend中返回。因此，restoreOperation.restore方法所做的事情就是对registeredKVStates、registeredPQStates等对象进行填充。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Void</span> <span class="nf">restore</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+
+   <span class="kd">final</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">,</span> <span class="n">StateMetaInfoSnapshot</span><span class="o">&gt;</span> <span class="n">kvStatesById</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HashMap</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">registeredKVStates</span><span class="o">.</span><span class="na">clear</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">registeredPQStates</span><span class="o">.</span><span class="na">clear</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+   <span class="kt">boolean</span> <span class="n">keySerializerRestored</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+
+   <span class="k">for</span> <span class="o">(</span><span class="n">KeyedStateHandle</span> <span class="n">keyedStateHandle</span> <span class="o">:</span> <span class="n">restoreStateHandles</span><span class="o">)</span> <span class="o">{</span>
+     
+     <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+       
+      <span class="c1">// 1.构造输入流。
+</span><span class="c1"></span>      <span class="n">FSDataInputStream</span> <span class="n">fsDataInputStream</span> <span class="o">=</span> <span class="n">keyGroupsStateHandle</span><span class="o">.</span><span class="na">openInputStream</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+      <span class="n">cancelStreamRegistry</span><span class="o">.</span><span class="na">registerCloseable</span><span class="o">(</span><span class="n">fsDataInputStream</span><span class="o">)</span><span class="o">;</span>
+
+      <span class="k">try</span> <span class="o">{</span>
+         <span class="c1">// 2.读取状态元信息。
+</span><span class="c1"></span>         <span class="n">DataInputViewStreamWrapper</span> <span class="n">inView</span> <span class="o">=</span> <span class="k">new</span> <span class="n">DataInputViewStreamWrapper</span><span class="o">(</span><span class="n">fsDataInputStream</span><span class="o">)</span><span class="o">;</span>
+         <span class="n">KeyedBackendSerializationProxy</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="n">serializationProxy</span> <span class="o">=</span>
+            <span class="k">new</span> <span class="n">KeyedBackendSerializationProxy</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="n">userCodeClassLoader</span><span class="o">)</span><span class="o">;</span>
+         <span class="n">serializationProxy</span><span class="o">.</span><span class="na">read</span><span class="o">(</span><span class="n">inView</span><span class="o">)</span><span class="o">;</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+         <span class="c1">// 3.获取状态元信息。
+</span><span class="c1"></span>         <span class="n">List</span><span class="o">&lt;</span><span class="n">StateMetaInfoSnapshot</span><span class="o">&gt;</span> <span class="n">restoredMetaInfos</span> <span class="o">=</span>
+            <span class="n">serializationProxy</span><span class="o">.</span><span class="na">getStateMetaInfoSnapshots</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+         <span class="c1">// 4.注册状态到registeredKVStates和registeredPQStates。
+</span><span class="c1"></span>         <span class="n">createOrCheckStateForMetaInfo</span><span class="o">(</span><span class="n">restoredMetaInfos</span><span class="o">,</span> <span class="n">kvStatesById</span><span class="o">)</span><span class="o">;</span>
+
+         <span class="c1">// 5.读取状态数据填充到上面的Map中。
+</span><span class="c1"></span>         <span class="n">readStateHandleStateData</span><span class="o">(</span>
+            <span class="n">fsDataInputStream</span><span class="o">,</span>
+            <span class="n">inView</span><span class="o">,</span>
+            <span class="n">keyGroupsStateHandle</span><span class="o">.</span><span class="na">getGroupRangeOffsets</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+            <span class="n">kvStatesById</span><span class="o">,</span> <span class="n">restoredMetaInfos</span><span class="o">.</span><span class="na">size</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+            <span class="n">serializationProxy</span><span class="o">.</span><span class="na">getReadVersion</span><span class="o">(</span><span class="o">)</span><span class="o">,</span>
+            <span class="n">serializationProxy</span><span class="o">.</span><span class="na">isUsingKeyGroupCompression</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+          
+      <span class="o">}</span>
+   <span class="o">}</span>
+   <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>整个方法主要逻辑就是遍历restoreStateHandles。可以理解为一个一个文件去读取并恢复数据到内存。整个过程可以与OperatorState的过程一一对应起来。读取了状态元信息后，restoredMetaInfos内容如下：</p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/restoredMetaInfos.png" alt="restoredMetaInfos"></p>
+<p>进入到readStateHandleStateData方法，观察反序列化的过程：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">readStateHandleStateData</span><span class="o">(</span>
+   <span class="n">FSDataInputStream</span> <span class="n">fsDataInputStream</span><span class="o">,</span>
+   <span class="n">DataInputViewStreamWrapper</span> <span class="n">inView</span><span class="o">,</span>
+   <span class="n">KeyGroupRangeOffsets</span> <span class="n">keyGroupOffsets</span><span class="o">,</span>
+   <span class="n">Map</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">,</span> <span class="n">StateMetaInfoSnapshot</span><span class="o">&gt;</span> <span class="n">kvStatesById</span><span class="o">,</span>
+   <span class="kt">int</span> <span class="n">numStates</span><span class="o">,</span>
+   <span class="kt">int</span> <span class="n">readVersion</span><span class="o">,</span>
+   <span class="kt">boolean</span> <span class="n">isCompressed</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+
+   <span class="kd">final</span> <span class="n">StreamCompressionDecorator</span> <span class="n">streamCompressionDecorator</span> <span class="o">=</span> <span class="n">isCompressed</span> <span class="o">?</span>
+      <span class="n">SnappyStreamCompressionDecorator</span><span class="o">.</span><span class="na">INSTANCE</span> <span class="o">:</span> <span class="n">UncompressedStreamCompressionDecorator</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">;</span>
+
+   <span class="k">for</span> <span class="o">(</span><span class="n">Tuple2</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">,</span> <span class="n">Long</span><span class="o">&gt;</span> <span class="n">groupOffset</span> <span class="o">:</span> <span class="n">keyGroupOffsets</span><span class="o">)</span> <span class="o">{</span>
+      <span class="kt">int</span> <span class="n">keyGroupIndex</span> <span class="o">=</span> <span class="n">groupOffset</span><span class="o">.</span><span class="na">f0</span><span class="o">;</span>
+      <span class="kt">long</span> <span class="n">offset</span> <span class="o">=</span> <span class="n">groupOffset</span><span class="o">.</span><span class="na">f1</span><span class="o">;</span>
+
+      <span class="n">Preconditions</span><span class="o">.</span><span class="na">checkState</span><span class="o">(</span><span class="n">keyGroupRange</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="n">keyGroupIndex</span><span class="o">)</span><span class="o">,</span> <span class="s">&#34;The key group must belong to the backend.&#34;</span><span class="o">)</span><span class="o">;</span>
+
+      <span class="n">fsDataInputStream</span><span class="o">.</span><span class="na">seek</span><span class="o">(</span><span class="n">offset</span><span class="o">)</span><span class="o">;</span>
+
+      <span class="kt">int</span> <span class="n">writtenKeyGroupIndex</span> <span class="o">=</span> <span class="n">inView</span><span class="o">.</span><span class="na">readInt</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+      <span class="n">Preconditions</span><span class="o">.</span><span class="na">checkState</span><span class="o">(</span><span class="n">writtenKeyGroupIndex</span> <span class="o">=</span><span class="o">=</span> <span class="n">keyGroupIndex</span><span class="o">,</span>
+         <span class="s">&#34;Unexpected key-group in restore.&#34;</span><span class="o">)</span><span class="o">;</span>
+
+      <span class="k">try</span> <span class="o">(</span><span class="n">InputStream</span> <span class="n">kgCompressionInStream</span> <span class="o">=</span>
+             <span class="n">streamCompressionDecorator</span><span class="o">.</span><span class="na">decorateWithCompression</span><span class="o">(</span><span class="n">fsDataInputStream</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+
+         <span class="n">readKeyGroupStateData</span><span class="o">(</span>
+            <span class="n">kgCompressionInStream</span><span class="o">,</span>
+            <span class="n">kvStatesById</span><span class="o">,</span>
+            <span class="n">keyGroupIndex</span><span class="o">,</span>
+            <span class="n">numStates</span><span class="o">,</span>
+            <span class="n">readVersion</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>对每个KeyGroup进行遍历，取出KeyGroup的索引号和它在文件中的位置offset。readKeyGroupStateData方法会读取这个KeyGroup。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">readKeyGroupStateData</span><span class="o">(</span>
+   <span class="n">InputStream</span> <span class="n">inputStream</span><span class="o">,</span>
+   <span class="n">Map</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">,</span> <span class="n">StateMetaInfoSnapshot</span><span class="o">&gt;</span> <span class="n">kvStatesById</span><span class="o">,</span>
+   <span class="kt">int</span> <span class="n">keyGroupIndex</span><span class="o">,</span>
+   <span class="kt">int</span> <span class="n">numStates</span><span class="o">,</span>
+   <span class="kt">int</span> <span class="n">readVersion</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+
+   <span class="n">DataInputViewStreamWrapper</span> <span class="n">inView</span> <span class="o">=</span>
+      <span class="k">new</span> <span class="n">DataInputViewStreamWrapper</span><span class="o">(</span><span class="n">inputStream</span><span class="o">)</span><span class="o">;</span>
+
+   <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">numStates</span><span class="o">;</span> <span class="n">i</span><span class="o">+</span><span class="o">+</span><span class="o">)</span> <span class="o">{</span>
+
+      <span class="kd">final</span> <span class="kt">int</span> <span class="n">kvStateId</span> <span class="o">=</span> <span class="n">inView</span><span class="o">.</span><span class="na">readShort</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+      <span class="kd">final</span> <span class="n">StateMetaInfoSnapshot</span> <span class="n">stateMetaInfoSnapshot</span> <span class="o">=</span> <span class="n">kvStatesById</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">kvStateId</span><span class="o">)</span><span class="o">;</span>
+      <span class="kd">final</span> <span class="n">StateSnapshotRestore</span> <span class="n">registeredState</span><span class="o">;</span>
+
+      <span class="k">switch</span> <span class="o">(</span><span class="n">stateMetaInfoSnapshot</span><span class="o">.</span><span class="na">getBackendStateType</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+         <span class="k">case</span> <span class="n">KEY_VALUE</span><span class="o">:</span>
+            <span class="n">registeredState</span> <span class="o">=</span> <span class="n">registeredKVStates</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">stateMetaInfoSnapshot</span><span class="o">.</span><span class="na">getName</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+            <span class="k">break</span><span class="o">;</span>
+         <span class="k">case</span> <span class="n">PRIORITY_QUEUE</span><span class="o">:</span>
+            <span class="n">registeredState</span> <span class="o">=</span> <span class="n">registeredPQStates</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">stateMetaInfoSnapshot</span><span class="o">.</span><span class="na">getName</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+            <span class="k">break</span><span class="o">;</span>
+         <span class="k">default</span><span class="o">:</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalStateException</span><span class="o">(</span><span class="s">&#34;Unexpected state type: &#34;</span> <span class="o">+</span>
+               <span class="n">stateMetaInfoSnapshot</span><span class="o">.</span><span class="na">getBackendStateType</span><span class="o">(</span><span class="o">)</span> <span class="o">+</span> <span class="s">&#34;.&#34;</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span>
+
+      <span class="n">StateSnapshotKeyGroupReader</span> <span class="n">keyGroupReader</span> <span class="o">=</span> <span class="n">registeredState</span><span class="o">.</span><span class="na">keyGroupReader</span><span class="o">(</span><span class="n">readVersion</span><span class="o">)</span><span class="o">;</span>
+      <span class="n">keyGroupReader</span><span class="o">.</span><span class="na">readMappingsInKeyGroup</span><span class="o">(</span><span class="n">inView</span><span class="o">,</span> <span class="n">keyGroupIndex</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>numStates表示有几个状态，依次读取。从registeredKVStates中取出之前注册的那个对象，将状态数据填充进去。进入到keyGroupReader.readMappingsInKeyGroup方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">readMappingsInKeyGroup</span><span class="o">(</span><span class="nd">@Nonnull</span> <span class="n">DataInputView</span> <span class="n">in</span><span class="o">,</span> <span class="nd">@Nonnegative</span> <span class="kt">int</span> <span class="n">keyGroupId</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+   <span class="kt">int</span> <span class="n">numElements</span> <span class="o">=</span> <span class="n">in</span><span class="o">.</span><span class="na">readInt</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">numElements</span><span class="o">;</span> <span class="n">i</span><span class="o">+</span><span class="o">+</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">T</span> <span class="n">element</span> <span class="o">=</span> <span class="n">readerFunction</span><span class="o">.</span><span class="na">readElement</span><span class="o">(</span><span class="n">in</span><span class="o">)</span><span class="o">;</span>
+      <span class="n">elementConsumer</span><span class="o">.</span><span class="na">consume</span><span class="o">(</span><span class="n">element</span><span class="o">,</span> <span class="n">keyGroupId</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中readerFunction.readElement就是反序列化的过程。readerFunction在上一步registeredState.keyGroupReader的构造过程中，就构造了其序列化器。在elementConsumer.consume方法中，就是将数据存入内存中维护。也是在构造reader的过程中，传入了一个consume方法的实现：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">N</span><span class="o">,</span> <span class="n">S</span><span class="o">&gt;</span> <span class="n">StateSnapshotKeyGroupReader</span> <span class="nf">createV2PlusReader</span><span class="o">(</span>
+   <span class="n">StateTable</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">N</span><span class="o">,</span> <span class="n">S</span><span class="o">&gt;</span> <span class="n">stateTable</span><span class="o">)</span> <span class="o">{</span>
+   <span class="kd">final</span> <span class="n">TypeSerializer</span><span class="o">&lt;</span><span class="n">N</span><span class="o">&gt;</span> <span class="n">namespaceSerializer</span> <span class="o">=</span> <span class="n">stateTable</span><span class="o">.</span><span class="na">getNamespaceSerializer</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="kd">final</span> <span class="n">TypeSerializer</span><span class="o">&lt;</span><span class="n">S</span><span class="o">&gt;</span> <span class="n">stateSerializer</span> <span class="o">=</span> <span class="n">stateTable</span><span class="o">.</span><span class="na">getStateSerializer</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="kd">final</span> <span class="n">TypeSerializer</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;</span> <span class="n">keySerializer</span> <span class="o">=</span> <span class="n">stateTable</span><span class="o">.</span><span class="na">keySerializer</span><span class="o">;</span>
+   <span class="kd">final</span> <span class="n">Tuple3</span><span class="o">&lt;</span><span class="n">N</span><span class="o">,</span> <span class="n">K</span><span class="o">,</span> <span class="n">S</span><span class="o">&gt;</span> <span class="n">buffer</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Tuple3</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">return</span> <span class="n">KeyGroupPartitioner</span><span class="o">.</span><span class="na">createKeyGroupPartitionReader</span><span class="o">(</span><span class="o">(</span><span class="n">in</span><span class="o">)</span> <span class="o">-</span><span class="o">&gt;</span> <span class="o">{</span>
+      <span class="n">buffer</span><span class="o">.</span><span class="na">f0</span> <span class="o">=</span> <span class="n">namespaceSerializer</span><span class="o">.</span><span class="na">deserialize</span><span class="o">(</span><span class="n">in</span><span class="o">)</span><span class="o">;</span>
+      <span class="n">buffer</span><span class="o">.</span><span class="na">f1</span> <span class="o">=</span> <span class="n">keySerializer</span><span class="o">.</span><span class="na">deserialize</span><span class="o">(</span><span class="n">in</span><span class="o">)</span><span class="o">;</span>
+      <span class="n">buffer</span><span class="o">.</span><span class="na">f2</span> <span class="o">=</span> <span class="n">stateSerializer</span><span class="o">.</span><span class="na">deserialize</span><span class="o">(</span><span class="n">in</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">return</span> <span class="n">buffer</span><span class="o">;</span>
+   <span class="o">}</span><span class="o">,</span> <span class="o">(</span><span class="n">element</span><span class="o">,</span> <span class="n">keyGroupId1</span><span class="o">)</span> <span class="o">-</span><span class="o">&gt;</span> <span class="n">stateTable</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">element</span><span class="o">.</span><span class="na">f1</span><span class="o">,</span> <span class="n">keyGroupId1</span><span class="o">,</span> <span class="n">element</span><span class="o">.</span><span class="na">f0</span><span class="o">,</span> <span class="n">element</span><span class="o">.</span><span class="na">f2</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>调用elementConsumer.consume，就会调用到(element, keyGroupId1) -&gt; stateTable.put(element.f1, keyGroupId1, element.f0, element.f2))。数据也就存入了stateTable中。</p>
+<p>通过业务代码也能看到存入数据的过程：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">String</span> <span class="nf">map</span><span class="o">(</span><span class="n">Tuple2</span><span class="o">&lt;</span><span class="n">Integer</span><span class="o">,</span><span class="n">Integer</span><span class="o">&gt;</span> <span class="n">value</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+    <span class="n">listState</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">value</span><span class="o">.</span><span class="na">f1</span><span class="o">)</span><span class="o">;</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="na">f0</span><span class="o">+</span><span class="s">&#34;-&#34;</span><span class="o">+</span><span class="n">value</span><span class="o">.</span><span class="na">f1</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">add</span><span class="o">(</span><span class="n">T</span> <span class="n">value</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+   <span class="n">originalState</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">value</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">add</span><span class="o">(</span><span class="n">V</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">Preconditions</span><span class="o">.</span><span class="na">checkNotNull</span><span class="o">(</span><span class="n">value</span><span class="o">,</span> <span class="s">&#34;You cannot add null to a ListState.&#34;</span><span class="o">)</span><span class="o">;</span>
+
+   <span class="kd">final</span> <span class="n">N</span> <span class="n">namespace</span> <span class="o">=</span> <span class="n">currentNamespace</span><span class="o">;</span>
+
+   <span class="kd">final</span> <span class="n">StateTable</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">N</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">V</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">map</span> <span class="o">=</span> <span class="n">stateTable</span><span class="o">;</span>
+   <span class="n">List</span><span class="o">&lt;</span><span class="n">V</span><span class="o">&gt;</span> <span class="n">list</span> <span class="o">=</span> <span class="n">map</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">namespace</span><span class="o">)</span><span class="o">;</span>
+
+   <span class="k">if</span> <span class="o">(</span><span class="n">list</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+      <span class="n">map</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">namespace</span><span class="o">,</span> <span class="n">list</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+   <span class="n">list</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">value</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中调用的map.put方法实现如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">put</span><span class="o">(</span><span class="n">N</span> <span class="n">namespace</span><span class="o">,</span> <span class="n">S</span> <span class="n">state</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">put</span><span class="o">(</span><span class="n">keyContext</span><span class="o">.</span><span class="na">getCurrentKey</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="n">keyContext</span><span class="o">.</span><span class="na">getCurrentKeyGroupIndex</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="n">namespace</span><span class="o">,</span> <span class="n">state</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>实际上把key、KeyGroup和状态数据都存入了进去。</p>
+<h2 id="总结">总结</h2>
+<p>本文分析了并行度与最大并行度之间的关系，并且演示了在修改并行度后，KeyedState是如何重新分配到各个算子并行实例上的。</p>
+<p>在KeyedState进行保存的过程中，也是先写入状态元信息（序列化器等信息），然后按照KeyGroup依次写入。每个KeyGroup又有一个或多个状态，依次序列化到文件，记录每个KeyGroup在文件中的起始位置。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-03-20
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        
+        <a class="next" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-checkpoint%E7%8A%B6%E6%80%81%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B/">
+            <span class="next-text nav-default">深入Flink源码 - Checkpoint状态恢复流程</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

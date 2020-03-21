@@ -6,10 +6,19 @@
     <description>Recent content in Posts on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Fri, 20 Mar 2020 15:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Fri, 20 Mar 2020 16:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>深入Flink源码 - 并行度与最大并行度</title>
+      <link>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/</link>
+      <pubDate>Fri, 20 Mar 2020 16:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/</guid>
+      <description>Flink关于并行度有两个概念——并行度与最大并行度。在做业务代码的开发时，算子后面可以跟setMaxParallelism或者setPar</description>
+    </item>
     
     <item>
       <title>深入Flink源码 - Checkpoint状态恢复流程</title>
