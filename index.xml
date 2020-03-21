@@ -6,13 +6,22 @@
     <description>Recent content on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Wed, 18 Mar 2020 15:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Fri, 20 Mar 2020 15:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
-      <title>深入Flink源码 - checkpoint文件的写入流程</title>
+      <title>深入Flink源码 - Checkpoint状态恢复流程</title>
+      <link>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-checkpoint%E7%8A%B6%E6%80%81%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B/</link>
+      <pubDate>Fri, 20 Mar 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-checkpoint%E7%8A%B6%E6%80%81%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B/</guid>
+      <description>flink本身有重启机制，本文分析的是通过flink run -s 命令恢复任务的流程。 flink checkpoint文件是自描述的，_metadata文件保存</description>
+    </item>
+    
+    <item>
+      <title>深入Flink源码 - Checkpoint文件的写入流程</title>
       <link>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-checkpoint%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B/</link>
       <pubDate>Wed, 18 Mar 2020 15:11:40 +0800</pubDate>
       

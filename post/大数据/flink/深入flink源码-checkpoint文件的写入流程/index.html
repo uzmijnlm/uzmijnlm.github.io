@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <title>深入Flink源码 - checkpoint文件的写入流程 - Even - A super concise theme for Hugo</title>
+  <title>深入Flink源码 - Checkpoint文件的写入流程 - Even - A super concise theme for Hugo</title>
   <meta name="renderer" content="webkit" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
 
@@ -38,13 +38,13 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 
 
-<meta property="og:title" content="深入Flink源码 - checkpoint文件的写入流程" />
+<meta property="og:title" content="深入Flink源码 - Checkpoint文件的写入流程" />
 <meta property="og:description" content="在开启了Flink的checkpoint机制后，每一次成功地进行checkpoint都可以在checkpoint的目录下看到一个新的检查点目" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-checkpoint%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B/" />
 <meta property="article:published_time" content="2020-03-18T15:11:40+08:00" />
 <meta property="article:modified_time" content="2020-03-18T15:11:40+08:00" />
-<meta itemprop="name" content="深入Flink源码 - checkpoint文件的写入流程">
+<meta itemprop="name" content="深入Flink源码 - Checkpoint文件的写入流程">
 <meta itemprop="description" content="在开启了Flink的checkpoint机制后，每一次成功地进行checkpoint都可以在checkpoint的目录下看到一个新的检查点目">
 <meta itemprop="datePublished" content="2020-03-18T15:11:40&#43;08:00" />
 <meta itemprop="dateModified" content="2020-03-18T15:11:40&#43;08:00" />
@@ -53,7 +53,7 @@
 
 
 <meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="深入Flink源码 - checkpoint文件的写入流程"/>
+<meta name="twitter:title" content="深入Flink源码 - Checkpoint文件的写入流程"/>
 <meta name="twitter:description" content="在开启了Flink的checkpoint机制后，每一次成功地进行checkpoint都可以在checkpoint的目录下看到一个新的检查点目"/>
 
 <!--[if lte IE 9]>
@@ -117,7 +117,7 @@
           <article class="post">
     
     <header class="post-header">
-      <h1 class="post-title">深入Flink源码 - checkpoint文件的写入流程</h1>
+      <h1 class="post-title">深入Flink源码 - Checkpoint文件的写入流程</h1>
 
       <div class="post-meta">
         <span class="post-time"> 2020-03-18 </span>
@@ -193,7 +193,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>DefaultOperatorStateBackendSnapshotStrategy类有一个registeredOperatorStates字段，这个字段保存了状态数据的所有状态元信息和状态数据，如下：</p>
-<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/registeredOperatorStatesDeepCopies.png" alt="registeredOperatorStatesDeepCopies"></p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/Checkpoint%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B/registeredOperatorStatesDeepCopies.png" alt="registeredOperatorStatesDeepCopies"></p>
 <p>每个元素的value中，stateMetaInfo字段保存了其状态元信息，internalList中保存了实际的数据。这些信息会拷贝到另一个对象registeredOperatorStatesDeepCopies中。实际上这里还涉及到BroadcastState的写入，这部分内容与OperatorState几乎完全一致，本文不会对BroadcastState的相关步骤进行分析。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -279,7 +279,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>可以看到，这里是先取出了stateMetaInfo中的信息进行了写入。这部分信息包含以下内容：</p>
-<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/operatorMetaInfoSnapshots.png" alt="operatorMetaInfoSnapshots"></p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/Checkpoint%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B/operatorMetaInfoSnapshots.png" alt="operatorMetaInfoSnapshots"></p>
 <p>其中有状态的名称、类型、分配模式（options字段中记录了这个状态为UNION）、序列化器信息。</p>
 <p>写入的细节如下：</p>
 <div class="highlight"><div class="chroma">
@@ -689,7 +689,7 @@
 </div>
 </div><p>在createStream方法中，先创建了一个输出流，对应了一个文件，文件名是根据一定规则生成的，就是我们在checkpoint目录中看到的文件名为随机字符串的文件。然后调用其write方法将byte数组中的数据写入文件。</p>
 <p>flush方法结束后，outStream.getPos获取当前写入的位置，也就是文件的大小，随后将文件路径和文件大小封装成FileStateHandle对象。回到外层方法，又将FileStateHandle对象和writtenStatesMetaData一起封装成OperatorStreamStateHandle对象。最后的返回结果，包含了如下信息：</p>
-<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/retValue.png" alt="retValue"></p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/Checkpoint%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B/retValue.png" alt="retValue"></p>
 <p>可以看到这个状态被保存在了哪个文件、该文件的大小以及各状态在文件中的位置。</p>
 <h2 id="处理文件元信息">处理文件元信息</h2>
 <p>那么这个返回信息被返回并封装到了哪里呢？</p>
@@ -886,7 +886,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>operatorSnapshotsInProgress中的信息经过转换，封装进了jobManagerTaskOperatorSubtaskStates中：</p>
-<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/jobManagerTaskOperatorSubtaskStates.png" alt="jobManagerTaskOperatorSubtaskStates"></p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/Checkpoint%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B/jobManagerTaskOperatorSubtaskStates.png" alt="jobManagerTaskOperatorSubtaskStates"></p>
 <p>还是同样的信息，维护了每个算子与其包含的所有状态的关系。</p>
 <h2 id="jobmanager端的操作">JobManager端的操作</h2>
 <p>接下来调用reportCompletedSnapshotStates方法，将信息发送到JobManager端。调用链为：</p>
@@ -1261,7 +1261,7 @@
 <p>step (2) 将这个ID添加进了acknowledgedTasks字段。这个字段对主逻辑没有什么用，是为了代码健壮性存在的。</p>
 <p>step (3) 获取这个vertex包含的所有算子的ID。</p>
 <p>step (4) 获取这个vertex的并行实例的索引号。这是一步非常重要的操作。因为目前为止，我们只知道这个并行实例中每个算子与其状态的对应信息，如下：</p>
-<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/operatorSubtaskStates.png" alt="operatorSubtaskStates"></p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/Checkpoint%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B/operatorSubtaskStates.png" alt="operatorSubtaskStates"></p>
 <p>但是还不知道这些信息属于哪个并行实例。因此还需要一个对象来保存并行实例的索引号与算子、文件元信息的对应关系。</p>
 <p>step (5) 开始对每个算子进行遍历。首先从operatorSubtaskStates对象中根据算子ID取出那个算子的文件元信息，然后将并行实例索引号与该信息一起封装进了OperatorState对象中（operatorState.putState方法）。其实就是放进了该类的这个字段中：</p>
 <div class="highlight"><div class="chroma">
@@ -1282,7 +1282,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>通过对上面两个字段的分析，可以知道，一个OperatorState对象就对应了一个算子。而在该算子内部，维护了这个算子在每个并行实例上的文件元信息。</p>
-<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/operatorState.png" alt="operatorState"></p>
+<p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/Checkpoint%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B/operatorState.png" alt="operatorState"></p>
 <p>因为代码中设置的并行度为1，所以operatorSubtaskStates字段里只有key为0的一个索引号。managedOperatorState就是之前获得的文件元信息。</p>
 <p>上面的方法结束后，回到CheckpointCoordinator.receiveAcknowledgeMessage方法中。</p>
 <div class="highlight"><div class="chroma">
@@ -1564,7 +1564,11 @@
 <footer class="post-footer">
       
       <nav class="post-nav">
-        
+        <a class="prev" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-checkpoint%E7%8A%B6%E6%80%81%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入Flink源码 - Checkpoint状态恢复流程</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
         <a class="next" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-flinkkafkaconsumer%E5%A6%82%E4%BD%95%E7%BB%B4%E6%8A%A4%E5%92%8C%E6%81%A2%E5%A4%8Doffset/">
             <span class="next-text nav-default">深入Flink源码 - FlinkKafkaConsumer如何维护和恢复offset</span>
             <span class="next-text nav-mobile">下一篇</span>
