@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出SVM （一）——SVM的基本思想 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="如下图所示，给定样本后，如果用线性分类器给样本分类，可以有无数个决策边界。 有很多模型都属于线性分类器，如逻辑回归等。但是在优化逻辑回归模型的" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%B8%80svm%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%80%9D%E6%83%B3/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出SVM （一）——SVM的基本思想" />
+<meta property="og:description" content="如下图所示，给定样本后，如果用线性分类器给样本分类，可以有无数个决策边界。 有很多模型都属于线性分类器，如逻辑回归等。但是在优化逻辑回归模型的" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%B8%80svm%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%80%9D%E6%83%B3/" />
+<meta property="article:published_time" content="2020-03-28T15:11:40+08:00" />
+<meta property="article:modified_time" content="2020-03-28T15:11:40+08:00" />
+<meta itemprop="name" content="深入浅出SVM （一）——SVM的基本思想">
+<meta itemprop="description" content="如下图所示，给定样本后，如果用线性分类器给样本分类，可以有无数个决策边界。 有很多模型都属于线性分类器，如逻辑回归等。但是在优化逻辑回归模型的">
+<meta itemprop="datePublished" content="2020-03-28T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-03-28T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="498">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出SVM （一）——SVM的基本思想"/>
+<meta name="twitter:description" content="如下图所示，给定样本后，如果用线性分类器给样本分类，可以有无数个决策边界。 有很多模型都属于线性分类器，如逻辑回归等。但是在优化逻辑回归模型的"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出SVM （一）——SVM的基本思想</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-03-28 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <p>如下图所示，给定样本后，如果用线性分类器给样本分类，可以有无数个决策边界。</p>
+
+<p><center><img src="/机器学习/线性分类器.png" width = "250" height = "180"/></center></p>
+
+<p>有很多模型都属于线性分类器，如逻辑回归等。但是在优化逻辑回归模型的过程中，似乎感受不到它是线性分类器。这是因为逻辑回归的优化过程与样本分布的概率有关，在计算的时候直接用MLE就求解了。可以认为，在逻辑回归（也包括其他与概率有关的模型）优化过程中，脑海里并不会出现上面这样的图。</p>
+
+<p>然而支持向量机的出发点却是这幅图，而与概率无关。</p>
+
+<p><center><img src="/机器学习/svm2.png" width = "250" height = "180"/></center></p>
+
+<p>如上图所示，可以设中间的决策边界为 <span  class="math">\(w^Tx+b=0\)</span> ，上方有一个平面与它平行，刚好能过与决策边界最近的样本，设该平面为 <span  class="math">\(w^Tx+b=1\)</span> ，下方的为 <span  class="math">\(w^Tx+b=-1\)</span> 。显然，选取的决策边界与这两个平面距离是相等的，这样保证了它与上方和下方最近的样本距离相等。另外，由于 <span  class="math">\(w\)</span> 和 <span  class="math">\(b\)</span> 的取值任意缩放后表示的是同一个平面，所以可以令其等于 <span  class="math">\(\pm1\)</span> 。决策边界与最近样本的距离为 <span  class="math">\(\large \frac{1}{||w||}\)</span> 。令 <span  class="math">\(\large \gamma=\frac{2}{||w||}\)</span> 。SVM的目标就是选择一个决策边界使 <span  class="math">\(\gamma\)</span> 最大。同时，还有一个隐含的限制条件，就是样本是线性可分的。</p>
+
+<p>用 <span  class="math">\(y=1\)</span> 表示正样本，<span  class="math">\(y=-1\)</span> 表示负样本。</p>
+
+<p>在数学上可以表示为：</p>
+
+<p><span  class="math">\[\large max_{w,b}\frac{2}{||w||} \\ \large s.t. \ \ \ y_i(w^Tx_i+b)\geq1, \ \ \ \ \ \ \  i=1,2,\dots,m\]</span></p>
+
+<p>等价于：</p>
+
+<p><span  class="math">\[\large min_{w,b}\frac{1}{2}||w||^2 \\ \large s.t. \ \ \ y_i(w^Tx_i+b)\geq1, \ \ \ \ \ \ \  i=1,2,\dots,m\]</span></p>
+
+<p>这就是SVM的基本型，即有约束的凸优化问题。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-03-28
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%BA%8C%E7%A1%AC%E9%97%B4%E9%9A%94%E4%B8%8E%E8%BD%AF%E9%97%B4%E9%9A%94/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入浅出SVM （二）——硬间隔与软间隔</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E6%B7%B1%E5%85%A5flink%E6%BA%90%E7%A0%81-%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/">
+            <span class="next-text nav-default">深入Flink源码 - 并行度与最大并行度</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

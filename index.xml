@@ -6,10 +6,46 @@
     <description>Recent content on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Fri, 20 Mar 2020 16:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Sat, 28 Mar 2020 18:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>深入浅出SVM （四）——解决非线性问题</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E5%9B%9B%E8%A7%A3%E5%86%B3%E9%9D%9E%E7%BA%BF%E6%80%A7%E9%97%AE%E9%A2%98/</link>
+      <pubDate>Sat, 28 Mar 2020 18:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E5%9B%9B%E8%A7%A3%E5%86%B3%E9%9D%9E%E7%BA%BF%E6%80%A7%E9%97%AE%E9%A2%98/</guid>
+      <description>无论是硬间隔还是软间隔，得到的决策边界都是线性的。如果样本完全线性不可分，则主要有两种方式来解决这一问题： 1.改用非线性分类器，如神经网络。</description>
+    </item>
+    
+    <item>
+      <title>深入浅出SVM （三）——对偶问题</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%B8%89%E5%AF%B9%E5%81%B6%E9%97%AE%E9%A2%98/</link>
+      <pubDate>Sat, 28 Mar 2020 17:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%B8%89%E5%AF%B9%E5%81%B6%E9%97%AE%E9%A2%98/</guid>
+      <description>很多问题都有自己的对偶问题。转换成对偶问题一般有两个好处。 1.计算上更加简单。 2.对偶形式会产生一些特殊的性质。 对于SVM来说，将原始问题转</description>
+    </item>
+    
+    <item>
+      <title>深入浅出SVM （二）——硬间隔与软间隔</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%BA%8C%E7%A1%AC%E9%97%B4%E9%9A%94%E4%B8%8E%E8%BD%AF%E9%97%B4%E9%9A%94/</link>
+      <pubDate>Sat, 28 Mar 2020 16:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%BA%8C%E7%A1%AC%E9%97%B4%E9%9A%94%E4%B8%8E%E8%BD%AF%E9%97%B4%E9%9A%94/</guid>
+      <description>从硬间隔到软间隔 在上一小节中，我们给出了SVM的基本型： \[\large min_{w,b}\frac{1}{2}||w||^2 \\ \large s.t. \ \ \ y_i(w^Tx_i+b)\geq1, \ \ \ \ \ \ \ i=1,2,\dots,m\] 解决的是如下图这样的分类问题： 这是一种非常理想的情</description>
+    </item>
+    
+    <item>
+      <title>深入浅出SVM （一）——SVM的基本思想</title>
+      <link>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%B8%80svm%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%80%9D%E6%83%B3/</link>
+      <pubDate>Sat, 28 Mar 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%B8%80svm%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%80%9D%E6%83%B3/</guid>
+      <description>如下图所示，给定样本后，如果用线性分类器给样本分类，可以有无数个决策边界。 有很多模型都属于线性分类器，如逻辑回归等。但是在优化逻辑回归模型的</description>
+    </item>
     
     <item>
       <title>深入Flink源码 - 并行度与最大并行度</title>

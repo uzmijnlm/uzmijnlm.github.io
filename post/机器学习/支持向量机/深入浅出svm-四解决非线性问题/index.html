@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出SVM （四）——解决非线性问题 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="无论是硬间隔还是软间隔，得到的决策边界都是线性的。如果样本完全线性不可分，则主要有两种方式来解决这一问题： 1.改用非线性分类器，如神经网络。" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E5%9B%9B%E8%A7%A3%E5%86%B3%E9%9D%9E%E7%BA%BF%E6%80%A7%E9%97%AE%E9%A2%98/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出SVM （四）——解决非线性问题" />
+<meta property="og:description" content="无论是硬间隔还是软间隔，得到的决策边界都是线性的。如果样本完全线性不可分，则主要有两种方式来解决这一问题： 1.改用非线性分类器，如神经网络。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E5%9B%9B%E8%A7%A3%E5%86%B3%E9%9D%9E%E7%BA%BF%E6%80%A7%E9%97%AE%E9%A2%98/" />
+<meta property="article:published_time" content="2020-03-28T18:11:40+08:00" />
+<meta property="article:modified_time" content="2020-03-28T18:11:40+08:00" />
+<meta itemprop="name" content="深入浅出SVM （四）——解决非线性问题">
+<meta itemprop="description" content="无论是硬间隔还是软间隔，得到的决策边界都是线性的。如果样本完全线性不可分，则主要有两种方式来解决这一问题： 1.改用非线性分类器，如神经网络。">
+<meta itemprop="datePublished" content="2020-03-28T18:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-03-28T18:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="903">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出SVM （四）——解决非线性问题"/>
+<meta name="twitter:description" content="无论是硬间隔还是软间隔，得到的决策边界都是线性的。如果样本完全线性不可分，则主要有两种方式来解决这一问题： 1.改用非线性分类器，如神经网络。"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出SVM （四）——解决非线性问题</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-03-28 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <p>无论是硬间隔还是软间隔，得到的决策边界都是线性的。如果样本完全线性不可分，则主要有两种方式来解决这一问题：</p>
+
+<p>1.改用非线性分类器，如神经网络。</p>
+
+<p>2.将数据映射到高维空间，使用简单线性分类器进行分类。</p>
+
+<p>SVM就是利用第二点解决非线性问题的。也正是因为SVM可以解决非线性问题，所以才在传统机器学习模型中脱颖而出。</p>
+
+<h1 id="核技巧">核技巧</h1>
+
+<p>要将原数据映射到高维空间，需要一个映射函数。令映射函数为：</p>
+
+<p><span  class="math">\[z=\phi(x)\]</span></p>
+
+<p>回顾之前推导出的SVM的对偶问题：</p>
+
+<p><span  class="math">\[max \sum_{i=1}^{m}\alpha_i-\frac{1}{2}\sum_{i,j=1}^{m}\alpha_i\alpha_jy_iy_jx_i^Tx_j\\s.t. \ \  \sum_{i=1}^m\alpha_iy_i=0, \\ \ \ \ \ \ \ \ \ \ \ \alpha_i\geq0,\ i=1,2,\dots,m\]</span></p>
+
+<p>上式最后出现了 <span  class="math">\(x^T_ix_j\)</span> 。如果映射到高维空间，则变为 <span  class="math">\(\phi(x_i)^T\phi(x_j)\)</span> 。因为需要计算 <span  class="math">\(\phi(x_i)\)</span> 和 <span  class="math">\(\phi(x_j)\)</span> ，如果映射后维度非常大，甚至是无限维，那么计算量是不可接受的。</p>
+
+<p>核技巧的思想就是，找到一个函数 <span  class="math">\(K\)</span> ，能够直接通过计算 <span  class="math">\(K(x_i,x_j)\)</span> 直接得到 <span  class="math">\(\phi(x_i)^T\phi(x_j)\)</span> 的结果。这个函数叫<strong>核函数</strong>。</p>
+
+<p>举个例子，令映射关系为 <span  class="math">\(z=\phi(x)=((x^{(1)})^2,x^{(1)}x^{(2)},x^{(1)}x^{(2)},(x^{(2)})^2)^T\)</span> 。我们恰好可以找到一个函数 <span  class="math">\(K\)</span> 表示这个关系：<span  class="math">\(K(x,y)=(x^Ty)^2\)</span> 。</p>
+
+<p><span  class="math">\[(x_i^Tx_j)^2=(x_i^{(1)}x_j^{(1)}+x_i^{(2)}x_j^{(2)})^2=(x_i^{(1)}x_j^{(1)})^2+2x_i^{(1)}x_j^{(1)}x_i^{(2)}x_j^{(2)}+(x_i^{(2)}x_j^{(2)})^2\]</span></p>
+
+<p>显然它等于 <span  class="math">\(\phi(x_i)^T\phi(x_j)\)</span> 。因此我们只需要计算 <span  class="math">\(x_i^Tx_j\)</span> ，然后取平方即可。</p>
+
+<p>同样，最终的决策函数式的计算也得到了简化：</p>
+
+<p><span  class="math">\[f(x)=sign(\sum_{i=1}^{m}\alpha_i^{*}y_i(x_i^Tx)+b^*)\]</span></p>
+
+<p>这里只需要计算 <span  class="math">\(K(x_i^Tx)\)</span> 即可。</p>
+
+<p>当然，看到这里很直观的感受是，这个构造非常的巧合。事实上也的确是这样。因此在实际场景中，人们会使用几个特定的函数来完成高维映射。而且，很多时候我们也不关心利用这个函数映射后的映射结果（不关心它映射到高维以后每个维度的形式是什么）。</p>
+
+<p>常用的核函数有：</p>
+
+<p>1.多项式核函数：<span  class="math">\(K(x,z)=(x^Tz+1)^p\)</span> 。</p>
+
+<p>2.高斯核函数：<span  class="math">\(K(x,z)=exp(-\frac{||x-z||^2}{2\sigma^2})\)</span> 。</p>
+
+<h1 id="正定核">正定核</h1>
+
+<p>任意给定一个函数，能否判断它是不是一个核函数呢（即对应两个向量映射到高维的内积）？</p>
+
+<p>严格来讲，上面说到的核函数全称叫<strong>正定核函数</strong>。如果一个函数满足如下性质，则它就是一个正定核函数。</p>
+
+<p>1.对称性。（<span  class="math">\(K(x,z)=K(z,x)\)</span>）</p>
+
+<p>2.正定性。（任取 <span  class="math">\(N\)</span> 个元素，对应的Gram. matrix是半正定的。Gram matrix是 <span  class="math">\(K=[K(x_i,x_j)]\)</span> ） 。</p>
+
+<p>对称性比较简单，下面进行正定性的必要性证明：</p>
+
+<p>已知 <span  class="math">\(K(x,z)= <\phi(x),\phi(z)>\)</span> 。Gram矩阵为 <span  class="math">\(K=[K(x_i,x_j)]_{m\times m}\)</span> 。要证明一个矩阵半正定，可以证明其特征值都大于等于0，或者对任意 <span  class="math">\(m\)</span>. 维的列向量 <span  class="math">\(\alpha\)</span> ，有 <span  class="math">\(\alpha^TK\alpha\geq0\)</span>. 。</p>
+
+<p>对任意 <span  class="math">\(c_1,c_2,\dots,c_m\in R\)</span> ，有：</p>
+
+<p><span  class="math">\[\begin{align}\sum_{i,j=1}^{m}c_ic_jK(x_i,x_j)&=\sum_{i,j=1}^mc_ic_j<\phi(x_i),\phi(x_j)>\\&=(\sum_ic_i\phi(x_i))\cdot(\sum_jc_j\phi(x_j))\\&=||\sum_ic_i\phi(x_i)||^2\\&\geq0\end{align}\]</span></p>
+
+<p>得证。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-03-28
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        
+        <a class="next" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%B8%89%E5%AF%B9%E5%81%B6%E9%97%AE%E9%A2%98/">
+            <span class="next-text nav-default">深入浅出SVM （三）——对偶问题</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

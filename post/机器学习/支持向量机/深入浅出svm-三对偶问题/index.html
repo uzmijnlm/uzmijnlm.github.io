@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入浅出SVM （三）——对偶问题 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="很多问题都有自己的对偶问题。转换成对偶问题一般有两个好处。 1.计算上更加简单。 2.对偶形式会产生一些特殊的性质。 对于SVM来说，将原始问题转" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%B8%89%E5%AF%B9%E5%81%B6%E9%97%AE%E9%A2%98/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入浅出SVM （三）——对偶问题" />
+<meta property="og:description" content="很多问题都有自己的对偶问题。转换成对偶问题一般有两个好处。 1.计算上更加简单。 2.对偶形式会产生一些特殊的性质。 对于SVM来说，将原始问题转" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%B8%89%E5%AF%B9%E5%81%B6%E9%97%AE%E9%A2%98/" />
+<meta property="article:published_time" content="2020-03-28T17:11:40+08:00" />
+<meta property="article:modified_time" content="2020-03-28T17:11:40+08:00" />
+<meta itemprop="name" content="深入浅出SVM （三）——对偶问题">
+<meta itemprop="description" content="很多问题都有自己的对偶问题。转换成对偶问题一般有两个好处。 1.计算上更加简单。 2.对偶形式会产生一些特殊的性质。 对于SVM来说，将原始问题转">
+<meta itemprop="datePublished" content="2020-03-28T17:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-03-28T17:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="736">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入浅出SVM （三）——对偶问题"/>
+<meta name="twitter:description" content="很多问题都有自己的对偶问题。转换成对偶问题一般有两个好处。 1.计算上更加简单。 2.对偶形式会产生一些特殊的性质。 对于SVM来说，将原始问题转"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入浅出SVM （三）——对偶问题</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-03-28 </span>
+        <div class="post-category">
+            <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    
+  </div>
+</div>
+    <div class="post-content">
+      <p>很多问题都有自己的对偶问题。转换成对偶问题一般有两个好处。</p>
+
+<p>1.计算上更加简单。</p>
+
+<p>2.对偶形式会产生一些特殊的性质。</p>
+
+<p>对于SVM来说，将原始问题转换成对偶问题最大的好处是可以自然的引入核函数，解决非线性的问题。但对偶问题的解很可能与原始问题的解有一定差距。不过对于SVM来说两者的解是一致的。</p>
+
+<h1 id="拉格朗日函数">拉格朗日函数</h1>
+
+<p>对于一个带约束的优化问题，可以通过拉格朗日乘子法将其变为无约束的优化问题。</p>
+
+<p><span  class="math">\[minf(x)\\s.t. \ \ g_i(x)=0,\ i=1,2,\dots,R\\ \ \ \ \ \ \ \ \ h_j(x)\leq0, \ j=1,2,\dots,R'\]</span></p>
+
+<p>等价于求解：</p>
+
+<p><span  class="math">\[L(x,\lambda,\mu)=f(x)+\sum_{i=1}^R\lambda_ig_i(x)+\sum_{j=1}^{R'}\mu_jh_j(x)\]</span></p>
+
+<p>要求 <span  class="math">\(\mu_j>0\)</span> ，<span  class="math">\(\lambda_i\)</span> 不做限制。这个函数就叫拉格朗日函数。</p>
+
+<p>原始问题有另一种表述：</p>
+
+<p><span  class="math">\[minf(x)=min_x(max_{\lambda,\mu}(L(x,\lambda,\mu)))\]</span></p>
+
+<p>严格的证明比较复杂，这里不分析。可以简单地理解为，因为 <span  class="math">\(\lambda_ig_i(x)=0,\ \mu_jh_j(x)\leq0\)</span> ，所以 <span  class="math">\(L(x,\lambda,\mu)\)</span> 的最大值就是 <span  class="math">\(f(x)\)</span> 。</p>
+
+<p>因此对偶问题为：</p>
+
+<p><span  class="math">\[max_{\lambda,\mu}(min_x(L(x,\lambda,\mu)))\]</span></p>
+
+<p>显然：</p>
+
+<p><span  class="math">\[max_{\lambda,\mu}(min_x(L(x,\lambda,\mu)))\leq min_x(max_{\lambda,\mu}(L(x,\lambda,\mu)))\]</span></p>
+
+<p>当满足KKT条件时，两者有可能相等（KKT条件是必要不充分条件）。</p>
+
+<p>KKT条件包括：</p>
+
+<p><span  class="math">\[g_i(x)=0, h_j(x)\leq0, \ \forall i,j\\\mu_j\geq0,\ \forall j\\ \mu_jh_j(x)=0,\  \forall j\\\nabla f(x)+\sum_{i=1}^R\lambda_i\nabla g_i(x)+\sum_{j=1}^{R'}\mu_j\nabla h_j(x)=0\]</span></p>
+
+<p>前两行是上面自带的条件，叫做“<strong>可行条件</strong>”。第三行叫做“<strong>互补松弛条件</strong>”，令原问题和对偶问题的解相等，可以很容易地推导出这个条件。最后一行表示梯度为0。</p>
+
+<h1 id="svm的对偶问题">SVM的对偶问题</h1>
+
+<p>SVM原始问题变为无约束优化问题后，形式如下：</p>
+
+<p><span  class="math">\[L(w,b,\alpha)=\frac{1}{2}||w||^2-\sum_{i=1}^{m}\alpha_i(y_i(w^Tx_i+b)-1)\]</span></p>
+
+<p>令 <span  class="math">\(w\)</span> 和 <span  class="math">\(b\)</span> 求偏导的值为0：</p>
+
+<p><span  class="math">\[\large \frac{\partial L}{\partial w}=0\ =>\ w=\sum_{i=1}^{m}\alpha_iy_ix_i\\\large \frac{\partial L}{\partial b}=0\ =>\ \sum_{i=1}^{m}\alpha_iy_i=0\]</span></p>
+
+<p>带回到上式中，得到对偶问题：</p>
+
+<p><span  class="math">\[max \sum_{i=1}^{m}\alpha_i-\frac{1}{2}\sum_{i,j=1}^{m}\alpha_i\alpha_jy_iy_jx_i^Tx_j\\s.t. \ \  \sum_{i=1}^m\alpha_iy_i=0, \\ \ \ \ \ \ \ \ \ \ \ \alpha_i\geq0,\ i=1,2,\dots,m\]</span></p>
+
+<p>学习的对象就是 <span  class="math">\(\alpha\)</span> 。求解KKT条件就可以得到最终的结果。</p>
+
+<p>重点关注这个条件：</p>
+
+<p><span  class="math">\[\alpha_i(y_i(w^Tx_i+b)-1)=0\]</span></p>
+
+<p>对于每一个样本点，都需要去学习 <span  class="math">\(\alpha\)</span> 的值。不过从上面的条件可以看出，那些 <span  class="math">\(y_i(w^Tx_i+b)-1\)</span> 不为0的点，其 <span  class="math">\(\alpha\)</span> 一定为0。所以只有支撑向量对应的 <span  class="math">\(\alpha\)</span> 不为0。 在工程上通过SMO方法求解 <span  class="math">\(\alpha\)</span> ，带回上面的式子得到 <span  class="math">\(w\)</span> 和 <span  class="math">\(b\)</span> 。可以看出 <span  class="math">\(w\)</span> 和 <span  class="math">\(b\)</span> 的取值只与支撑向量有关。从这里也可以看出与逻辑回归的区别。逻辑回归会受异常值的影响，而SVM几乎不受这方面影响。</p>
+
+<p>最终SVM的分类决策函数可以写成：</p>
+
+<p><span  class="math">\[f(x)=sign(\sum_{i=1}^{m}\alpha_i^{*}y_i(x_i^Tx)+b^*)\]</span></p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-03-28
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E5%9B%9B%E8%A7%A3%E5%86%B3%E9%9D%9E%E7%BA%BF%E6%80%A7%E9%97%AE%E9%A2%98/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入浅出SVM （四）——解决非线性问题</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E6%94%AF%E6%8C%81%E5%90%91%E9%87%8F%E6%9C%BA/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BAsvm-%E4%BA%8C%E7%A1%AC%E9%97%B4%E9%9A%94%E4%B8%8E%E8%BD%AF%E9%97%B4%E9%9A%94/">
+            <span class="next-text nav-default">深入浅出SVM （二）——硬间隔与软间隔</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>
