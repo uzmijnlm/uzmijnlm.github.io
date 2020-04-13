@@ -154,7 +154,7 @@
   </div>
 </div>
     <div class="post-content">
-      <p>flink本身有重启机制，本文分析的是通过flink run -s <!-- raw HTML omitted -->命令恢复任务的流程。</p>
+      <p>flink本身有重启机制，本文分析的是通过flink run -s <savepointPath>命令恢复任务的流程。</p>
 <p>flink checkpoint文件是自描述的，_metadata文件保存了所有状态数据文件的路径、文件大小、状态数据在文件的位置等信息，状态数据文件的开头保存了该文件中状态数据的序列化信息，通过解析可以得到序列化器对象，直接反序列化文件内容。整个解析过程可以不需要运行时信息。</p>
 <p>在checkpoint的写入过程中，是每个Task独自生成状态数据文件，然后最终由JobManager端将这些文件信息写入到_metadata文件中，所以在解析的过程中也是从JobManager端开始解析 _metadata文件，然后在Task端读取数据文件进行恢复。</p>
 <p>本文将_metadata中的数据叫做“<strong>文件元信息</strong>”，状态数据文件中关于序列化器的信息称为“<strong>状态元信息</strong>”。</p>

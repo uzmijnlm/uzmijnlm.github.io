@@ -44,7 +44,7 @@
 <meta property="og:description" content="Hugo theme even example site." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="http://localhost:1313/" />
-<meta property="og:updated_time" content="2020-03-28T18:11:40+08:00" />
+<meta property="og:updated_time" content="2020-03-30T15:11:40+08:00" />
 <meta itemprop="name" content="Even - A super concise theme for Hugo">
 <meta itemprop="description" content="Hugo theme even example site."><meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Even - A super concise theme for Hugo"/>
@@ -109,6 +109,27 @@
       <div class="content-wrapper">
         <div id="content" class="content">
           <section id="posts" class="posts">
+    <article class="post">
+  <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%B8%89%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0%E4%BC%B0%E8%AE%A1/">深入浅出逻辑回归（三）——模型参数估计</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2019-12-30 </span>
+      <div class="post-category">
+          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      用 MLE 估计模型参数 对于给定的样本集 \(D=\{(x^{(1)},y^{(1)}),\ (x^{(2)},y^{(2)}),\ \cdots\ ,\ (x^{(N)},y^{(N)})\}\) ，其中 $y^{(i)}\in {0,1}$ 。为了简化，我们令 $P(Y=1|x)=\frac{exp(w\cdot x)}{1+exp(w\cdot x)}=\pi(x),\ P(Y=0|x)=1-\pi(x)$ 。 根据 MLE，我们写出似然函数： \[\large \prod^{N}_{i=1}[\pi(x^{(i)})]^{y^{(i)}}[1-\pi(x^{(i)})]^{1-y^{(i)}}\] 对数似然函数为： \[\large \begin{align}L(w)&=\sum^N_{i=1}[y^{(i)}\log(\pi(x^{(i)}))+(1-y^{(i)})\log(1-\pi(x^{(i)}))]\\&=\sum^N_{i=1}[y^{(i)}\log(\frac{\pi(x^{(i)})}{1-\pi(x^{(i)})})+\log(1-\pi(x^{(i)}))]\\&=\sum^N_{i=1}[y^{(i)}(w\cdot x^{(i)})-\log(1+exp(w\cdot x^{(i)}))]\end{align}\] 然
+    </div>
+    <div class="read-more">
+      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%B8%89%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0%E4%BC%B0%E8%AE%A1/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
     <article class="post">
   <header class="post-header">
     <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E4%BA%8C%E9%80%BB%E8%BE%91%E5%9B%9E%E5%BD%92%E6%98%AF%E7%BA%BF%E6%80%A7%E5%88%86%E7%B1%BB%E5%99%A8%E5%90%97/">深入浅出逻辑回归（二）——逻辑回归是线性分类器吗？</a></h1>
@@ -294,27 +315,6 @@
     </div>
     <div class="read-more">
       <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%BA%8C%E6%9E%81%E5%A4%A7%E4%BC%BC%E7%84%B6%E4%BC%B0%E8%AE%A1/" class="read-more-link">阅读更多</a>
-    </div>
-  </div>
-</article>
-
-    <article class="post">
-  <header class="post-header">
-    <h1 class="post-title"><a class="post-link" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%80%E8%A7%A3%E6%9E%90%E8%A7%A3%E4%B8%8E%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D%E6%B3%95/">深入浅出线性回归（一）——解析解与梯度下降法</a></h1>
-    <div class="post-meta">
-      <span class="post-time"> 2019-11-10 </span>
-      <div class="post-category">
-          <a href="/categories/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/"> 机器学习 </a>
-          </div>
-    </div>
-  </header>
-  
-  <div class="post-content">
-    <div class="post-summary">
-      线性回归简介 我们手头有一堆样本的输入 \(X=\begin{pmatrix}x_{11} & x_{12} & \cdots & x_{1p} \\ x_{21} & x_{22} & \cdots & x_{2p} \\\vdots & \vdots & & \vdots \\ x_{n1} & x_{n2} & \cdots & x_{np} \end{pmatrix}$ 和输出 $Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_n\end{pmatrix}\) ，想要找到一个线性模型 \(f(X)=X\theta\) 描绘它们之间
-    </div>
-    <div class="read-more">
-      <a href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA%E7%BA%BF%E6%80%A7%E5%9B%9E%E5%BD%92%E4%B8%80%E8%A7%A3%E6%9E%90%E8%A7%A3%E4%B8%8E%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D%E6%B3%95/" class="read-more-link">阅读更多</a>
     </div>
   </div>
 </article>

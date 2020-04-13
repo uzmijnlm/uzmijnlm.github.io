@@ -1803,7 +1803,7 @@
 </div><p>可以看到，handover相当于一个中间件，连接了FlinkKafkaConsumer与KafkaConsumer。</p>
 <p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/FlinkKafkaConsumer%E5%A6%82%E4%BD%95%E7%BB%B4%E6%8A%A4%E5%92%8C%E6%81%A2%E5%A4%8Doffset/Handover%E7%9A%84%E4%BD%9C%E7%94%A8.png" alt="Handover的作用"></p>
 <h3 id="subscribedpartitionstates">subscribedPartitionStates</h3>
-<p>runFetchLoop的第三步，调用了subscribedPartitionStates方法。该方法返回的是fetcher中的subscribedPartitionStates对象，该对象的类型是List&lt;KafkaTopicPartitionState<!-- raw HTML omitted -->&gt;。基本可以确定它封装了最新的消费情况。这个对象最初在实例化fetcher时通过createPartitionStateHolders方法进行的实例化。该方法会创建一个List，并且向List中添加了元素（即最新消费情况）。这些信息是通过构造方法的参数传进来的。这个参数在最外层就是FlinkKafkaConsumerBase的subscribedPartitionsToStartOffsets字段。</p>
+<p>runFetchLoop的第三步，调用了subscribedPartitionStates方法。该方法返回的是fetcher中的subscribedPartitionStates对象，该对象的类型是List&lt;KafkaTopicPartitionState<KPH>&gt;。基本可以确定它封装了最新的消费情况。这个对象最初在实例化fetcher时通过createPartitionStateHolders方法进行的实例化。该方法会创建一个List，并且向List中添加了元素（即最新消费情况）。这些信息是通过构造方法的参数传进来的。这个参数在最外层就是FlinkKafkaConsumerBase的subscribedPartitionsToStartOffsets字段。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre class="chroma"><code><span class="lnt">1
