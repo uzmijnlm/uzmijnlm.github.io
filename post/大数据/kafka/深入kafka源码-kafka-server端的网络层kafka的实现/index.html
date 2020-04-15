@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Kafka源码 - Kafka Server端的网络层（Kafka的实现） - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="网络层 Kafka Server端的网络层使用的就是多线程多Selector的Reactor模式。 Kafka Server端的启动在KafkaServer类的st" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E7%BD%91%E7%BB%9C%E5%B1%82kafka%E7%9A%84%E5%AE%9E%E7%8E%B0/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Kafka源码 - Kafka Server端的网络层（Kafka的实现）" />
+<meta property="og:description" content="网络层 Kafka Server端的网络层使用的就是多线程多Selector的Reactor模式。 Kafka Server端的启动在KafkaServer类的st" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E7%BD%91%E7%BB%9C%E5%B1%82kafka%E7%9A%84%E5%AE%9E%E7%8E%B0/" />
+<meta property="article:published_time" content="2020-04-15T16:11:40+08:00" />
+<meta property="article:modified_time" content="2020-04-15T16:11:40+08:00" />
+<meta itemprop="name" content="深入Kafka源码 - Kafka Server端的网络层（Kafka的实现）">
+<meta itemprop="description" content="网络层 Kafka Server端的网络层使用的就是多线程多Selector的Reactor模式。 Kafka Server端的启动在KafkaServer类的st">
+<meta itemprop="datePublished" content="2020-04-15T16:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-04-15T16:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="2564">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Kafka源码 - Kafka Server端的网络层（Kafka的实现）"/>
+<meta name="twitter:description" content="网络层 Kafka Server端的网络层使用的就是多线程多Selector的Reactor模式。 Kafka Server端的启动在KafkaServer类的st"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Kafka源码 - Kafka Server端的网络层（Kafka的实现）</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-04-15 </span>
+        <div class="post-category">
+            <a href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/"> 大数据 </a>
+            <a href="/categories/kafka/"> kafka </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#网络层">网络层</a></li>
+    <li><a href="#api层">API层</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <h2 id="网络层">网络层</h2>
+<p>Kafka Server端的网络层使用的就是多线程多Selector的Reactor模式。</p>
+<center><img src="/大数据/kafka/Kafka Server端的网络层/多线程多Selector的Reactor.png" width = "500" height = "300"/></center>
+<p>Kafka Server端的启动在KafkaServer类的startup方法中完成。其中有如下两行代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">socketServer</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">SocketServer</span><span class="o">(</span><span class="n">config</span><span class="o">,</span> <span class="n">metrics</span><span class="o">,</span> <span class="n">kafkaMetricsTime</span><span class="o">)</span>
+<span class="n">socketServer</span><span class="o">.</span><span class="n">startup</span><span class="o">(</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个SocketServer类的描述信息和部分字段如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="cm">/*</span><span class="cm">*</span><span class="cm">
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> An NIO socket server. The threading model is
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm">   1 Acceptor thread that handles new connections
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm">   Acceptor has N Processor threads that each have their own selector and read requests from sockets
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm">   M Handler threads that handle requests and produce responses back to the processor threads for writing.
+</span><span class="cm"> </span><span class="cm">*/</span>
+<span class="k">class</span> <span class="nc">SocketServer</span><span class="o">(</span><span class="k">val</span> <span class="n">config</span><span class="k">:</span> <span class="kt">KafkaConfig</span><span class="o">,</span> <span class="k">val</span> <span class="n">metrics</span><span class="k">:</span> <span class="kt">Metrics</span><span class="o">,</span> <span class="k">val</span> <span class="n">time</span><span class="k">:</span> <span class="kt">Time</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Logging</span> <span class="k">with</span> <span class="nc">KafkaMetricsGroup</span> <span class="o">{</span>
+
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+  <span class="k">val</span> <span class="n">requestChannel</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">RequestChannel</span><span class="o">(</span><span class="n">totalProcessorThreads</span><span class="o">,</span> <span class="n">maxQueuedRequests</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">processors</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Array</span><span class="o">[</span><span class="kt">Processor</span><span class="o">]</span><span class="o">(</span><span class="n">totalProcessorThreads</span><span class="o">)</span>
+
+  <span class="k">private</span><span class="o">[</span><span class="kt">network</span><span class="o">]</span> <span class="k">val</span> <span class="n">acceptors</span> <span class="k">=</span> <span class="n">mutable</span><span class="o">.</span><span class="nc">Map</span><span class="o">[</span><span class="kt">EndPoint</span>, <span class="kt">Acceptor</span><span class="o">]</span><span class="o">(</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>根据注释可知，这个模型中一个Acceptor拥有多个Processor，这个Processor可以理解为上图中的Reader ThreadPool中的一个线程，但它不仅接收请求，还会处理响应。也就是说，它接收到请求后，将其发送到一个队列，然后由另一个线程池中的线程取出请求来进行业务处理，该线程处理完后会将响应构造好，放入到一个队列，然后由Processor取出返回该响应。</p>
+<center><img src="/大数据/kafka/Kafka Server端的网络层/Kafka Server Reactor.png" width = "700" height = "400"/></center>
+<p>上图的responseQueue和requestQueue都封装在了requestChannel对象中。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">RequestChannel</span><span class="o">(</span><span class="k">val</span> <span class="n">numProcessors</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="k">val</span> <span class="n">queueSize</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">KafkaMetricsGroup</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">requestQueue</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ArrayBlockingQueue</span><span class="o">[</span><span class="kt">RequestChannel</span><span class="kt">.</span><span class="kt">Request</span><span class="o">]</span><span class="o">(</span><span class="n">queueSize</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">responseQueues</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Array</span><span class="o">[</span><span class="kt">BlockingQueue</span><span class="o">[</span><span class="kt">RequestChannel</span><span class="kt">.</span><span class="kt">Response</span><span class="o">]</span><span class="o">]</span><span class="o">(</span><span class="n">numProcessors</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上图的API Layer中的线程对应的就是Handler ThreadPool中的线程。其初始化过程也在KafkaServer类的startup方法中完成。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">requestHandlerPool</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">KafkaRequestHandlerPool</span><span class="o">(</span><span class="n">config</span><span class="o">.</span><span class="n">brokerId</span><span class="o">,</span> <span class="n">socketServer</span><span class="o">.</span><span class="n">requestChannel</span><span class="o">,</span> <span class="n">apis</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">numIoThreads</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到其参数有上面socketServer对象中的字段requestChannel，与我们的预期一致。</p>
+<p>下面分析socketServer.startup方法的逻辑。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">startup</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">this</span><span class="o">.</span><span class="n">synchronized</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+    <span class="n">endpoints</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">foreach</span> <span class="o">{</span> <span class="n">endpoint</span> <span class="k">=&gt;</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+      <span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="n">processorBeginIndex</span> <span class="n">until</span> <span class="n">processorEndIndex</span><span class="o">)</span>
+        <span class="n">processors</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="k">=</span> <span class="n">newProcessor</span><span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">connectionQuotas</span><span class="o">,</span> <span class="n">protocol</span><span class="o">)</span>
+
+      <span class="k">val</span> <span class="n">acceptor</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Acceptor</span><span class="o">(</span><span class="n">endpoint</span><span class="o">,</span> <span class="n">sendBufferSize</span><span class="o">,</span> <span class="n">recvBufferSize</span><span class="o">,</span> <span class="n">brokerId</span><span class="o">,</span>
+        <span class="n">processors</span><span class="o">.</span><span class="n">slice</span><span class="o">(</span><span class="n">processorBeginIndex</span><span class="o">,</span> <span class="n">processorEndIndex</span><span class="o">)</span><span class="o">,</span> <span class="n">connectionQuotas</span><span class="o">)</span>
+      <span class="n">acceptors</span><span class="o">.</span><span class="n">put</span><span class="o">(</span><span class="n">endpoint</span><span class="o">,</span> <span class="n">acceptor</span><span class="o">)</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+    <span class="o">}</span>
+  <span class="o">}</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>Kafka Server可以监听多个端口，每个端口都对应一个endpoint。默认情况下舰艇9092端口，只有一个endpoint。这里实例化了一个Acceptor对象，该对象包含一个Processor集合。</p>
+<p>在Acceptor对象初始化时做了如下操作：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span><span class="o">[</span><span class="kt">kafka</span><span class="o">]</span> <span class="k">class</span> <span class="nc">Acceptor</span><span class="o">(</span><span class="k">val</span> <span class="n">endPoint</span><span class="k">:</span> <span class="kt">EndPoint</span><span class="o">,</span>
+                              <span class="k">val</span> <span class="n">sendBufferSize</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                              <span class="k">val</span> <span class="n">recvBufferSize</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                              <span class="n">brokerId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                              <span class="n">processors</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">Processor</span><span class="o">]</span><span class="o">,</span>
+                              <span class="n">connectionQuotas</span><span class="k">:</span> <span class="kt">ConnectionQuotas</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">AbstractServerThread</span><span class="o">(</span><span class="n">connectionQuotas</span><span class="o">)</span> <span class="k">with</span> <span class="nc">KafkaMetricsGroup</span> <span class="o">{</span>
+
+  <span class="k">private</span> <span class="k">val</span> <span class="n">nioSelector</span> <span class="k">=</span> <span class="nc">NSelector</span><span class="o">.</span><span class="n">open</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">serverChannel</span> <span class="k">=</span> <span class="n">openServerSocket</span><span class="o">(</span><span class="n">endPoint</span><span class="o">.</span><span class="n">host</span><span class="o">,</span> <span class="n">endPoint</span><span class="o">.</span><span class="n">port</span><span class="o">)</span>
+
+  <span class="k">this</span><span class="o">.</span><span class="n">synchronized</span> <span class="o">{</span>
+    <span class="n">processors</span><span class="o">.</span><span class="n">foreach</span> <span class="o">{</span> <span class="n">processor</span> <span class="k">=&gt;</span>
+      <span class="nc">Utils</span><span class="o">.</span><span class="n">newThread</span><span class="o">(</span><span class="s">&#34;kafka-network-thread-%d-%s-%d&#34;</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">brokerId</span><span class="o">,</span> <span class="n">endPoint</span><span class="o">.</span><span class="n">protocolType</span><span class="o">.</span><span class="n">toString</span><span class="o">,</span> <span class="n">processor</span><span class="o">.</span><span class="n">id</span><span class="o">)</span><span class="o">,</span> <span class="n">processor</span><span class="o">,</span> <span class="kc">false</span><span class="o">)</span><span class="o">.</span><span class="n">start</span><span class="o">(</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到它有一个Selector，然后启动了其中的每一个Processor。每个Processor初始化时都会实例化一个Selector。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">val</span> <span class="n">selector</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">KSelector</span><span class="o">(</span>
+  <span class="n">maxRequestSize</span><span class="o">,</span>
+  <span class="n">connectionsMaxIdleMs</span><span class="o">,</span>
+  <span class="n">metrics</span><span class="o">,</span>
+  <span class="n">time</span><span class="o">,</span>
+  <span class="s">&#34;socket-server&#34;</span><span class="o">,</span>
+  <span class="n">metricTags</span><span class="o">,</span>
+  <span class="kc">false</span><span class="o">,</span>
+  <span class="nc">ChannelBuilders</span><span class="o">.</span><span class="n">create</span><span class="o">(</span><span class="n">protocol</span><span class="o">,</span> <span class="nc">Mode</span><span class="o">.</span><span class="nc">SERVER</span><span class="o">,</span> <span class="nc">LoginType</span><span class="o">.</span><span class="nc">SERVER</span><span class="o">,</span> <span class="n">channelConfigs</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>还会初始化一个队列，用来保存这个Processor维护的SocketChannel。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">val</span> <span class="n">newConnections</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ConcurrentLinkedQueue</span><span class="o">[</span><span class="kt">SocketChannel</span><span class="o">]</span><span class="o">(</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>先回到Acceptor的run方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">run</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">serverChannel</span><span class="o">.</span><span class="n">register</span><span class="o">(</span><span class="n">nioSelector</span><span class="o">,</span> <span class="nc">SelectionKey</span><span class="o">.</span><span class="nc">OP_ACCEPT</span><span class="o">)</span>
+  <span class="n">startupComplete</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="k">var</span> <span class="n">currentProcessor</span> <span class="k">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="o">(</span><span class="n">isRunning</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">try</span> <span class="o">{</span>
+        <span class="k">val</span> <span class="n">ready</span> <span class="k">=</span> <span class="n">nioSelector</span><span class="o">.</span><span class="n">select</span><span class="o">(</span><span class="mi">500</span><span class="o">)</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">ready</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+          <span class="k">val</span> <span class="n">keys</span> <span class="k">=</span> <span class="n">nioSelector</span><span class="o">.</span><span class="n">selectedKeys</span><span class="o">(</span><span class="o">)</span>
+          <span class="k">val</span> <span class="n">iter</span> <span class="k">=</span> <span class="n">keys</span><span class="o">.</span><span class="n">iterator</span><span class="o">(</span><span class="o">)</span>
+          <span class="k">while</span> <span class="o">(</span><span class="n">iter</span><span class="o">.</span><span class="n">hasNext</span> <span class="o">&amp;&amp;</span> <span class="n">isRunning</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">try</span> <span class="o">{</span>
+              <span class="k">val</span> <span class="n">key</span> <span class="k">=</span> <span class="n">iter</span><span class="o">.</span><span class="n">next</span>
+              <span class="n">iter</span><span class="o">.</span><span class="n">remove</span><span class="o">(</span><span class="o">)</span>
+              <span class="k">if</span> <span class="o">(</span><span class="n">key</span><span class="o">.</span><span class="n">isAcceptable</span><span class="o">)</span>
+                <span class="n">accept</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="n">processors</span><span class="o">(</span><span class="n">currentProcessor</span><span class="o">)</span><span class="o">)</span>
+              <span class="k">else</span>
+                <span class="k">throw</span> <span class="k">new</span> <span class="nc">IllegalStateException</span><span class="o">(</span><span class="s">&#34;Unrecognized key state for acceptor thread.&#34;</span><span class="o">)</span>
+
+              <span class="c1">// round robin to the next processor thread
+</span><span class="c1"></span>              <span class="n">currentProcessor</span> <span class="k">=</span> <span class="o">(</span><span class="n">currentProcessor</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span> <span class="o">%</span> <span class="n">processors</span><span class="o">.</span><span class="n">length</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+              <span class="k">case</span> <span class="n">e</span><span class="k">:</span> <span class="kt">Throwable</span> <span class="o">=&gt;</span> <span class="n">error</span><span class="o">(</span><span class="s">&#34;Error while accepting connection&#34;</span><span class="o">,</span> <span class="n">e</span><span class="o">)</span>
+            <span class="o">}</span>
+          <span class="o">}</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+      <span class="k">catch</span> <span class="o">{</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+        
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>它的主要逻辑是注册了OP_ACCEPT事件，然后开始不断地循环。当有连接进来时，从processors集合中选一个Processor，在accept方法中，接收这个连接，构造一个SocketChannel对象，将其放入到Processor的newConnections队列中。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">accept</span><span class="o">(</span><span class="n">key</span><span class="k">:</span> <span class="kt">SelectionKey</span><span class="o">,</span> <span class="n">processor</span><span class="k">:</span> <span class="kt">Processor</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">serverSocketChannel</span> <span class="k">=</span> <span class="n">key</span><span class="o">.</span><span class="n">channel</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">ServerSocketChannel</span><span class="o">]</span>
+  <span class="k">val</span> <span class="n">socketChannel</span> <span class="k">=</span> <span class="n">serverSocketChannel</span><span class="o">.</span><span class="n">accept</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">try</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+    <span class="n">processor</span><span class="o">.</span><span class="n">accept</span><span class="o">(</span><span class="n">socketChannel</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="k">def</span> <span class="n">accept</span><span class="o">(</span><span class="n">socketChannel</span><span class="k">:</span> <span class="kt">SocketChannel</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">newConnections</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="n">socketChannel</span><span class="o">)</span>
+  <span class="n">wakeup</span><span class="o">(</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>然后来到Processor的run方法，如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">override</span> <span class="k">def</span> <span class="n">run</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">startupComplete</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">while</span> <span class="o">(</span><span class="n">isRunning</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="c1">// setup any new connections that have been queued up
+</span><span class="c1"></span>      <span class="n">configureNewConnections</span><span class="o">(</span><span class="o">)</span>
+      <span class="c1">// register any new responses for writing
+</span><span class="c1"></span>      <span class="n">processNewResponses</span><span class="o">(</span><span class="o">)</span>
+      <span class="n">poll</span><span class="o">(</span><span class="o">)</span>
+      <span class="n">processCompletedReceives</span><span class="o">(</span><span class="o">)</span>
+      <span class="n">processCompletedSends</span><span class="o">(</span><span class="o">)</span>
+      <span class="n">processDisconnected</span><span class="o">(</span><span class="o">)</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+    <span class="o">}</span>
+  <span class="o">}</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在第一步configureNewConnections中，给队列中的SocketChannel注册OP_READ事件。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">configureNewConnections</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">while</span> <span class="o">(</span><span class="o">!</span><span class="n">newConnections</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">channel</span> <span class="k">=</span> <span class="n">newConnections</span><span class="o">.</span><span class="n">poll</span><span class="o">(</span><span class="o">)</span>
+    <span class="k">try</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+      <span class="n">selector</span><span class="o">.</span><span class="n">register</span><span class="o">(</span><span class="n">connectionId</span><span class="o">,</span> <span class="n">channel</span><span class="o">)</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="n">public</span> <span class="n">void</span> <span class="n">register</span><span class="o">(</span><span class="nc">String</span> <span class="n">id</span><span class="o">,</span> <span class="nc">SocketChannel</span> <span class="n">socketChannel</span><span class="o">)</span> <span class="n">throws</span> <span class="nc">ClosedChannelException</span> <span class="o">{</span>
+    <span class="nc">SelectionKey</span> <span class="n">key</span> <span class="k">=</span> <span class="n">socketChannel</span><span class="o">.</span><span class="n">register</span><span class="o">(</span><span class="n">nioSelector</span><span class="o">,</span> <span class="nc">SelectionKey</span><span class="o">.</span><span class="nc">OP_READ</span><span class="o">)</span><span class="o">;</span>
+    <span class="nc">KafkaChannel</span> <span class="n">channel</span> <span class="k">=</span> <span class="n">channelBuilder</span><span class="o">.</span><span class="n">buildChannel</span><span class="o">(</span><span class="n">id</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">maxReceiveSize</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">key</span><span class="o">.</span><span class="n">attach</span><span class="o">(</span><span class="n">channel</span><span class="o">)</span><span class="o">;</span>
+    <span class="k">this</span><span class="o">.</span><span class="n">channels</span><span class="o">.</span><span class="n">put</span><span class="o">(</span><span class="n">id</span><span class="o">,</span> <span class="n">channel</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>而具体对读事件的处理封装在了KafkaRequestHandlerPool中。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">KafkaRequestHandlerPool</span><span class="o">(</span><span class="k">val</span> <span class="n">brokerId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                              <span class="k">val</span> <span class="n">requestChannel</span><span class="k">:</span> <span class="kt">RequestChannel</span><span class="o">,</span>
+                              <span class="k">val</span> <span class="n">apis</span><span class="k">:</span> <span class="kt">KafkaApis</span><span class="o">,</span>
+                              <span class="n">numThreads</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Logging</span> <span class="k">with</span> <span class="nc">KafkaMetricsGroup</span> <span class="o">{</span>
+
+  <span class="cm">/*</span><span class="cm"> a meter to track the average free capacity of the request handlers </span><span class="cm">*/</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">aggregateIdleMeter</span> <span class="k">=</span> <span class="n">newMeter</span><span class="o">(</span><span class="s">&#34;RequestHandlerAvgIdlePercent&#34;</span><span class="o">,</span> <span class="s">&#34;percent&#34;</span><span class="o">,</span> <span class="nc">TimeUnit</span><span class="o">.</span><span class="nc">NANOSECONDS</span><span class="o">)</span>
+
+  <span class="k">this</span><span class="o">.</span><span class="n">logIdent</span> <span class="k">=</span> <span class="s">&#34;[Kafka Request Handler on Broker &#34;</span> <span class="o">+</span> <span class="n">brokerId</span> <span class="o">+</span> <span class="s">&#34;], &#34;</span>
+  <span class="k">val</span> <span class="n">threads</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Array</span><span class="o">[</span><span class="kt">Thread</span><span class="o">]</span><span class="o">(</span><span class="n">numThreads</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">runnables</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Array</span><span class="o">[</span><span class="kt">KafkaRequestHandler</span><span class="o">]</span><span class="o">(</span><span class="n">numThreads</span><span class="o">)</span>
+  <span class="k">for</span><span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="mi">0</span> <span class="n">until</span> <span class="n">numThreads</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">runnables</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">KafkaRequestHandler</span><span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">brokerId</span><span class="o">,</span> <span class="n">aggregateIdleMeter</span><span class="o">,</span> <span class="n">numThreads</span><span class="o">,</span> <span class="n">requestChannel</span><span class="o">,</span> <span class="n">apis</span><span class="o">)</span>
+    <span class="n">threads</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Utils</span><span class="o">.</span><span class="n">daemonThread</span><span class="o">(</span><span class="s">&#34;kafka-request-handler-&#34;</span> <span class="o">+</span> <span class="n">i</span><span class="o">,</span> <span class="n">runnables</span><span class="o">(</span><span class="n">i</span><span class="o">)</span><span class="o">)</span>
+    <span class="n">threads</span><span class="o">(</span><span class="n">i</span><span class="o">)</span><span class="o">.</span><span class="n">start</span><span class="o">(</span><span class="o">)</span>
+  <span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中KafkaRequestHandler封装了业务逻辑。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">run</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">while</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="k">var</span> <span class="n">req</span> <span class="k">:</span> <span class="kt">RequestChannel</span><span class="kt">.</span><span class="kt">Request</span> <span class="o">=</span> <span class="kc">null</span>
+      <span class="k">while</span> <span class="o">(</span><span class="n">req</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">val</span> <span class="n">startSelectTime</span> <span class="k">=</span> <span class="nc">SystemTime</span><span class="o">.</span><span class="n">nanoseconds</span>
+        <span class="n">req</span> <span class="k">=</span> <span class="n">requestChannel</span><span class="o">.</span><span class="n">receiveRequest</span><span class="o">(</span><span class="mi">300</span><span class="o">)</span>
+        <span class="k">val</span> <span class="n">idleTime</span> <span class="k">=</span> <span class="nc">SystemTime</span><span class="o">.</span><span class="n">nanoseconds</span> <span class="o">-</span> <span class="n">startSelectTime</span>
+        <span class="n">aggregateIdleMeter</span><span class="o">.</span><span class="n">mark</span><span class="o">(</span><span class="n">idleTime</span> <span class="o">/</span> <span class="n">totalHandlerThreads</span><span class="o">)</span>
+      <span class="o">}</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+      <span class="n">apis</span><span class="o">.</span><span class="n">handle</span><span class="o">(</span><span class="n">req</span><span class="o">)</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="n">e</span><span class="k">:</span> <span class="kt">Throwable</span> <span class="o">=&gt;</span> <span class="n">error</span><span class="o">(</span><span class="s">&#34;Exception when handling request&#34;</span><span class="o">,</span> <span class="n">e</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从requestChannel中的requestQueue取出请求，进行处理。</p>
+<h2 id="api层">API层</h2>
+<p>上面的代码中调用了apis.handle方法。这个apis对象是在初始化时传入的。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">apis</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">KafkaApis</span><span class="o">(</span><span class="n">socketServer</span><span class="o">.</span><span class="n">requestChannel</span><span class="o">,</span> <span class="n">replicaManager</span><span class="o">,</span> <span class="n">groupCoordinator</span><span class="o">,</span>
+  <span class="n">kafkaController</span><span class="o">,</span> <span class="n">zkUtils</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">brokerId</span><span class="o">,</span> <span class="n">config</span><span class="o">,</span> <span class="n">metadataCache</span><span class="o">,</span> <span class="n">metrics</span><span class="o">,</span> <span class="n">authorizer</span><span class="o">)</span>
+<span class="n">requestHandlerPool</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">KafkaRequestHandlerPool</span><span class="o">(</span><span class="n">config</span><span class="o">.</span><span class="n">brokerId</span><span class="o">,</span> <span class="n">socketServer</span><span class="o">.</span><span class="n">requestChannel</span><span class="o">,</span> <span class="n">apis</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">numIoThreads</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>注意到它也将socketServer对象的requestChannel字段作为它的构造器参数传入其中。</p>
+<p>handle方法的内容如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">handle</span><span class="o">(</span><span class="n">request</span><span class="k">:</span> <span class="kt">RequestChannel</span><span class="kt">.</span><span class="kt">Request</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="n">trace</span><span class="o">(</span><span class="s">&#34;Handling request:%s from connection %s;securityProtocol:%s,principal:%s&#34;</span><span class="o">.</span>
+      <span class="n">format</span><span class="o">(</span><span class="n">request</span><span class="o">.</span><span class="n">requestDesc</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span><span class="o">,</span> <span class="n">request</span><span class="o">.</span><span class="n">connectionId</span><span class="o">,</span> <span class="n">request</span><span class="o">.</span><span class="n">securityProtocol</span><span class="o">,</span> <span class="n">request</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">principal</span><span class="o">)</span><span class="o">)</span>
+    <span class="nc">ApiKeys</span><span class="o">.</span><span class="n">forId</span><span class="o">(</span><span class="n">request</span><span class="o">.</span><span class="n">requestId</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">PRODUCE</span> <span class="k">=&gt;</span> <span class="n">handleProducerRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">FETCH</span> <span class="k">=&gt;</span> <span class="n">handleFetchRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">LIST_OFFSETS</span> <span class="k">=&gt;</span> <span class="n">handleOffsetRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">METADATA</span> <span class="k">=&gt;</span> <span class="n">handleTopicMetadataRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">LEADER_AND_ISR</span> <span class="k">=&gt;</span> <span class="n">handleLeaderAndIsrRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">STOP_REPLICA</span> <span class="k">=&gt;</span> <span class="n">handleStopReplicaRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">UPDATE_METADATA_KEY</span> <span class="k">=&gt;</span> <span class="n">handleUpdateMetadataRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">CONTROLLED_SHUTDOWN_KEY</span> <span class="k">=&gt;</span> <span class="n">handleControlledShutdownRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">OFFSET_COMMIT</span> <span class="k">=&gt;</span> <span class="n">handleOffsetCommitRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">OFFSET_FETCH</span> <span class="k">=&gt;</span> <span class="n">handleOffsetFetchRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">GROUP_COORDINATOR</span> <span class="k">=&gt;</span> <span class="n">handleGroupCoordinatorRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">JOIN_GROUP</span> <span class="k">=&gt;</span> <span class="n">handleJoinGroupRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">HEARTBEAT</span> <span class="k">=&gt;</span> <span class="n">handleHeartbeatRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">LEAVE_GROUP</span> <span class="k">=&gt;</span> <span class="n">handleLeaveGroupRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">SYNC_GROUP</span> <span class="k">=&gt;</span> <span class="n">handleSyncGroupRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">DESCRIBE_GROUPS</span> <span class="k">=&gt;</span> <span class="n">handleDescribeGroupRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">LIST_GROUPS</span> <span class="k">=&gt;</span> <span class="n">handleListGroupsRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">SASL_HANDSHAKE</span> <span class="k">=&gt;</span> <span class="n">handleSaslHandshakeRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">API_VERSIONS</span> <span class="k">=&gt;</span> <span class="n">handleApiVersionsRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="n">requestId</span> <span class="k">=&gt;</span> <span class="k">throw</span> <span class="k">new</span> <span class="nc">KafkaException</span><span class="o">(</span><span class="s">&#34;Unknown api code &#34;</span> <span class="o">+</span> <span class="n">requestId</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+   
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span> <span class="k">finally</span>
+    <span class="n">request</span><span class="o">.</span><span class="n">apiLocalCompleteTimeMs</span> <span class="k">=</span> <span class="nc">SystemTime</span><span class="o">.</span><span class="n">milliseconds</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>它将请求对象中的ApiKeys取出，根据不同的case做不同的处理。这个Key是在构造请求时传入的，在Producer和Consumer端已经见过多次。比如发送数据时的请求：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">RequestSend</span> <span class="n">send</span> <span class="o">=</span> <span class="k">new</span> <span class="n">RequestSend</span><span class="o">(</span><span class="n">Integer</span><span class="o">.</span><span class="na">toString</span><span class="o">(</span><span class="n">destination</span><span class="o">)</span><span class="o">,</span>
+                                   <span class="k">this</span><span class="o">.</span><span class="na">client</span><span class="o">.</span><span class="na">nextRequestHeader</span><span class="o">(</span><span class="n">ApiKeys</span><span class="o">.</span><span class="na">PRODUCE</span><span class="o">)</span><span class="o">,</span>
+                                   <span class="n">request</span><span class="o">.</span><span class="na">toStruct</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>获取metadata的请求：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">RequestSend</span> <span class="n">send</span> <span class="o">=</span> <span class="k">new</span> <span class="n">RequestSend</span><span class="o">(</span><span class="n">node</span><span class="o">,</span> <span class="n">nextRequestHeader</span><span class="o">(</span><span class="n">ApiKeys</span><span class="o">.</span><span class="na">METADATA</span><span class="o">)</span><span class="o">,</span> <span class="n">metadata</span><span class="o">.</span><span class="na">toStruct</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>以Produce请求为例，调用handleProducerRequest方法进行处理。处理完成后，会执行如下操作：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">requestChannel</span><span class="o">.</span><span class="n">sendResponse</span><span class="o">(</span><span class="k">new</span> <span class="nc">RequestChannel</span><span class="o">.</span><span class="nc">Response</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="k">new</span> <span class="nc">ResponseSend</span><span class="o">(</span><span class="n">request</span><span class="o">.</span><span class="n">connectionId</span><span class="o">,</span> <span class="n">respHeader</span><span class="o">,</span> <span class="n">respBody</span><span class="o">)</span><span class="o">)</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个requestChannel就是初始化时传入的构造器参数。正因为了有了这个参数，所以API层的这些方法执行完后可以将响应写回到requestChannel的responseQueues中。</p>
+<h2 id="总结">总结</h2>
+<p>Kafka Server的网络层用的是多线程多Selector的Reactor模式，网络层获取到请求后，放入一个共享队列，会有其他线程取出交给API层来处理。不同的请求交给不同的方法。处理完成后又将响应写入到共享队列，由网络层将其发送给客户端。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-04-15
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        
+        <a class="next" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E7%BD%91%E7%BB%9C%E5%B1%82reactor%E6%A8%A1%E5%BC%8F%E4%BB%8B%E7%BB%8D/">
+            <span class="next-text nav-default">深入Kafka源码 - Kafka Server端的网络层（Reactor模式介绍）</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>
