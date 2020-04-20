@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Kafka源码 - Kafka Server端的定时任务（时间轮的工作原理） - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="时间轮的整体结构 如上图所示，时间轮可以描绘为这样一个环形结构。任务存放在每个单元格中。不过并不是一个单元格就对应一个任务，而是一个单元格对应" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E6%97%B6%E9%97%B4%E8%BD%AE%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Kafka源码 - Kafka Server端的定时任务（时间轮的工作原理）" />
+<meta property="og:description" content="时间轮的整体结构 如上图所示，时间轮可以描绘为这样一个环形结构。任务存放在每个单元格中。不过并不是一个单元格就对应一个任务，而是一个单元格对应" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E6%97%B6%E9%97%B4%E8%BD%AE%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/" />
+<meta property="article:published_time" content="2020-04-19T15:11:40+08:00" />
+<meta property="article:modified_time" content="2020-04-19T15:11:40+08:00" />
+<meta itemprop="name" content="深入Kafka源码 - Kafka Server端的定时任务（时间轮的工作原理）">
+<meta itemprop="description" content="时间轮的整体结构 如上图所示，时间轮可以描绘为这样一个环形结构。任务存放在每个单元格中。不过并不是一个单元格就对应一个任务，而是一个单元格对应">
+<meta itemprop="datePublished" content="2020-04-19T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-04-19T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="3349">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Kafka源码 - Kafka Server端的定时任务（时间轮的工作原理）"/>
+<meta name="twitter:description" content="时间轮的整体结构 如上图所示，时间轮可以描绘为这样一个环形结构。任务存放在每个单元格中。不过并不是一个单元格就对应一个任务，而是一个单元格对应"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Kafka源码 - Kafka Server端的定时任务（时间轮的工作原理）</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-04-19 </span>
+        <div class="post-category">
+            <a href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/"> 大数据 </a>
+            <a href="/categories/kafka/"> kafka </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#时间轮的整体结构">时间轮的整体结构</a></li>
+    <li><a href="#timingwheel">TimingWheel</a></li>
+    <li><a href="#timertasklisttimertaskentry和timertask">TimerTaskList、TimerTaskEntry和TimerTask</a></li>
+    <li><a href="#时间轮的工作原理">时间轮的工作原理</a></li>
+    <li><a href="#时间轮降级">时间轮降级</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <h2 id="时间轮的整体结构">时间轮的整体结构</h2>
+<center><img src="/大数据/kafka/Kafka Server端的定时任务/时间轮结构.png" width = "450" height = "250"/></center>
+<p>如上图所示，时间轮可以描绘为这样一个环形结构。任务存放在每个单元格中。不过并不是一个单元格就对应一个任务，而是一个单元格对应一个列表。这个列表是一个双向链表，其中每个元素才对应一个定时任务。</p>
+<p>具体而言，上图的一个环对应在代码中就是一个TimingWheel对象，一个TimingWheel对象持有一个数组，数组中的元素类型为TimerTaskList，即一个任务列表。TimerTaskList列表中的元素为TimerTaskEntry，TimerTaskEntry对应一个定时任务，该类的TimerTask类型的字段timerTask表示一个具体的任务。TimerTask类继承了Runnable接口，其实现类有DelayedFetch、DelayedProduce、DelayedHearbeat、DelayedJoin。服务端处理这几个类型的请求时，不会立刻响应，其相应的逻辑其实都传入了上面这几个类，由时间轮延时执行。</p>
+<p>那么为什么Kafka的定时任务组件叫做DelayedOperationPurgatory呢？它与TimingWheel的关系是什么？</p>
+<p>这里简单看一下Kafka Server端的架构：</p>
+<center><img src="/大数据/kafka/Kafka Server端的定时任务/Kafka Server端架构.png" width = "750" height = "480"/></center>
+<p>其中ReplicaManager和GroupCoordinator负责执行上面提到的几个Delay任务。比如在构造ReplicaManager时就会进行这样的初始化：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">delayedProducePurgatory</span> <span class="k">=</span> <span class="nc">DelayedOperationPurgatory</span><span class="o">[</span><span class="kt">DelayedProduce</span><span class="o">]</span><span class="o">(</span>
+  <span class="n">purgatoryName</span> <span class="k">=</span> <span class="s">&#34;Produce&#34;</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">brokerId</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">producerPurgatoryPurgeIntervalRequests</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">delayedFetchPurgatory</span> <span class="k">=</span> <span class="nc">DelayedOperationPurgatory</span><span class="o">[</span><span class="kt">DelayedFetch</span><span class="o">]</span><span class="o">(</span>
+  <span class="n">purgatoryName</span> <span class="k">=</span> <span class="s">&#34;Fetch&#34;</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">brokerId</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">fetchPurgatoryPurgeIntervalRequests</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>而在实例化DelayedOperationPurgatory时会构造SystemTimer。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">object</span> <span class="nc">DelayedOperationPurgatory</span> <span class="o">{</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">[</span><span class="kt">T</span> <span class="k">&lt;:</span> <span class="kt">DelayedOperation</span><span class="o">]</span><span class="o">(</span><span class="n">purgatoryName</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+                                   <span class="n">brokerId</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="o">,</span>
+                                   <span class="n">purgeInterval</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1000</span><span class="o">)</span><span class="k">:</span> <span class="kt">DelayedOperationPurgatory</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">timer</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">SystemTimer</span><span class="o">(</span><span class="n">purgatoryName</span><span class="o">)</span>
+    <span class="k">new</span> <span class="nc">DelayedOperationPurgatory</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span><span class="o">(</span><span class="n">purgatoryName</span><span class="o">,</span> <span class="n">timer</span><span class="o">,</span> <span class="n">brokerId</span><span class="o">,</span> <span class="n">purgeInterval</span><span class="o">)</span>
+  <span class="o">}</span>
+
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>而TimingWheel就是SystemTimer的一个字段。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">val</span> <span class="n">timingWheel</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">TimingWheel</span><span class="o">(</span>
+  <span class="n">tickMs</span> <span class="k">=</span> <span class="n">tickMs</span><span class="o">,</span>
+  <span class="n">wheelSize</span> <span class="k">=</span> <span class="n">wheelSize</span><span class="o">,</span>
+  <span class="n">startMs</span> <span class="k">=</span> <span class="n">startMs</span><span class="o">,</span>
+  <span class="n">taskCounter</span> <span class="k">=</span> <span class="n">taskCounter</span><span class="o">,</span>
+  <span class="n">delayQueue</span>
+<span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="timingwheel">TimingWheel</h2>
+<p>这个类有如下几个重要字段。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span><span class="o">[</span><span class="kt">timer</span><span class="o">]</span> <span class="k">class</span> <span class="nc">TimingWheel</span><span class="o">(</span><span class="n">tickMs</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span> <span class="n">wheelSize</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">startMs</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span> <span class="n">taskCounter</span><span class="k">:</span> <span class="kt">AtomicInteger</span><span class="o">,</span> <span class="n">queue</span><span class="k">:</span> <span class="kt">DelayQueue</span><span class="o">[</span><span class="kt">TimerTaskList</span><span class="o">]</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">val</span> <span class="n">interval</span> <span class="k">=</span> <span class="n">tickMs</span> <span class="o">*</span> <span class="n">wheelSize</span>
+  <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">val</span> <span class="n">buckets</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">.</span><span class="n">tabulate</span><span class="o">[</span><span class="kt">TimerTaskList</span><span class="o">]</span><span class="o">(</span><span class="n">wheelSize</span><span class="o">)</span> <span class="o">{</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="k">new</span> <span class="nc">TimerTaskList</span><span class="o">(</span><span class="n">taskCounter</span><span class="o">)</span> <span class="o">}</span>
+
+  <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">var</span> <span class="n">currentTime</span> <span class="k">=</span> <span class="n">startMs</span> <span class="o">-</span> <span class="o">(</span><span class="n">startMs</span> <span class="o">%</span> <span class="n">tickMs</span><span class="o">)</span> <span class="c1">// rounding down to multiple of tickMs
+</span><span class="c1"></span>
+  <span class="c1">// overflowWheel can potentially be updated and read by two concurrent threads through add().
+</span><span class="c1"></span>  <span class="c1">// Therefore, it needs to be volatile due to the issue of Double-Checked Locking pattern with JVM
+</span><span class="c1"></span>  <span class="nd">@volatile</span> <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">var</span> <span class="n">overflowWheel</span><span class="k">:</span> <span class="kt">TimingWheel</span> <span class="o">=</span> <span class="kc">null</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>tickMs表示一个单元格所代表的时间，默认是1ms。wheelSize表示一个时间轮有多少个单元格，默认是20个。那么interval表示的就是一个时间轮的时间，20ms。buckets是一个长度为20的数组，里面的元素为TimerTaskList类型。注意到TimingWheel有一个字段是overflowWheel，它也是一个TimingWheel类型，说明TimingWheel是一个层级结构。</p>
+<p>在TimingWheel的addOverflowWheel方法中会对overflowWheel做初始化。暂时先不用去管在什么情况下会调用到该方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">overflowWheel</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">TimingWheel</span><span class="o">(</span>
+  <span class="n">tickMs</span> <span class="k">=</span> <span class="n">interval</span><span class="o">,</span>
+  <span class="n">wheelSize</span> <span class="k">=</span> <span class="n">wheelSize</span><span class="o">,</span>
+  <span class="n">startMs</span> <span class="k">=</span> <span class="n">currentTime</span><span class="o">,</span>
+  <span class="n">taskCounter</span> <span class="k">=</span> <span class="n">taskCounter</span><span class="o">,</span>
+  <span class="n">queue</span>
+<span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中的tickMs字段的值变成了外层TimingWheel的interval字段的值。也就是说，第一层TimingWheel的单元格是1ms，整个时间轮是20ms，那么第二层时间轮每个单元格就是20ms，整个时间轮是400ms。</p>
+<center><img src="/大数据/kafka/Kafka Server端的定时任务/多层时间轮.png" width = "550" height = "500"/></center>
+<p>稍后解释这个层次结构的作用。</p>
+<h2 id="timertasklisttimertaskentry和timertask">TimerTaskList、TimerTaskEntry和TimerTask</h2>
+<p>每个单元格存放的是一个TimerTaskList。有如下重要字段：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span><span class="o">[</span><span class="kt">timer</span><span class="o">]</span> <span class="k">class</span> <span class="nc">TimerTaskList</span><span class="o">(</span><span class="n">taskCounter</span><span class="k">:</span> <span class="kt">AtomicInteger</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Delayed</span> <span class="o">{</span>
+
+  <span class="c1">// TimerTaskList forms a doubly linked cyclic list using a dummy root entry
+</span><span class="c1"></span>  <span class="c1">// root.next points to the head
+</span><span class="c1"></span>  <span class="c1">// root.prev points to the tail
+</span><span class="c1"></span>  <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">val</span> <span class="n">root</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">TimerTaskEntry</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span>
+  <span class="n">root</span><span class="o">.</span><span class="n">next</span> <span class="k">=</span> <span class="n">root</span>
+  <span class="n">root</span><span class="o">.</span><span class="n">prev</span> <span class="k">=</span> <span class="n">root</span>
+
+  <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">val</span> <span class="n">expiration</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">AtomicLong</span><span class="o">(</span><span class="o">-</span><span class="mi">1L</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中TimerTaskEntry如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span><span class="o">[</span><span class="kt">timer</span><span class="o">]</span> <span class="k">class</span> <span class="nc">TimerTaskEntry</span><span class="o">(</span><span class="k">val</span> <span class="n">timerTask</span><span class="k">:</span> <span class="kt">TimerTask</span><span class="o">,</span> <span class="k">val</span> <span class="n">expirationMs</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Ordered</span><span class="o">[</span><span class="kt">TimerTaskEntry</span><span class="o">]</span> <span class="o">{</span>
+
+  <span class="nd">@volatile</span>
+  <span class="k">var</span> <span class="n">list</span><span class="k">:</span> <span class="kt">TimerTaskList</span> <span class="o">=</span> <span class="kc">null</span>
+  <span class="k">var</span> <span class="n">next</span><span class="k">:</span> <span class="kt">TimerTaskEntry</span> <span class="o">=</span> <span class="kc">null</span>
+  <span class="k">var</span> <span class="n">prev</span><span class="k">:</span> <span class="kt">TimerTaskEntry</span> <span class="o">=</span> <span class="kc">null</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到它有一个字段为timerTask，为TimerTask类型。实现类上面已经提及，就是DelayedFetch、DelayedProduce、DelayedHearbeat、DelayedJoin。由于在TimerTaskEntry中定义了next、prev等字段，因此整个结构变成了双向链表。</p>
+<p>当添加一个任务时，会调用到TimerTaskList中的add方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">timerTaskEntry</span><span class="k">:</span> <span class="kt">TimerTaskEntry</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">var</span> <span class="n">done</span> <span class="k">=</span> <span class="kc">false</span>
+  <span class="k">while</span> <span class="o">(</span><span class="o">!</span><span class="n">done</span><span class="o">)</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+    <span class="n">synchronized</span> <span class="o">{</span>
+      <span class="n">timerTaskEntry</span><span class="o">.</span><span class="n">synchronized</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">timerTaskEntry</span><span class="o">.</span><span class="n">list</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+          <span class="c1">// put the timer task entry to the end of the list. (root.prev points to the tail entry)
+</span><span class="c1"></span>          <span class="k">val</span> <span class="n">tail</span> <span class="k">=</span> <span class="n">root</span><span class="o">.</span><span class="n">prev</span>
+          <span class="n">timerTaskEntry</span><span class="o">.</span><span class="n">next</span> <span class="k">=</span> <span class="n">root</span>
+          <span class="n">timerTaskEntry</span><span class="o">.</span><span class="n">prev</span> <span class="k">=</span> <span class="n">tail</span>
+          <span class="n">timerTaskEntry</span><span class="o">.</span><span class="n">list</span> <span class="k">=</span> <span class="k">this</span>
+          <span class="n">tail</span><span class="o">.</span><span class="n">next</span> <span class="k">=</span> <span class="n">timerTaskEntry</span>
+          <span class="n">root</span><span class="o">.</span><span class="n">prev</span> <span class="k">=</span> <span class="n">timerTaskEntry</span>
+          <span class="n">taskCounter</span><span class="o">.</span><span class="n">incrementAndGet</span><span class="o">(</span><span class="o">)</span>
+          <span class="n">done</span> <span class="k">=</span> <span class="kc">true</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>整个过程就是对现有元素的引用进行修改。一开始列表中只有一个元素，且其中的TimerTaskEntry为null。如下图所示：</p>
+<center><img src="/大数据/kafka/Kafka Server端的定时任务/TaskList1.png" width = "200" height = "200"/></center>
+<p>它既是root，又是tail。它的下一个元素指向自己，上一个元素也指向自己。</p>
+<p>添加一个元素后，变成如下这样：</p>
+<center><img src="/大数据/kafka/Kafka Server端的定时任务/TaskList2.png" width = "200" height = "200"/></center>
+<p>再添加一个元素，变成如下这样：</p>
+<center><img src="/大数据/kafka/Kafka Server端的定时任务/TaskList3.png" width = "320" height = "240"/></center>
+<p>每一次先得到tail节点，即root的上一个节点，将新节点放在tail节点的下游，并将新节点的上一个节点记为tail节点，新节点的下一个节点指向root，root的上一个指向新节点。再次添加时这个上一次最新的节点就成了tail节点。这样添加节点的逻辑就完成了。</p>
+<h2 id="时间轮的工作原理">时间轮的工作原理</h2>
+<p>上面已经了解了时间轮的数据结构，现在来看看其工作原理。</p>
+<p>第一层时间轮每个单元格代表1ms，总共20个单元格，因此这个时间轮能够表示20ms内的定时任务。一开始时间轮指向0，此时有个定时2ms的任务需要添加，那么此时将其添加到2ms处单元格内即可。然后时间不断推移，来到1ms处时，此时该时间轮所能表示的时间便不再是 $$[0,20]$$ ，而是 $$[1,21]$$ 。每次添加任务时，任务本身会有一个过期时间，添加进单元格后会将该单元格的过期时间设置为该值（严格来说应该是设置为取整后的值，即同一个单元格内的任务过期时间会不同，但取整后是相同的）。可以设想，如果在某一个添加完任务后，该单元格的过期时间变了，说明时间轮的指针（其实并没有一个类表示指针，只是用它来描述时间的流逝）已经走过该单元格了。</p>
+<p>如下图，比如一开始时间轮表示 $$[0,20]$$ ，延时1ms的任务放在单元格1中，添加任务后该单元格的过期时间为1ms。假设指针走到单元格5了，此时时间轮表示 $$[5,25]$$ 。如果要添加一个延时为22ms的任务，那么此时仍会添加到单元格1中，添加完后单元格的过期时间发生变化。</p>
+<center><img src="/大数据/kafka/Kafka Server端的定时任务/时间轮结构.png" width = "450" height = "250"/></center>
+<p>当单元格的过期时间发生变化时，会将其添加进执行队列。</p>
+<p>而另一个线程会随着时间推移不断调用advanceClock方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">advanceClock</span><span class="o">(</span><span class="n">timeoutMs</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">var</span> <span class="n">bucket</span> <span class="k">=</span> <span class="n">delayQueue</span><span class="o">.</span><span class="n">poll</span><span class="o">(</span><span class="n">timeoutMs</span><span class="o">,</span> <span class="nc">TimeUnit</span><span class="o">.</span><span class="nc">MILLISECONDS</span><span class="o">)</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">bucket</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">writeLock</span><span class="o">.</span><span class="n">lock</span><span class="o">(</span><span class="o">)</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="k">while</span> <span class="o">(</span><span class="n">bucket</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">timingWheel</span><span class="o">.</span><span class="n">advanceClock</span><span class="o">(</span><span class="n">bucket</span><span class="o">.</span><span class="n">getExpiration</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+        <span class="n">bucket</span><span class="o">.</span><span class="n">flush</span><span class="o">(</span><span class="n">reinsert</span><span class="o">)</span>
+        <span class="n">bucket</span> <span class="k">=</span> <span class="n">delayQueue</span><span class="o">.</span><span class="n">poll</span><span class="o">(</span><span class="o">)</span>
+      <span class="o">}</span>
+    <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+      <span class="n">writeLock</span><span class="o">.</span><span class="n">unlock</span><span class="o">(</span><span class="o">)</span>
+    <span class="o">}</span>
+    <span class="kc">true</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+    <span class="kc">false</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>该方法从队列中取出bucket，然后执行其中的任务。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">val</span> <span class="n">reinsert</span> <span class="k">=</span> <span class="o">(</span><span class="n">timerTaskEntry</span><span class="k">:</span> <span class="kt">TimerTaskEntry</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">addTimerTaskEntry</span><span class="o">(</span><span class="n">timerTaskEntry</span><span class="o">)</span>
+
+<span class="k">private</span> <span class="k">def</span> <span class="n">addTimerTaskEntry</span><span class="o">(</span><span class="n">timerTaskEntry</span><span class="k">:</span> <span class="kt">TimerTaskEntry</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">timingWheel</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="n">timerTaskEntry</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// Already expired or cancelled
+</span><span class="c1"></span>    <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">timerTaskEntry</span><span class="o">.</span><span class="n">cancelled</span><span class="o">)</span>
+      <span class="n">taskExecutor</span><span class="o">.</span><span class="n">submit</span><span class="o">(</span><span class="n">timerTaskEntry</span><span class="o">.</span><span class="n">timerTask</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>reinsert定义的函数会在bucket.flush方法中执行：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">flush</span><span class="o">(</span><span class="n">f</span><span class="k">:</span> <span class="o">(</span><span class="kt">TimerTaskEntry</span><span class="o">)</span><span class="o">=&gt;</span><span class="nc">Unit</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="n">synchronized</span> <span class="o">{</span>
+    <span class="k">var</span> <span class="n">head</span> <span class="k">=</span> <span class="n">root</span><span class="o">.</span><span class="n">next</span>
+    <span class="k">while</span> <span class="o">(</span><span class="n">head</span> <span class="n">ne</span> <span class="n">root</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">remove</span><span class="o">(</span><span class="n">head</span><span class="o">)</span>
+      <span class="n">f</span><span class="o">(</span><span class="n">head</span><span class="o">)</span>
+      <span class="n">head</span> <span class="k">=</span> <span class="n">root</span><span class="o">.</span><span class="n">next</span>
+    <span class="o">}</span>
+    <span class="n">expiration</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="o">-</span><span class="mi">1L</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到这里就是从TimerTaskList的root的下一个任务开始逐个执行。</p>
+<p>为什么说时间轮的时间复杂度为 $$O(1)$$ ？因为添加的过程中直接靠索引找到需要添加的单元格，直接将任务添加进去，没有排序的过程。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">virtualId</span> <span class="k">=</span> <span class="n">expiration</span> <span class="o">/</span> <span class="n">tickMs</span>
+<span class="k">val</span> <span class="n">bucket</span> <span class="k">=</span> <span class="n">buckets</span><span class="o">(</span><span class="o">(</span><span class="n">virtualId</span> <span class="o">%</span> <span class="n">wheelSize</span><span class="o">.</span><span class="n">toLong</span><span class="o">)</span><span class="o">.</span><span class="n">toInt</span><span class="o">)</span>
+<span class="n">bucket</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="n">timerTaskEntry</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>而bucket.add方法之前已经分析过，就是引用地址的变换。</p>
+<h2 id="时间轮降级">时间轮降级</h2>
+<p>随着时间的推移，时间轮表示的时间会发生变化，但总的时间跨度是固定的，始终在currentTime和currentTime+interval之间。这时时间轮的层级结构就派上用场了。</p>
+<p>假设在时刻0时添加了350ms的延时任务。第一级的时间轮一共只能表示 $$[0,20]$$ ，不能满足要求，这时会初始化一个新的时间轮，将任务添加进去。仍然是在TimingWheel的add方法中。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">timerTaskEntry</span><span class="k">:</span> <span class="kt">TimerTaskEntry</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">expiration</span> <span class="k">=</span> <span class="n">timerTaskEntry</span><span class="o">.</span><span class="n">expirationMs</span>
+
+  <span class="k">if</span> <span class="o">(</span><span class="n">timerTaskEntry</span><span class="o">.</span><span class="n">cancelled</span><span class="o">)</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+    <span class="c1">// Out of the interval. Put it into the parent timer
+</span><span class="c1"></span>    <span class="k">if</span> <span class="o">(</span><span class="n">overflowWheel</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="n">addOverflowWheel</span><span class="o">(</span><span class="o">)</span>
+    <span class="n">overflowWheel</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="n">timerTaskEntry</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>注意，新的时间轮的第一个单元格表示的是 $$[0,20]$$ ，而不是从第一级的时间轮的结束时间开始算，即 $$[20,40]$$ 。第二级时间轮总共能够表示 $$[0,400]$$ 。所以350ms的任务可以添加进来，放在了单元格17中。</p>
+<p>如果此时又有450ms的任务进来，那么又会新增一个时间轮，将其放在第三级的单元格1中。</p>
+<center><img src="/大数据/kafka/Kafka Server端的定时任务/多层时间轮添加任务.png" width = "550" height = "450"/></center>
+<p>由于此种定义方式和之前分析过的工作原理，随着时间的流逝，当指针刚刚指到第三层单元格1时（即时间过去400ms），单元格就过期了，而450ms的任务还剩50ms的时间，不能直接执行它的到期操作。这时就会把它降级，重新将其提交到第二层。依此类推。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-04-19
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E7%9A%84%E6%89%A7%E8%A1%8C/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入Kafka源码 - Kafka Server端的定时任务（定时任务的执行）</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1jdk-timer%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/">
+            <span class="next-text nav-default">深入Kafka源码 - Kafka Server端的定时任务（JDK Timer的实现原理）</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

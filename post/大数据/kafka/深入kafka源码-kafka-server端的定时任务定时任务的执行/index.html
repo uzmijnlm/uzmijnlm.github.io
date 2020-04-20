@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Kafka源码 - Kafka Server端的定时任务（定时任务的执行） - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="生产者给服务端发送消息后，服务端不会立刻返回响应，而是创建一个DelayedProduce对象做延迟操作。消费者那边的情况与此类似。 前文已经" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E7%9A%84%E6%89%A7%E8%A1%8C/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Kafka源码 - Kafka Server端的定时任务（定时任务的执行）" />
+<meta property="og:description" content="生产者给服务端发送消息后，服务端不会立刻返回响应，而是创建一个DelayedProduce对象做延迟操作。消费者那边的情况与此类似。 前文已经" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E7%9A%84%E6%89%A7%E8%A1%8C/" />
+<meta property="article:published_time" content="2020-04-20T15:11:40+08:00" />
+<meta property="article:modified_time" content="2020-04-20T15:11:40+08:00" />
+<meta itemprop="name" content="深入Kafka源码 - Kafka Server端的定时任务（定时任务的执行）">
+<meta itemprop="description" content="生产者给服务端发送消息后，服务端不会立刻返回响应，而是创建一个DelayedProduce对象做延迟操作。消费者那边的情况与此类似。 前文已经">
+<meta itemprop="datePublished" content="2020-04-20T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-04-20T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="4750">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Kafka源码 - Kafka Server端的定时任务（定时任务的执行）"/>
+<meta name="twitter:description" content="生产者给服务端发送消息后，服务端不会立刻返回响应，而是创建一个DelayedProduce对象做延迟操作。消费者那边的情况与此类似。 前文已经"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Kafka源码 - Kafka Server端的定时任务（定时任务的执行）</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-04-20 </span>
+        <div class="post-category">
+            <a href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/"> 大数据 </a>
+            <a href="/categories/kafka/"> kafka </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#delayedproduce">DelayedProduce</a>
+      <ul>
+        <li><a href="#trycomplete">tryComplete</a></li>
+        <li><a href="#watchers">Watchers</a></li>
+      </ul>
+    </li>
+    <li><a href="#delayedfetch">DelayedFetch</a></li>
+    <li><a href="#delayedproduce和delayedfetch的执行条件">DelayedProduce和DelayedFetch的执行条件</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <p>生产者给服务端发送消息后，服务端不会立刻返回响应，而是创建一个DelayedProduce对象做延迟操作。消费者那边的情况与此类似。</p>
+<p>前文已经分析了时间轮的工作原理，本文以DelayedProduce和DelayedFetch为例，分析定时任务的执行流程。文末会总结为什么需要做延迟操作。</p>
+<h2 id="delayedproduce">DelayedProduce</h2>
+<p>在Kafka Server的API层，会根据不同的请求调用不同的方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">handle</span><span class="o">(</span><span class="n">request</span><span class="k">:</span> <span class="kt">RequestChannel</span><span class="kt">.</span><span class="kt">Request</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="n">trace</span><span class="o">(</span><span class="s">&#34;Handling request:%s from connection %s;securityProtocol:%s,principal:%s&#34;</span><span class="o">.</span>
+      <span class="n">format</span><span class="o">(</span><span class="n">request</span><span class="o">.</span><span class="n">requestDesc</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span><span class="o">,</span> <span class="n">request</span><span class="o">.</span><span class="n">connectionId</span><span class="o">,</span> <span class="n">request</span><span class="o">.</span><span class="n">securityProtocol</span><span class="o">,</span> <span class="n">request</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">principal</span><span class="o">)</span><span class="o">)</span>
+    <span class="nc">ApiKeys</span><span class="o">.</span><span class="n">forId</span><span class="o">(</span><span class="n">request</span><span class="o">.</span><span class="n">requestId</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">PRODUCE</span> <span class="k">=&gt;</span> <span class="n">handleProducerRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">FETCH</span> <span class="k">=&gt;</span> <span class="n">handleFetchRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>生产者发送PRODUCE请求时，调用的是handleProducerRequest方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">handleProducerRequest</span><span class="o">(</span><span class="n">request</span><span class="k">:</span> <span class="kt">RequestChannel</span><span class="kt">.</span><span class="kt">Request</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">produceRequest</span> <span class="k">=</span> <span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">ProduceRequest</span><span class="o">]</span>
+  <span class="k">val</span> <span class="n">numBytesAppended</span> <span class="k">=</span> <span class="n">request</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">sizeOf</span> <span class="o">+</span> <span class="n">produceRequest</span><span class="o">.</span><span class="n">sizeOf</span>
+
+  <span class="k">val</span> <span class="o">(</span><span class="n">authorizedRequestInfo</span><span class="o">,</span> <span class="n">unauthorizedRequestInfo</span><span class="o">)</span> <span class="k">=</span> <span class="n">produceRequest</span><span class="o">.</span><span class="n">partitionRecords</span><span class="o">.</span><span class="n">asScala</span><span class="o">.</span><span class="n">partition</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="o">(</span><span class="n">topicPartition</span><span class="o">,</span> <span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">authorize</span><span class="o">(</span><span class="n">request</span><span class="o">.</span><span class="n">session</span><span class="o">,</span> <span class="nc">Write</span><span class="o">,</span> <span class="k">new</span> <span class="nc">Resource</span><span class="o">(</span><span class="nc">Topic</span><span class="o">,</span> <span class="n">topicPartition</span><span class="o">.</span><span class="n">topic</span><span class="o">)</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="c1">// the callback for sending a produce response
+</span><span class="c1"></span>  <span class="k">def</span> <span class="n">sendResponseCallback</span><span class="o">(</span><span class="n">responseStatus</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">TopicPartition</span>, <span class="kt">PartitionResponse</span><span class="o">]</span><span class="o">)</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span>
+
+  <span class="k">if</span> <span class="o">(</span><span class="n">authorizedRequestInfo</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span>
+    <span class="n">sendResponseCallback</span><span class="o">(</span><span class="nc">Map</span><span class="o">.</span><span class="n">empty</span><span class="o">)</span>
+  <span class="k">else</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+    <span class="c1">// call the replica manager to append messages to the replicas
+</span><span class="c1"></span>    <span class="n">replicaManager</span><span class="o">.</span><span class="n">appendMessages</span><span class="o">(</span>
+      <span class="n">produceRequest</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">toLong</span><span class="o">,</span>
+      <span class="n">produceRequest</span><span class="o">.</span><span class="n">acks</span><span class="o">,</span>
+      <span class="n">internalTopicsAllowed</span><span class="o">,</span>
+      <span class="n">authorizedMessagesPerPartition</span><span class="o">,</span>
+      <span class="n">sendResponseCallback</span><span class="o">)</span>
+
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>handleProducerRequest方法内部定义了一个sendResponseCallback方法，为了分析方便，上面代码中将该方法内容略去了。该方法将响应回传给客户端（准确地说是传到网络层，然后由网络层传给客户端）。该方法作为一个参数传给了replicaManager.appendMessages方法。appendMessages方法内部逻辑调用链很长，逻辑也比较负责，简单地说就是将生产者的消息写入到日志。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">appendMessages</span><span class="o">(</span><span class="n">timeout</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span>
+                   <span class="n">requiredAcks</span><span class="k">:</span> <span class="kt">Short</span><span class="o">,</span>
+                   <span class="n">internalTopicsAllowed</span><span class="k">:</span> <span class="kt">Boolean</span><span class="o">,</span>
+                   <span class="n">messagesPerPartition</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">TopicPartition</span>, <span class="kt">MessageSet</span><span class="o">]</span><span class="o">,</span>
+                   <span class="n">responseCallback</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">TopicPartition</span>, <span class="kt">PartitionResponse</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="k">if</span> <span class="o">(</span><span class="n">isValidRequiredAcks</span><span class="o">(</span><span class="n">requiredAcks</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">sTime</span> <span class="k">=</span> <span class="nc">SystemTime</span><span class="o">.</span><span class="n">milliseconds</span>
+    <span class="c1">// 将消息添加到本地的日志。
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">localProduceResults</span> <span class="k">=</span> <span class="n">appendToLocalLog</span><span class="o">(</span><span class="n">internalTopicsAllowed</span><span class="o">,</span> <span class="n">messagesPerPartition</span><span class="o">,</span> <span class="n">requiredAcks</span><span class="o">)</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">delayedRequestRequired</span><span class="o">(</span><span class="n">requiredAcks</span><span class="o">,</span> <span class="n">messagesPerPartition</span><span class="o">,</span> <span class="n">localProduceResults</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">produceMetadata</span> <span class="k">=</span> <span class="nc">ProduceMetadata</span><span class="o">(</span><span class="n">requiredAcks</span><span class="o">,</span> <span class="n">produceStatus</span><span class="o">)</span>
+      <span class="c1">// 创建DelayedProduce对象。
+</span><span class="c1"></span>      <span class="k">val</span> <span class="n">delayedProduce</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DelayedProduce</span><span class="o">(</span><span class="n">timeout</span><span class="o">,</span> <span class="n">produceMetadata</span><span class="o">,</span> <span class="k">this</span><span class="o">,</span> <span class="n">responseCallback</span><span class="o">)</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      <span class="c1">// 尝试完成延时操作，如果不能完成则对其进行监视。
+</span><span class="c1"></span>      <span class="n">delayedProducePurgatory</span><span class="o">.</span><span class="n">tryCompleteElseWatch</span><span class="o">(</span><span class="n">delayedProduce</span><span class="o">,</span> <span class="n">producerRequestKeys</span><span class="o">)</span>
+
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+    <span class="o">}</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>appendToLocalLog方法会将消息添加到本地日志，本文不展开讨论。该方法执行完成后会得到一些返回结果，如offset信息等。这些信息与前文看到的sendResponseCallback方法（即此处的responseCallback对象）一起封装成了DelayedProduce对象。然后执行delayedProducePurgatory.tryCompleteElseWatch(delayedProduce, producerRequestKeys)方法。</p>
+<p>这个delayedProducePurgatory对象的构造也在前文提及。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">delayedProducePurgatory</span> <span class="k">=</span> <span class="nc">DelayedOperationPurgatory</span><span class="o">[</span><span class="kt">DelayedProduce</span><span class="o">]</span><span class="o">(</span>
+  <span class="n">purgatoryName</span> <span class="k">=</span> <span class="s">&#34;Produce&#34;</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">brokerId</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">producerPurgatoryPurgeIntervalRequests</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>它在ReplicaManager构造时一同构造。</p>
+<p>tryCompleteElseWatch方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">tryCompleteElseWatch</span><span class="o">(</span><span class="n">operation</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">watchKeys</span><span class="k">:</span> <span class="kt">Seq</span><span class="o">[</span><span class="kt">Any</span><span class="o">]</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">{</span>
+
+  <span class="c1">// 1.尝试直接完成任务。
+</span><span class="c1"></span>  <span class="k">var</span> <span class="n">isCompletedByMe</span> <span class="k">=</span> <span class="n">operation</span> <span class="n">synchronized</span> <span class="n">operation</span><span class="o">.</span><span class="n">tryComplete</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">isCompletedByMe</span><span class="o">)</span>
+    <span class="k">return</span> <span class="kc">true</span>
+  
+  <span class="c1">// 2.如果尝试失败，则对其进行监控。
+</span><span class="c1"></span>  <span class="k">var</span> <span class="n">watchCreated</span> <span class="k">=</span> <span class="kc">false</span>
+  <span class="k">for</span><span class="o">(</span><span class="n">key</span> <span class="k">&lt;-</span> <span class="n">watchKeys</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// If the operation is already completed, stop adding it to the rest of the watcher list.
+</span><span class="c1"></span>    <span class="k">if</span> <span class="o">(</span><span class="n">operation</span><span class="o">.</span><span class="n">isCompleted</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+      <span class="k">return</span> <span class="kc">false</span>
+    <span class="n">watchForOperation</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="n">operation</span><span class="o">)</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">watchCreated</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">watchCreated</span> <span class="k">=</span> <span class="kc">true</span>
+      <span class="n">estimatedTotalOperations</span><span class="o">.</span><span class="n">incrementAndGet</span><span class="o">(</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="c1">// 3.再次尝试直接完成任务。
+</span><span class="c1"></span>  <span class="n">isCompletedByMe</span> <span class="k">=</span> <span class="n">operation</span> <span class="n">synchronized</span> <span class="n">operation</span><span class="o">.</span><span class="n">tryComplete</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">isCompletedByMe</span><span class="o">)</span>
+    <span class="k">return</span> <span class="kc">true</span>
+
+  <span class="c1">// 4.如果尝试失败，由于此时已经监控，将其放入时间轮。
+</span><span class="c1"></span>  <span class="k">if</span> <span class="o">(</span><span class="o">!</span> <span class="n">operation</span><span class="o">.</span><span class="n">isCompleted</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">timeoutTimer</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="n">operation</span><span class="o">)</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">operation</span><span class="o">.</span><span class="n">isCompleted</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">operation</span><span class="o">.</span><span class="n">cancel</span><span class="o">(</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="kc">false</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="trycomplete">tryComplete</h3>
+<p>我们先分析tryComplete方法的逻辑。</p>
+<p>进入到该方法，可以看到它是接口的一个未实现的方法，具体的逻辑随实现类不同而不同。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">override</span> <span class="k">def</span> <span class="n">tryComplete</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+  <span class="k">if</span> <span class="o">(</span><span class="o">!</span> <span class="n">produceMetadata</span><span class="o">.</span><span class="n">produceStatus</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">exists</span><span class="o">(</span><span class="n">p</span> <span class="k">=&gt;</span> <span class="n">p</span><span class="o">.</span><span class="n">acksPending</span><span class="o">)</span><span class="o">)</span>
+    <span class="n">forceComplete</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">else</span>
+    <span class="kc">false</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>核心逻辑就是调用forceComplete方法（之后分析DelayedFetch时可以看到它的逻辑也是类似的）。</p>
+<p>而forceComplete方法对于每一个实现类都是一致的。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">forceComplete</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">completed</span><span class="o">.</span><span class="n">compareAndSet</span><span class="o">(</span><span class="kc">false</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// cancel the timeout timer
+</span><span class="c1"></span>    <span class="n">cancel</span><span class="o">(</span><span class="o">)</span>
+    <span class="n">onComplete</span><span class="o">(</span><span class="o">)</span>
+    <span class="kc">true</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+    <span class="kc">false</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里首先进行了一个原子操作。这是因为会有不同的线程都可能会执行到这个forceComplete方法，而一个任务最终只能调用一次onComplete方法。目前分析的主线程虽然会调用forceComplete方法，但不涉及多线程调用。多线程的竞争发生在如下场景：由于延时任务可能会被放入时间轮，最终时间到期后会由另一个线程执行其run方法，run方法中会调用forceComplete方法；另一方面，任务还会被放入DelayedOperationPurgatory监控，当达到某个执行条件时也会触发forceComplete操作。因此需要引入原子操作。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">override</span> <span class="k">def</span> <span class="n">run</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">forceComplete</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+    <span class="n">onExpiration</span><span class="o">(</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>cancel方法就是将任务从时间轮中移除，onComplete方法根据实现类不同而不同，对于DelayedProduce来说就是调用之前的回调方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">override</span> <span class="k">def</span> <span class="n">onComplete</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">responseStatus</span> <span class="k">=</span> <span class="n">produceMetadata</span><span class="o">.</span><span class="n">produceStatus</span><span class="o">.</span><span class="n">mapValues</span><span class="o">(</span><span class="n">status</span> <span class="k">=&gt;</span> <span class="n">status</span><span class="o">.</span><span class="n">responseStatus</span><span class="o">)</span>
+  <span class="n">responseCallback</span><span class="o">(</span><span class="n">responseStatus</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="watchers">Watchers</h3>
+<p>tryCompleteElseWatch方法的另一个操作就是监控任务。注意到tryCompleteElseWatch方法的另一个参数watchKeys。这个参数就是在调用tryCompleteElseWatch方法前一步构造的。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="c1">// create a list of (topic, partition) pairs to use as keys for this delayed produce operation
+</span><span class="c1"></span><span class="k">val</span> <span class="n">producerRequestKeys</span> <span class="k">=</span> <span class="n">messagesPerPartition</span><span class="o">.</span><span class="n">keys</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="k">new</span> <span class="nc">TopicPartitionOperationKey</span><span class="o">(</span><span class="k">_</span><span class="o">)</span><span class="o">)</span><span class="o">.</span><span class="n">toSeq</span>
+
+<span class="c1">// try to complete the request immediately, otherwise put it into the purgatory
+</span><span class="c1"></span><span class="c1">// this is because while the delayed produce operation is being created, new
+</span><span class="c1"></span><span class="c1">// requests may arrive and hence make this operation completable.
+</span><span class="c1"></span><span class="n">delayedProducePurgatory</span><span class="o">.</span><span class="n">tryCompleteElseWatch</span><span class="o">(</span><span class="n">delayedProduce</span><span class="o">,</span> <span class="n">producerRequestKeys</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>producerRequestKeys是一个列表，其中每个元素表示一个TopicPartition。在tryCompleteElseWatch方法中，会遍历这些TopicPartition，将其作为key，DelayedProduce对象作为value。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">for</span><span class="o">(</span><span class="n">key</span> <span class="k">&lt;-</span> <span class="n">watchKeys</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+  <span class="n">watchForOperation</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="n">operation</span><span class="o">)</span>
+  
+  
+  
+<span class="k">private</span> <span class="k">def</span> <span class="n">watchForOperation</span><span class="o">(</span><span class="n">key</span><span class="k">:</span> <span class="kt">Any</span><span class="o">,</span> <span class="n">operation</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">inReadLock</span><span class="o">(</span><span class="n">removeWatchersLock</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">watcher</span> <span class="k">=</span> <span class="n">watchersForKey</span><span class="o">.</span><span class="n">getAndMaybePut</span><span class="o">(</span><span class="n">key</span><span class="o">)</span>
+    <span class="n">watcher</span><span class="o">.</span><span class="n">watch</span><span class="o">(</span><span class="n">operation</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中watchersForKey是DelayedOperationPurgatory类的一个字段：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">DelayedOperationPurgatory</span><span class="o">[</span><span class="kt">T</span> <span class="k">&lt;:</span> <span class="kt">DelayedOperation</span><span class="o">]</span><span class="o">(</span><span class="n">purgatoryName</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+                                                       <span class="n">timeoutTimer</span><span class="k">:</span> <span class="kt">Timer</span><span class="o">,</span>
+                                                       <span class="n">brokerId</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="o">,</span>
+                                                       <span class="n">purgeInterval</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1000</span><span class="o">,</span>
+                                                       <span class="n">reaperEnabled</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="o">)</span>
+        <span class="k">extends</span> <span class="nc">Logging</span> <span class="k">with</span> <span class="nc">KafkaMetricsGroup</span> <span class="o">{</span>
+
+  <span class="cm">/*</span><span class="cm"> a list of operation watching keys </span><span class="cm">*/</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">watchersForKey</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Pool</span><span class="o">[</span><span class="kt">Any</span>, <span class="kt">Watchers</span><span class="o">]</span><span class="o">(</span><span class="nc">Some</span><span class="o">(</span><span class="o">(</span><span class="n">key</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="k">new</span> <span class="nc">Watchers</span><span class="o">(</span><span class="n">key</span><span class="o">)</span><span class="o">)</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在初始化DelayedOperationPurgatory对象时就会构造watchersForKey。这是一个Pool对象，且传了参。这个Pool类可以简单理解为一个Map。事实上，它内部就是维护了一个Map。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">Pool</span><span class="o">[</span><span class="kt">K</span>,<span class="kt">V</span><span class="o">]</span><span class="o">(</span><span class="n">valueFactory</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="o">(</span><span class="kt">K</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="kt">V</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Iterable</span><span class="o">[</span><span class="o">(</span><span class="kt">K</span>, <span class="kt">V</span><span class="o">)</span><span class="o">]</span> <span class="o">{</span>
+
+  <span class="k">private</span> <span class="k">val</span> <span class="n">pool</span><span class="k">:</span> <span class="kt">ConcurrentMap</span><span class="o">[</span><span class="kt">K</span>, <span class="kt">V</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ConcurrentHashMap</span><span class="o">[</span><span class="kt">K</span>, <span class="kt">V</span><span class="o">]</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>它的key显然就是watchForOperation方法传入的那个key。value是一个Watchers对象，可以简单理解为一个列表。事实上它内部的确就是维护了一个列表，并没有其他字段。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">class</span> <span class="nc">Watchers</span><span class="o">(</span><span class="k">val</span> <span class="n">key</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">val</span> <span class="n">operations</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">LinkedList</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span><span class="o">(</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>而它的watch方法，实际上就是把任务添加到该列表中。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">watch</span><span class="o">(</span><span class="n">t</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">operations</span> <span class="n">synchronized</span> <span class="n">operations</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="n">t</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>由此，watchForOperation的逻辑就清楚了，虽然新引入了几个字段和类，但它只是把任务添加到一个Map中。这个Map的每个key表示一个TopicPartition，value是一个列表，其中的元素就是一个个任务。一个任务会对应一个或多个TopicPartition，因此一开始需要遍历地存放。</p>
+<p>那么，既然有了时间轮可以延时执行任务，为什么还需要Watcher机制呢？这是为了之后如果达到了某个执行条件时可以直接去执行这个任务。比如我们将DelayedProduce任务放入了Watcher列表中，这个请求的acks字段为-1，表示需要ISR集合中所有副本都同步了该请求中的消息才能返回响应。因此，在其他副本发送FetchRequest时，会针对每个TopicPartition去检查是否满足了条件，如果满足，则会从Watcher列表中执行该任务。反过来也是这样，DelayedFetch任务也会等生产端的请求到来时判断是否满足执行条件。</p>
+<p>无论哪种情况，执行的都是DelayedOperationPurgatory的checkAndComplete方法。其参数为key，也是符合预期的。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">checkAndComplete</span><span class="o">(</span><span class="n">key</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">watchers</span> <span class="k">=</span> <span class="n">inReadLock</span><span class="o">(</span><span class="n">removeWatchersLock</span><span class="o">)</span> <span class="o">{</span> <span class="n">watchersForKey</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">key</span><span class="o">)</span> <span class="o">}</span>
+  <span class="k">if</span><span class="o">(</span><span class="n">watchers</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+    <span class="mi">0</span>
+  <span class="k">else</span>
+    <span class="n">watchers</span><span class="o">.</span><span class="n">tryCompleteWatched</span><span class="o">(</span><span class="o">)</span>
+<span class="o">}</span>
+
+
+<span class="k">def</span> <span class="n">tryCompleteWatched</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">{</span>
+
+  <span class="k">var</span> <span class="n">completed</span> <span class="k">=</span> <span class="mi">0</span>
+  <span class="n">operations</span> <span class="n">synchronized</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">iter</span> <span class="k">=</span> <span class="n">operations</span><span class="o">.</span><span class="n">iterator</span><span class="o">(</span><span class="o">)</span>
+    <span class="k">while</span> <span class="o">(</span><span class="n">iter</span><span class="o">.</span><span class="n">hasNext</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">curr</span> <span class="k">=</span> <span class="n">iter</span><span class="o">.</span><span class="n">next</span><span class="o">(</span><span class="o">)</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">curr</span><span class="o">.</span><span class="n">isCompleted</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// another thread has completed this operation, just remove it
+</span><span class="c1"></span>        <span class="n">iter</span><span class="o">.</span><span class="n">remove</span><span class="o">(</span><span class="o">)</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">curr</span> <span class="n">synchronized</span> <span class="n">curr</span><span class="o">.</span><span class="n">tryComplete</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">completed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">iter</span><span class="o">.</span><span class="n">remove</span><span class="o">(</span><span class="o">)</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="k">if</span> <span class="o">(</span><span class="n">operations</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span>
+    <span class="n">removeKeyIfEmpty</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="k">this</span><span class="o">)</span>
+
+  <span class="n">completed</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到调用了tryComplete方法，与之前的分析一致。</p>
+<p>这样我们就分析清楚了tryCompleteElseWatch方法中几个重要的概念。不过还有一个细节，就是第一步调用了tryComplete，然后对其进行监控，之后再次调用了tryComplete，这是为了效率的提升，否则之后就需要遍历key来执行这个任务，当key非常多时整个过程会很慢，所以这里尝试直接执行任务。</p>
+<h2 id="delayedfetch">DelayedFetch</h2>
+<p>DelayedFetch任务与DelayedProduce流程几乎完全一样。它是在服务端接收到FETCH请求时构造的。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">handleFetchRequest</span><span class="o">(</span><span class="n">request</span><span class="k">:</span> <span class="kt">RequestChannel</span><span class="kt">.</span><span class="kt">Request</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+  <span class="c1">// the callback for sending a fetch response
+</span><span class="c1"></span>  <span class="k">def</span> <span class="n">sendResponseCallback</span><span class="o">(</span><span class="n">responsePartitionData</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">TopicAndPartition</span>, <span class="kt">FetchResponsePartitionData</span><span class="o">]</span><span class="o">)</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span>
+
+  <span class="k">if</span> <span class="o">(</span><span class="n">authorizedRequestInfo</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span>
+    <span class="n">sendResponseCallback</span><span class="o">(</span><span class="nc">Map</span><span class="o">.</span><span class="n">empty</span><span class="o">)</span>
+  <span class="k">else</span> <span class="o">{</span>
+    <span class="c1">// call the replica manager to fetch messages from the local replica
+</span><span class="c1"></span>    <span class="n">replicaManager</span><span class="o">.</span><span class="n">fetchMessages</span><span class="o">(</span>
+      <span class="n">fetchRequest</span><span class="o">.</span><span class="n">maxWait</span><span class="o">.</span><span class="n">toLong</span><span class="o">,</span>
+      <span class="n">fetchRequest</span><span class="o">.</span><span class="n">replicaId</span><span class="o">,</span>
+      <span class="n">fetchRequest</span><span class="o">.</span><span class="n">minBytes</span><span class="o">,</span>
+      <span class="n">authorizedRequestInfo</span><span class="o">,</span>
+      <span class="n">sendResponseCallback</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>同样是定义了sendResponseCallback方法，它的作用同样是处理响应。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">fetchMessages</span><span class="o">(</span><span class="n">timeout</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span>
+                  <span class="n">replicaId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                  <span class="n">fetchMinBytes</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                  <span class="n">fetchInfo</span><span class="k">:</span> <span class="kt">immutable.Map</span><span class="o">[</span><span class="kt">TopicAndPartition</span>, <span class="kt">PartitionFetchInfo</span><span class="o">]</span><span class="o">,</span>
+                  <span class="n">responseCallback</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">TopicAndPartition</span>, <span class="kt">FetchResponsePartitionData</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+    <span class="k">val</span> <span class="n">delayedFetchKeys</span> <span class="k">=</span> <span class="n">fetchPartitionStatus</span><span class="o">.</span><span class="n">keys</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="k">new</span> <span class="nc">TopicPartitionOperationKey</span><span class="o">(</span><span class="k">_</span><span class="o">)</span><span class="o">)</span><span class="o">.</span><span class="n">toSeq</span>
+
+    <span class="n">delayedFetchPurgatory</span><span class="o">.</span><span class="n">tryCompleteElseWatch</span><span class="o">(</span><span class="n">delayedFetch</span><span class="o">,</span> <span class="n">delayedFetchKeys</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>同样构造了keys，执行tryCompleteElseWatch方法。这个方法定义是DelayedOperationPurgatory的方法，因此与刚刚是同样的逻辑。其中的tryComplete方法实现与之前不同，但核心逻辑也是判断是否能够完成任务，如果可以的话调用forceComplete，最终调用到DelayedFetch的onComplete方法，执行回调方法。</p>
+<h2 id="delayedproduce和delayedfetch的执行条件">DelayedProduce和DelayedFetch的执行条件</h2>
+<p>上面分析到两种任务都有一个tryComplete方法，里面包含了其执行触发的条件，都写在了方法的注释上。</p>
+<p>对于DelayedProduce，其条件为：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="cm">/*</span><span class="cm">*</span><span class="cm">
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> The delayed produce operation can be completed if every partition
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> it produces to is satisfied by one of the following:
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm">
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> Case A: This broker is no longer the leader: set an error in response
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> Case B: This broker is the leader:
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm">   B.1 - If there was a local error thrown while checking if at least requiredAcks
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm">         replicas have caught up to this operation: set an error in response
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm">   B.2 - Otherwise, set the response with no error.
+</span><span class="cm"> </span><span class="cm">*/</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>它要求每一个分区都满足以下条件：</p>
+<p>1.该分区出现了Leader迁移，即它不再是Leader。此时会返回错误码。</p>
+<p>2.ISR集合中所有副本都完成了同步后，该分区中的Leader副本的HW位置已经大于对应的ProduceStatus.requiredOffset。</p>
+<p>3.出现异常，返回错误码。</p>
+<p>对于DelayedFetch，其条件为：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="cm">/*</span><span class="cm">*</span><span class="cm">
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> The operation can be completed if:
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm">
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> Case A: This broker is no longer the leader for some partitions it tries to fetch
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> Case B: This broker does not know of some partitions it tries to fetch
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> Case C: The fetch offset locates not on the last segment of the log
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> Case D: The accumulated bytes from all the fetching partitions exceeds the minimum bytes
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm">
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> Upon completion, should return whatever data is available for each valid partition
+</span><span class="cm"> </span><span class="cm">*/</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>即：</p>
+<p>1.发生了Leader迁移。</p>
+<p>2.当前broker找不到需要读取的分区副本。</p>
+<p>3.开始读取的offset不在activeSegment中，此时可能是发生了Log截断，也有可能是发生了roll操作产生了新的activeSegment。</p>
+<p>4.累计读取字节数超过了最小字节数限制。</p>
+<p>其中activeSegment对象可以理解为要读取的那个日志对象。</p>
+<p>这里涉及到了几个基本概念，HW和LEO。</p>
+<center><img src="/大数据/kafka/Kafka Server端的定时任务/HW和LEO.png" width = "550" height = "250"/></center>
+<p>HW表示的消费者能够消费到的最新数据，LEO表示当前分区中最后一条消息的offset+1。</p>
+<p>如果生产者的请求中ack设置为了-1，那么消息写入Leader后还不能直接返回响应，而是需要等所有ISR同步消息。而ISR同步消息会发送FETCH请求。因此DelayedProduce需要等待FETCH操作完成后去Watch列表中尝试执行DelayedProduce任务。这就是DelayedProduce中的条件2。</p>
+<p>而生产者每次生产消息被写入日志后，会改变LEO，由此触发DelayedFetch的执行。如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">appendMessagesToLeader</span><span class="o">(</span><span class="n">messages</span><span class="k">:</span> <span class="kt">ByteBufferMessageSet</span><span class="o">,</span> <span class="n">requiredAcks</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="o">(</span><span class="n">info</span><span class="o">,</span> <span class="n">leaderHWIncremented</span><span class="o">)</span> <span class="k">=</span> <span class="n">inReadLock</span><span class="o">(</span><span class="n">leaderIsrUpdateLock</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">leaderReplicaOpt</span> <span class="k">=</span> <span class="n">leaderReplicaIfLocal</span><span class="o">(</span><span class="o">)</span>
+    <span class="n">leaderReplicaOpt</span> <span class="k">match</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">leaderReplica</span><span class="o">)</span> <span class="k">=&gt;</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+        <span class="k">val</span> <span class="n">info</span> <span class="k">=</span> <span class="n">log</span><span class="o">.</span><span class="n">append</span><span class="o">(</span><span class="n">messages</span><span class="o">,</span> <span class="n">assignOffsets</span> <span class="k">=</span> <span class="kc">true</span><span class="o">)</span>
+        <span class="c1">// probably unblock some follower fetch requests since log end offset has been updated
+</span><span class="c1"></span>        <span class="n">replicaManager</span><span class="o">.</span><span class="n">tryCompleteDelayedFetch</span><span class="o">(</span><span class="k">new</span> <span class="nc">TopicPartitionOperationKey</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">topic</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="n">partitionId</span><span class="o">)</span><span class="o">)</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+
+      
+<span class="k">def</span> <span class="n">tryCompleteDelayedFetch</span><span class="o">(</span><span class="n">key</span><span class="k">:</span> <span class="kt">DelayedOperationKey</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">completed</span> <span class="k">=</span> <span class="n">delayedFetchPurgatory</span><span class="o">.</span><span class="n">checkAndComplete</span><span class="o">(</span><span class="n">key</span><span class="o">)</span>
+  <span class="n">debug</span><span class="o">(</span><span class="s">&#34;Request key %s unblocked %d fetch requests.&#34;</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">key</span><span class="o">.</span><span class="n">keyLabel</span><span class="o">,</span> <span class="n">completed</span><span class="o">)</span><span class="o">)</span>
+<span class="o">}</span>
+      
+      
+<span class="k">def</span> <span class="n">checkAndComplete</span><span class="o">(</span><span class="n">key</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">watchers</span> <span class="k">=</span> <span class="n">inReadLock</span><span class="o">(</span><span class="n">removeWatchersLock</span><span class="o">)</span> <span class="o">{</span> <span class="n">watchersForKey</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">key</span><span class="o">)</span> <span class="o">}</span>
+  <span class="k">if</span><span class="o">(</span><span class="n">watchers</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+    <span class="mi">0</span>
+  <span class="k">else</span>
+    <span class="n">watchers</span><span class="o">.</span><span class="n">tryCompleteWatched</span><span class="o">(</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这就是为什么需要做延时操作。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-04-20
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        
+        <a class="next" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E6%97%B6%E9%97%B4%E8%BD%AE%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/">
+            <span class="next-text nav-default">深入Kafka源码 - Kafka Server端的定时任务（时间轮的工作原理）</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

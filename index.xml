@@ -6,10 +6,37 @@
     <description>Recent content on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Wed, 15 Apr 2020 16:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Mon, 20 Apr 2020 15:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>深入Kafka源码 - Kafka Server端的定时任务（定时任务的执行）</title>
+      <link>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E7%9A%84%E6%89%A7%E8%A1%8C/</link>
+      <pubDate>Mon, 20 Apr 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E7%9A%84%E6%89%A7%E8%A1%8C/</guid>
+      <description>生产者给服务端发送消息后，服务端不会立刻返回响应，而是创建一个DelayedProduce对象做延迟操作。消费者那边的情况与此类似。 前文已经</description>
+    </item>
+    
+    <item>
+      <title>深入Kafka源码 - Kafka Server端的定时任务（时间轮的工作原理）</title>
+      <link>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E6%97%B6%E9%97%B4%E8%BD%AE%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/</link>
+      <pubDate>Sun, 19 Apr 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E6%97%B6%E9%97%B4%E8%BD%AE%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/</guid>
+      <description>时间轮的整体结构 如上图所示，时间轮可以描绘为这样一个环形结构。任务存放在每个单元格中。不过并不是一个单元格就对应一个任务，而是一个单元格对应</description>
+    </item>
+    
+    <item>
+      <title>深入Kafka源码 - Kafka Server端的定时任务（JDK Timer的实现原理）</title>
+      <link>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1jdk-timer%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</link>
+      <pubDate>Sun, 19 Apr 2020 15:11:30 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1jdk-timer%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</guid>
+      <description>Kafka Server端用一个组件（即一个类）叫做DelayedOperationPurgatory，负责定时任务的执行。而我们知道JDK自带了定时</description>
+    </item>
     
     <item>
       <title>深入Kafka源码 - Kafka Server端的网络层（Kafka的实现）</title>
