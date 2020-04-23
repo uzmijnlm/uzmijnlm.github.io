@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Kafka源码 - 日志存储（LogManager） - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="前文已经了解了Kafka Server端写日志的整个流程，熟悉了Log、LogSegment等概念以及代码中对它们的使用，不过并没有提及这些对" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E6%97%A5%E5%BF%97%E5%AD%98%E5%82%A8logmanager/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Kafka源码 - 日志存储（LogManager）" />
+<meta property="og:description" content="前文已经了解了Kafka Server端写日志的整个流程，熟悉了Log、LogSegment等概念以及代码中对它们的使用，不过并没有提及这些对" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E6%97%A5%E5%BF%97%E5%AD%98%E5%82%A8logmanager/" />
+<meta property="article:published_time" content="2020-04-23T11:11:40+08:00" />
+<meta property="article:modified_time" content="2020-04-23T11:11:40+08:00" />
+<meta itemprop="name" content="深入Kafka源码 - 日志存储（LogManager）">
+<meta itemprop="description" content="前文已经了解了Kafka Server端写日志的整个流程，熟悉了Log、LogSegment等概念以及代码中对它们的使用，不过并没有提及这些对">
+<meta itemprop="datePublished" content="2020-04-23T11:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-04-23T11:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="2273">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Kafka源码 - 日志存储（LogManager）"/>
+<meta name="twitter:description" content="前文已经了解了Kafka Server端写日志的整个流程，熟悉了Log、LogSegment等概念以及代码中对它们的使用，不过并没有提及这些对"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Kafka源码 - 日志存储（LogManager）</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-04-23 </span>
+        <div class="post-category">
+            <a href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/"> 大数据 </a>
+            <a href="/categories/kafka/"> kafka </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#logmanager的启动">LogManager的启动</a></li>
+  </ul>
+
+  <ul>
+    <li><a href="#log-retention">log-retention</a></li>
+    <li><a href="#recovery-point-checkpoint">recovery-point-checkpoint</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <p>前文已经了解了Kafka Server端写日志的整个流程，熟悉了Log、LogSegment等概念以及代码中对它们的使用，不过并没有提及这些对象是何时被创建和管理的。</p>
+<p>在Kafka Server端，由LogManager负责加载Log、创建Log集合、删除Log集合、查询Log集合等功能。总的来说它负责以下几件事：</p>
+<p>1.log-flusher（日志刷写）任务。</p>
+<p>2.log-retention（日志保留）任务。</p>
+<p>3.recovery-point-checkpoint（检查点刷新）任务。</p>
+<h2 id="logmanager的启动">LogManager的启动</h2>
+<p>LogManager是在Kafka Server启动时初始化并启动的。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="cm">/*</span><span class="cm"> start log manager </span><span class="cm">*/</span>
+<span class="n">logManager</span> <span class="k">=</span> <span class="n">createLogManager</span><span class="o">(</span><span class="n">zkUtils</span><span class="o">.</span><span class="n">zkClient</span><span class="o">,</span> <span class="n">brokerState</span><span class="o">)</span>
+<span class="n">logManager</span><span class="o">.</span><span class="n">startup</span><span class="o">(</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>先来看初始化过程：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">createLogManager</span><span class="o">(</span><span class="n">zkClient</span><span class="k">:</span> <span class="kt">ZkClient</span><span class="o">,</span> <span class="n">brokerState</span><span class="k">:</span> <span class="kt">BrokerState</span><span class="o">)</span><span class="k">:</span> <span class="kt">LogManager</span> <span class="o">=</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+  <span class="k">new</span> <span class="nc">LogManager</span><span class="o">(</span><span class="n">logDirs</span> <span class="k">=</span> <span class="n">config</span><span class="o">.</span><span class="n">logDirs</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="k">_</span><span class="o">)</span><span class="o">)</span><span class="o">.</span><span class="n">toArray</span><span class="o">,</span>
+                 <span class="n">topicConfigs</span> <span class="k">=</span> <span class="n">configs</span><span class="o">,</span>
+                 <span class="n">defaultConfig</span> <span class="k">=</span> <span class="n">defaultLogConfig</span><span class="o">,</span>
+                 <span class="n">cleanerConfig</span> <span class="k">=</span> <span class="n">cleanerConfig</span><span class="o">,</span>
+                 <span class="n">ioThreads</span> <span class="k">=</span> <span class="n">config</span><span class="o">.</span><span class="n">numRecoveryThreadsPerDataDir</span><span class="o">,</span>
+                 <span class="n">flushCheckMs</span> <span class="k">=</span> <span class="n">config</span><span class="o">.</span><span class="n">logFlushSchedulerIntervalMs</span><span class="o">,</span>
+                 <span class="n">flushCheckpointMs</span> <span class="k">=</span> <span class="n">config</span><span class="o">.</span><span class="n">logFlushOffsetCheckpointIntervalMs</span><span class="o">,</span>
+                 <span class="n">retentionCheckMs</span> <span class="k">=</span> <span class="n">config</span><span class="o">.</span><span class="n">logCleanupIntervalMs</span><span class="o">,</span>
+                 <span class="n">scheduler</span> <span class="k">=</span> <span class="n">kafkaScheduler</span><span class="o">,</span>
+                 <span class="n">brokerState</span> <span class="k">=</span> <span class="n">brokerState</span><span class="o">,</span>
+                 <span class="n">time</span> <span class="k">=</span> <span class="n">time</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>实例化过程如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">LogManager</span><span class="o">(</span><span class="k">val</span> <span class="n">logDirs</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">File</span><span class="o">]</span><span class="o">,</span>
+                 <span class="k">val</span> <span class="n">topicConfigs</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">LogConfig</span><span class="o">]</span><span class="o">,</span>
+                 <span class="k">val</span> <span class="n">defaultConfig</span><span class="k">:</span> <span class="kt">LogConfig</span><span class="o">,</span>
+                 <span class="k">val</span> <span class="n">cleanerConfig</span><span class="k">:</span> <span class="kt">CleanerConfig</span><span class="o">,</span>
+                 <span class="n">ioThreads</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                 <span class="k">val</span> <span class="n">flushCheckMs</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span>
+                 <span class="k">val</span> <span class="n">flushCheckpointMs</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span>
+                 <span class="k">val</span> <span class="n">retentionCheckMs</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span>
+                 <span class="n">scheduler</span><span class="k">:</span> <span class="kt">Scheduler</span><span class="o">,</span>
+                 <span class="k">val</span> <span class="n">brokerState</span><span class="k">:</span> <span class="kt">BrokerState</span><span class="o">,</span>
+                 <span class="k">private</span> <span class="k">val</span> <span class="n">time</span><span class="k">:</span> <span class="kt">Time</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Logging</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="nc">RecoveryPointCheckpointFile</span> <span class="k">=</span> <span class="s">&#34;recovery-point-offset-checkpoint&#34;</span>
+  <span class="k">val</span> <span class="nc">LockFile</span> <span class="k">=</span> <span class="s">&#34;.lock&#34;</span>
+  <span class="k">val</span> <span class="nc">InitialTaskDelayMs</span> <span class="k">=</span> <span class="mi">30</span><span class="o">*</span><span class="mi">1000</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">logCreationOrDeletionLock</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Object</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">logs</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Pool</span><span class="o">[</span><span class="kt">TopicAndPartition</span>, <span class="kt">Log</span><span class="o">]</span><span class="o">(</span><span class="o">)</span>
+
+  <span class="n">createAndValidateLogDirs</span><span class="o">(</span><span class="n">logDirs</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">dirLocks</span> <span class="k">=</span> <span class="n">lockLogDirs</span><span class="o">(</span><span class="n">logDirs</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">recoveryPointCheckpoints</span> <span class="k">=</span> <span class="n">logDirs</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">dir</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">dir</span><span class="o">,</span> <span class="k">new</span> <span class="nc">OffsetCheckpoint</span><span class="o">(</span><span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="n">dir</span><span class="o">,</span> <span class="nc">RecoveryPointCheckpointFile</span><span class="o">)</span><span class="o">)</span><span class="o">)</span><span class="o">)</span><span class="o">.</span><span class="n">toMap</span>
+  <span class="n">loadLogs</span><span class="o">(</span><span class="o">)</span>
+
+  <span class="c1">// public, so we can access this from kafka.admin.DeleteTopicTest
+</span><span class="c1"></span>  <span class="k">val</span> <span class="n">cleaner</span><span class="k">:</span> <span class="kt">LogCleaner</span> <span class="o">=</span>
+    <span class="k">if</span><span class="o">(</span><span class="n">cleanerConfig</span><span class="o">.</span><span class="n">enableCleaner</span><span class="o">)</span>
+      <span class="k">new</span> <span class="nc">LogCleaner</span><span class="o">(</span><span class="n">cleanerConfig</span><span class="o">,</span> <span class="n">logDirs</span><span class="o">,</span> <span class="n">logs</span><span class="o">,</span> <span class="n">time</span> <span class="k">=</span> <span class="n">time</span><span class="o">)</span>
+    <span class="k">else</span>
+      <span class="kc">null</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中logs字段就是它维护的Log集合。下面又调用了loadLogs方法，方法内容如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">loadLogs</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+  <span class="k">for</span> <span class="o">(</span><span class="n">dir</span> <span class="k">&lt;-</span> <span class="k">this</span><span class="o">.</span><span class="n">logDirs</span><span class="o">)</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+    <span class="k">val</span> <span class="n">jobsForDir</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+      <span class="n">dirContent</span> <span class="k">&lt;-</span> <span class="nc">Option</span><span class="o">(</span><span class="n">dir</span><span class="o">.</span><span class="n">listFiles</span><span class="o">)</span><span class="o">.</span><span class="n">toList</span>
+      <span class="n">logDir</span> <span class="k">&lt;-</span> <span class="n">dirContent</span> <span class="k">if</span> <span class="n">logDir</span><span class="o">.</span><span class="n">isDirectory</span>
+    <span class="o">}</span> <span class="k">yield</span> <span class="o">{</span>
+      <span class="nc">CoreUtils</span><span class="o">.</span><span class="n">runnable</span> <span class="o">{</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+        <span class="k">val</span> <span class="n">current</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Log</span><span class="o">(</span><span class="n">logDir</span><span class="o">,</span> <span class="n">config</span><span class="o">,</span> <span class="n">logRecoveryPoint</span><span class="o">,</span> <span class="n">scheduler</span><span class="o">,</span> <span class="n">time</span><span class="o">)</span>
+        <span class="c1">// 将Log对象放入logs字段。
+</span><span class="c1"></span>        <span class="k">val</span> <span class="n">previous</span> <span class="k">=</span> <span class="k">this</span><span class="o">.</span><span class="n">logs</span><span class="o">.</span><span class="n">put</span><span class="o">(</span><span class="n">topicPartition</span><span class="o">,</span> <span class="n">current</span><span class="o">)</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+        
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="n">jobs</span><span class="o">(</span><span class="n">cleanShutdownFile</span><span class="o">)</span> <span class="k">=</span> <span class="n">jobsForDir</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">pool</span><span class="o">.</span><span class="n">submit</span><span class="o">)</span><span class="o">.</span><span class="n">toSeq</span>
+  <span class="o">}</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在实例化Log对象的过程中又会调用loadSegments方法加载segment。</p>
+<p>初始化完成后，调用logManager.startup方法启动上面说到的几个任务：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">startup</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="cm">/*</span><span class="cm"> Schedule the cleanup task to delete old logs </span><span class="cm">*/</span>
+  <span class="k">if</span><span class="o">(</span><span class="n">scheduler</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">info</span><span class="o">(</span><span class="s">&#34;Starting log cleanup with a period of %d ms.&#34;</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">retentionCheckMs</span><span class="o">)</span><span class="o">)</span>
+    <span class="n">scheduler</span><span class="o">.</span><span class="n">schedule</span><span class="o">(</span><span class="s">&#34;kafka-log-retention&#34;</span><span class="o">,</span> 
+                       <span class="n">cleanupLogs</span><span class="o">,</span> 
+                       <span class="n">delay</span> <span class="k">=</span> <span class="nc">InitialTaskDelayMs</span><span class="o">,</span> 
+                       <span class="n">period</span> <span class="k">=</span> <span class="n">retentionCheckMs</span><span class="o">,</span> 
+                       <span class="nc">TimeUnit</span><span class="o">.</span><span class="nc">MILLISECONDS</span><span class="o">)</span>
+    <span class="n">info</span><span class="o">(</span><span class="s">&#34;Starting log flusher with a default period of %d ms.&#34;</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">flushCheckMs</span><span class="o">)</span><span class="o">)</span>
+    <span class="n">scheduler</span><span class="o">.</span><span class="n">schedule</span><span class="o">(</span><span class="s">&#34;kafka-log-flusher&#34;</span><span class="o">,</span> 
+                       <span class="n">flushDirtyLogs</span><span class="o">,</span> 
+                       <span class="n">delay</span> <span class="k">=</span> <span class="nc">InitialTaskDelayMs</span><span class="o">,</span> 
+                       <span class="n">period</span> <span class="k">=</span> <span class="n">flushCheckMs</span><span class="o">,</span> 
+                       <span class="nc">TimeUnit</span><span class="o">.</span><span class="nc">MILLISECONDS</span><span class="o">)</span>
+    <span class="n">scheduler</span><span class="o">.</span><span class="n">schedule</span><span class="o">(</span><span class="s">&#34;kafka-recovery-point-checkpoint&#34;</span><span class="o">,</span>
+                       <span class="n">checkpointRecoveryPointOffsets</span><span class="o">,</span>
+                       <span class="n">delay</span> <span class="k">=</span> <span class="nc">InitialTaskDelayMs</span><span class="o">,</span>
+                       <span class="n">period</span> <span class="k">=</span> <span class="n">flushCheckpointMs</span><span class="o">,</span>
+                       <span class="nc">TimeUnit</span><span class="o">.</span><span class="nc">MILLISECONDS</span><span class="o">)</span>
+  <span class="o">}</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>schedule方法的第二个参数是一个函数，定义了任务的逻辑。</p>
+<h1 id="log-flusher">log-flusher</h1>
+<p>该任务的方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">flushDirtyLogs</span><span class="o">(</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="n">debug</span><span class="o">(</span><span class="s">&#34;Checking for dirty logs to flush...&#34;</span><span class="o">)</span>
+
+  <span class="k">for</span> <span class="o">(</span><span class="o">(</span><span class="n">topicAndPartition</span><span class="o">,</span> <span class="n">log</span><span class="o">)</span> <span class="k">&lt;-</span> <span class="n">logs</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">timeSinceLastFlush</span> <span class="k">=</span> <span class="n">time</span><span class="o">.</span><span class="n">milliseconds</span> <span class="o">-</span> <span class="n">log</span><span class="o">.</span><span class="n">lastFlushTime</span>
+      <span class="n">debug</span><span class="o">(</span><span class="s">&#34;Checking if flush is needed on &#34;</span> <span class="o">+</span> <span class="n">topicAndPartition</span><span class="o">.</span><span class="n">topic</span> <span class="o">+</span> <span class="s">&#34; flush interval  &#34;</span> <span class="o">+</span> <span class="n">log</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">flushMs</span> <span class="o">+</span>
+            <span class="s">&#34; last flushed &#34;</span> <span class="o">+</span> <span class="n">log</span><span class="o">.</span><span class="n">lastFlushTime</span> <span class="o">+</span> <span class="s">&#34; time since last flush: &#34;</span> <span class="o">+</span> <span class="n">timeSinceLastFlush</span><span class="o">)</span>
+      <span class="k">if</span><span class="o">(</span><span class="n">timeSinceLastFlush</span> <span class="o">&gt;=</span> <span class="n">log</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">flushMs</span><span class="o">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">flush</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="n">e</span><span class="k">:</span> <span class="kt">Throwable</span> <span class="o">=&gt;</span>
+        <span class="n">error</span><span class="o">(</span><span class="s">&#34;Error flushing topic &#34;</span> <span class="o">+</span> <span class="n">topicAndPartition</span><span class="o">.</span><span class="n">topic</span><span class="o">,</span> <span class="n">e</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>核心逻辑就是log.flush方法。这个方法其实在之前添加消息的代码中也见过：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="c1">// now append to the log
+</span><span class="c1"></span><span class="n">segment</span><span class="o">.</span><span class="n">append</span><span class="o">(</span><span class="n">appendInfo</span><span class="o">.</span><span class="n">firstOffset</span><span class="o">,</span> <span class="n">validMessages</span><span class="o">)</span>
+
+<span class="c1">// increment the log end offset
+</span><span class="c1"></span><span class="n">updateLogEndOffset</span><span class="o">(</span><span class="n">appendInfo</span><span class="o">.</span><span class="n">lastOffset</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+
+<span class="n">trace</span><span class="o">(</span><span class="s">&#34;Appended message set to log %s with first offset: %d, next offset: %d, and messages: %s&#34;</span>
+  <span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">name</span><span class="o">,</span> <span class="n">appendInfo</span><span class="o">.</span><span class="n">firstOffset</span><span class="o">,</span> <span class="n">nextOffsetMetadata</span><span class="o">.</span><span class="n">messageOffset</span><span class="o">,</span> <span class="n">validMessages</span><span class="o">)</span><span class="o">)</span>
+
+<span class="k">if</span> <span class="o">(</span><span class="n">unflushedMessages</span> <span class="o">&gt;=</span> <span class="n">config</span><span class="o">.</span><span class="n">flushInterval</span><span class="o">)</span>
+  <span class="n">flush</span><span class="o">(</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>调用完segment的append方法后，会更新LEO，然后会判断距离上一次flush后添加的消息个数是否大于某个阈值，如果大于，则直接flush。而log-flusher任务的判断条件是时间周期。flush方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">flush</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="n">flush</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">logEndOffset</span><span class="o">)</span>
+
+
+<span class="k">def</span> <span class="n">flush</span><span class="o">(</span><span class="n">offset</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span> <span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">offset</span> <span class="o">&lt;=</span> <span class="k">this</span><span class="o">.</span><span class="n">recoveryPoint</span><span class="o">)</span>
+    <span class="k">return</span>
+  <span class="n">debug</span><span class="o">(</span><span class="s">&#34;Flushing log &#39;&#34;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&#34; up to offset &#34;</span> <span class="o">+</span> <span class="n">offset</span> <span class="o">+</span> <span class="s">&#34;, last flushed: &#34;</span> <span class="o">+</span> <span class="n">lastFlushTime</span> <span class="o">+</span> <span class="s">&#34; current time: &#34;</span> <span class="o">+</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">milliseconds</span> <span class="o">+</span> <span class="s">&#34; unflushed = &#34;</span> <span class="o">+</span> <span class="n">unflushedMessages</span><span class="o">)</span>
+  <span class="k">for</span><span class="o">(</span><span class="n">segment</span> <span class="k">&lt;-</span> <span class="n">logSegments</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">recoveryPoint</span><span class="o">,</span> <span class="n">offset</span><span class="o">)</span><span class="o">)</span>
+    <span class="n">segment</span><span class="o">.</span><span class="n">flush</span><span class="o">(</span><span class="o">)</span>
+  <span class="n">lock</span> <span class="n">synchronized</span> <span class="o">{</span>
+    <span class="k">if</span><span class="o">(</span><span class="n">offset</span> <span class="o">&gt;</span> <span class="k">this</span><span class="o">.</span><span class="n">recoveryPoint</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">this</span><span class="o">.</span><span class="n">recoveryPoint</span> <span class="k">=</span> <span class="n">offset</span>
+      <span class="n">lastflushedTime</span><span class="o">.</span><span class="n">set</span><span class="o">(</span><span class="n">time</span><span class="o">.</span><span class="n">milliseconds</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>需要flush的segment是上一次recoverPoint到当前LEO这部分。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">flush</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="nc">LogFlushStats</span><span class="o">.</span><span class="n">logFlushTimer</span><span class="o">.</span><span class="n">time</span> <span class="o">{</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">flush</span><span class="o">(</span><span class="o">)</span>
+    <span class="n">index</span><span class="o">.</span><span class="n">flush</span><span class="o">(</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>再下面就是IO层的操作了。</p>
+<h2 id="log-retention">log-retention</h2>
+<p>该任务的方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">cleanupLogs</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">debug</span><span class="o">(</span><span class="s">&#34;Beginning log cleanup...&#34;</span><span class="o">)</span>
+  <span class="k">var</span> <span class="n">total</span> <span class="k">=</span> <span class="mi">0</span>
+  <span class="k">val</span> <span class="n">startMs</span> <span class="k">=</span> <span class="n">time</span><span class="o">.</span><span class="n">milliseconds</span>
+  <span class="k">for</span><span class="o">(</span><span class="n">log</span> <span class="k">&lt;-</span> <span class="n">allLogs</span><span class="o">;</span> <span class="k">if</span> <span class="o">!</span><span class="n">log</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">compact</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">debug</span><span class="o">(</span><span class="s">&#34;Garbage collecting &#39;&#34;</span> <span class="o">+</span> <span class="n">log</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&#34;&#39;&#34;</span><span class="o">)</span>
+    <span class="n">total</span> <span class="o">+=</span> <span class="n">cleanupExpiredSegments</span><span class="o">(</span><span class="n">log</span><span class="o">)</span> <span class="o">+</span> <span class="n">cleanupSegmentsToMaintainSize</span><span class="o">(</span><span class="n">log</span><span class="o">)</span>
+  <span class="o">}</span>
+  <span class="n">debug</span><span class="o">(</span><span class="s">&#34;Log cleanup completed. &#34;</span> <span class="o">+</span> <span class="n">total</span> <span class="o">+</span> <span class="s">&#34; files deleted in &#34;</span> <span class="o">+</span>
+                <span class="o">(</span><span class="n">time</span><span class="o">.</span><span class="n">milliseconds</span> <span class="o">-</span> <span class="n">startMs</span><span class="o">)</span> <span class="o">/</span> <span class="mi">1000</span> <span class="o">+</span> <span class="s">&#34; seconds&#34;</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>核心逻辑是cleanupExpiredSegments方法和cleanupSegmentsToMaintainSize方法。顾名思义，前者是删除过期的segment，后者会根据大小删除segment。</p>
+<p>先来看前者：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">cleanupExpiredSegments</span><span class="o">(</span><span class="n">log</span><span class="k">:</span> <span class="kt">Log</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">log</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">retentionMs</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span>
+    <span class="k">return</span> <span class="mi">0</span>
+  <span class="k">val</span> <span class="n">startMs</span> <span class="k">=</span> <span class="n">time</span><span class="o">.</span><span class="n">milliseconds</span>
+  <span class="n">log</span><span class="o">.</span><span class="n">deleteOldSegments</span><span class="o">(</span><span class="n">startMs</span> <span class="o">-</span> <span class="k">_</span><span class="o">.</span><span class="n">lastModified</span> <span class="o">&gt;</span> <span class="n">log</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">retentionMs</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到这里的判断条件就是看segment是否长时间未被修改。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">deleteOldSegments</span><span class="o">(</span><span class="n">predicate</span><span class="k">:</span> <span class="kt">LogSegment</span> <span class="o">=&gt;</span> <span class="nc">Boolean</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="n">lock</span> <span class="n">synchronized</span> <span class="o">{</span>
+    <span class="c1">// 1.取出最后一个segment。
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">lastEntry</span> <span class="k">=</span> <span class="n">segments</span><span class="o">.</span><span class="n">lastEntry</span>
+    <span class="c1">// 2.取出所有符合条件的segment，把最后一个segment排除在外。
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">deletable</span> <span class="k">=</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">lastEntry</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="nc">Seq</span><span class="o">.</span><span class="n">empty</span>
+      <span class="k">else</span> <span class="n">logSegments</span><span class="o">.</span><span class="n">takeWhile</span><span class="o">(</span><span class="n">s</span> <span class="k">=&gt;</span> <span class="n">predicate</span><span class="o">(</span><span class="n">s</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">s</span><span class="o">.</span><span class="n">baseOffset</span> <span class="o">!=</span> <span class="n">lastEntry</span><span class="o">.</span><span class="n">getValue</span><span class="o">.</span><span class="n">baseOffset</span> <span class="o">||</span> <span class="n">s</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span><span class="o">)</span>
+    
+    <span class="k">val</span> <span class="n">numToDelete</span> <span class="k">=</span> <span class="n">deletable</span><span class="o">.</span><span class="n">size</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">numToDelete</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">// 3.如果所有segment都被取出了，则创建一个新的segment。
+</span><span class="c1"></span>      <span class="k">if</span> <span class="o">(</span><span class="n">segments</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">numToDelete</span><span class="o">)</span>
+        <span class="n">roll</span><span class="o">(</span><span class="o">)</span>
+      <span class="c1">// 4.删除取出的segment。
+</span><span class="c1"></span>      <span class="n">deletable</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">deleteSegment</span><span class="o">(</span><span class="k">_</span><span class="o">)</span><span class="o">)</span>
+    <span class="o">}</span>
+    <span class="n">numToDelete</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>逻辑已由注释标出。最后调用deleteSegment方法删除。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">deleteSegment</span><span class="o">(</span><span class="n">segment</span><span class="k">:</span> <span class="kt">LogSegment</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">info</span><span class="o">(</span><span class="s">&#34;Scheduling log segment %d for log %s for deletion.&#34;</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">segment</span><span class="o">.</span><span class="n">baseOffset</span><span class="o">,</span> <span class="n">name</span><span class="o">)</span><span class="o">)</span>
+  <span class="n">lock</span> <span class="n">synchronized</span> <span class="o">{</span>
+    <span class="c1">// 从segments集合中删除这个segment。
+</span><span class="c1"></span>    <span class="n">segments</span><span class="o">.</span><span class="n">remove</span><span class="o">(</span><span class="n">segment</span><span class="o">.</span><span class="n">baseOffset</span><span class="o">)</span>
+    <span class="c1">// 异步删除segment。
+</span><span class="c1"></span>    <span class="n">asyncDeleteSegment</span><span class="o">(</span><span class="n">segment</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="k">private</span> <span class="k">def</span> <span class="n">asyncDeleteSegment</span><span class="o">(</span><span class="n">segment</span><span class="k">:</span> <span class="kt">LogSegment</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">segment</span><span class="o">.</span><span class="n">changeFileSuffixes</span><span class="o">(</span><span class="s">&#34;&#34;</span><span class="o">,</span> <span class="nc">Log</span><span class="o">.</span><span class="nc">DeletedFileSuffix</span><span class="o">)</span>
+  <span class="k">def</span> <span class="n">deleteSeg</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">info</span><span class="o">(</span><span class="s">&#34;Deleting segment %d from log %s.&#34;</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">segment</span><span class="o">.</span><span class="n">baseOffset</span><span class="o">,</span> <span class="n">name</span><span class="o">)</span><span class="o">)</span>
+    <span class="n">segment</span><span class="o">.</span><span class="n">delete</span><span class="o">(</span><span class="o">)</span>
+  <span class="o">}</span>
+  <span class="n">scheduler</span><span class="o">.</span><span class="n">schedule</span><span class="o">(</span><span class="s">&#34;delete-file&#34;</span><span class="o">,</span> <span class="n">deleteSeg</span><span class="o">,</span> <span class="n">delay</span> <span class="k">=</span> <span class="n">config</span><span class="o">.</span><span class="n">fileDeleteDelayMs</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里又启动了新的线程去删除这个segment，删除的逻辑由deleteSeg方法定义。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">delete</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">deletedLog</span> <span class="k">=</span> <span class="n">log</span><span class="o">.</span><span class="n">delete</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">deletedIndex</span> <span class="k">=</span> <span class="n">index</span><span class="o">.</span><span class="n">delete</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">if</span><span class="o">(</span><span class="o">!</span><span class="n">deletedLog</span> <span class="o">&amp;&amp;</span> <span class="n">log</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">exists</span><span class="o">)</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">KafkaStorageException</span><span class="o">(</span><span class="s">&#34;Delete of log &#34;</span> <span class="o">+</span> <span class="n">log</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">getName</span> <span class="o">+</span> <span class="s">&#34; failed.&#34;</span><span class="o">)</span>
+  <span class="k">if</span><span class="o">(</span><span class="o">!</span><span class="n">deletedIndex</span> <span class="o">&amp;&amp;</span> <span class="n">index</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">exists</span><span class="o">)</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">KafkaStorageException</span><span class="o">(</span><span class="s">&#34;Delete of index &#34;</span> <span class="o">+</span> <span class="n">index</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">getName</span> <span class="o">+</span> <span class="s">&#34; failed.&#34;</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>再往下就是IO层的操作。</p>
+<p>再来看cleanupSegmentsToMaintainSize方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">cleanupSegmentsToMaintainSize</span><span class="o">(</span><span class="n">log</span><span class="k">:</span> <span class="kt">Log</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">if</span><span class="o">(</span><span class="n">log</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">retentionSize</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">log</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="n">log</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">retentionSize</span><span class="o">)</span>
+    <span class="k">return</span> <span class="mi">0</span>
+  <span class="k">var</span> <span class="n">diff</span> <span class="k">=</span> <span class="n">log</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="n">log</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">retentionSize</span>
+  <span class="k">def</span> <span class="n">shouldDelete</span><span class="o">(</span><span class="n">segment</span><span class="k">:</span> <span class="kt">LogSegment</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">if</span><span class="o">(</span><span class="n">diff</span> <span class="o">-</span> <span class="n">segment</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">diff</span> <span class="o">-=</span> <span class="n">segment</span><span class="o">.</span><span class="n">size</span>
+      <span class="kc">true</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="kc">false</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+  <span class="n">log</span><span class="o">.</span><span class="n">deleteOldSegments</span><span class="o">(</span><span class="n">shouldDelete</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>shouldDelete方法定义了判断条件，大致意思是segment的大小有没有超出某个范围。之后调用的还是deleteOldSegments方法，不再赘述。</p>
+<h2 id="recovery-point-checkpoint">recovery-point-checkpoint</h2>
+<p>该任务的方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">checkpointRecoveryPointOffsets</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">this</span><span class="o">.</span><span class="n">logDirs</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">checkpointLogsInDir</span><span class="o">)</span>
+<span class="o">}</span>
+
+
+<span class="k">private</span> <span class="k">def</span> <span class="n">checkpointLogsInDir</span><span class="o">(</span><span class="n">dir</span><span class="k">:</span> <span class="kt">File</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">recoveryPoints</span> <span class="k">=</span> <span class="k">this</span><span class="o">.</span><span class="n">logsByDir</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">dir</span><span class="o">.</span><span class="n">toString</span><span class="o">)</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">recoveryPoints</span><span class="o">.</span><span class="n">isDefined</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">.</span><span class="n">recoveryPointCheckpoints</span><span class="o">(</span><span class="n">dir</span><span class="o">)</span><span class="o">.</span><span class="n">write</span><span class="o">(</span><span class="n">recoveryPoints</span><span class="o">.</span><span class="n">get</span><span class="o">.</span><span class="n">mapValues</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">recoveryPoint</span><span class="o">)</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从recoveryPointCheckpoints字段中取出一个OffsetCheckpoint对象，调用其write方法做一个checkpoint。细节不赘述。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-04-23
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        
+        <a class="next" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E6%97%A5%E5%BF%97%E5%AD%98%E5%82%A8server%E7%AB%AF%E6%B6%88%E6%81%AF%E7%9A%84%E8%BF%AD%E4%BB%A3/">
+            <span class="next-text nav-default">深入Kafka源码 - 日志存储（Server端消息的迭代）</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

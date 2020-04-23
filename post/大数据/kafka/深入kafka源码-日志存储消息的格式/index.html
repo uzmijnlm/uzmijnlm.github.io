@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Kafka源码 - 日志存储（消息的格式） - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="在分析Producer端生产消息的流程一文中，我们知道了生产者会先构造一个RecordBatch，然后将消息一条条放入其中；当一个Recor" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E6%97%A5%E5%BF%97%E5%AD%98%E5%82%A8%E6%B6%88%E6%81%AF%E7%9A%84%E6%A0%BC%E5%BC%8F/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Kafka源码 - 日志存储（消息的格式）" />
+<meta property="og:description" content="在分析Producer端生产消息的流程一文中，我们知道了生产者会先构造一个RecordBatch，然后将消息一条条放入其中；当一个Recor" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E6%97%A5%E5%BF%97%E5%AD%98%E5%82%A8%E6%B6%88%E6%81%AF%E7%9A%84%E6%A0%BC%E5%BC%8F/" />
+<meta property="article:published_time" content="2020-04-20T16:11:40+08:00" />
+<meta property="article:modified_time" content="2020-04-20T16:11:40+08:00" />
+<meta itemprop="name" content="深入Kafka源码 - 日志存储（消息的格式）">
+<meta itemprop="description" content="在分析Producer端生产消息的流程一文中，我们知道了生产者会先构造一个RecordBatch，然后将消息一条条放入其中；当一个Recor">
+<meta itemprop="datePublished" content="2020-04-20T16:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-04-20T16:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="3470">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Kafka源码 - 日志存储（消息的格式）"/>
+<meta name="twitter:description" content="在分析Producer端生产消息的流程一文中，我们知道了生产者会先构造一个RecordBatch，然后将消息一条条放入其中；当一个Recor"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Kafka源码 - 日志存储（消息的格式）</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-04-20 </span>
+        <div class="post-category">
+            <a href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/"> 大数据 </a>
+            <a href="/categories/kafka/"> kafka </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#未压缩的消息">未压缩的消息</a></li>
+    <li><a href="#压缩的消息">压缩的消息</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <p>在分析Producer端生产消息的流程一文中，我们知道了生产者会先构造一个RecordBatch，然后将消息一条条放入其中；当一个RecordBatch写满后，再构造一个新的RecordBatch，如下图所示：</p>
+<center><img src="/大数据/kafka/日志存储/recordbatch.png" width = "450" height = "380"/></center>
+<p>不过当时只分析到了最后会调用MemoryRecords对象的append方法将消息写入buffer，但append方法的细节没有深究。现在来看一下该方法的内部实现：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">long</span> <span class="nf">append</span><span class="o">(</span><span class="kt">long</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">long</span> <span class="n">timestamp</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">key</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">writable</span><span class="o">)</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalStateException</span><span class="o">(</span><span class="s">&#34;Memory records is not writable&#34;</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">Record</span><span class="o">.</span><span class="na">recordSize</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">compressor</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">offset</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">compressor</span><span class="o">.</span><span class="na">putInt</span><span class="o">(</span><span class="n">size</span><span class="o">)</span><span class="o">;</span>
+    <span class="kt">long</span> <span class="n">crc</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="na">putRecord</span><span class="o">(</span><span class="n">timestamp</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">compressor</span><span class="o">.</span><span class="na">recordWritten</span><span class="o">(</span><span class="n">size</span> <span class="o">+</span> <span class="n">Records</span><span class="o">.</span><span class="na">LOG_OVERHEAD</span><span class="o">)</span><span class="o">;</span>
+    <span class="k">return</span> <span class="n">crc</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>Compressor的各种put方法底层就是将消息写入buffer。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">putLong</span><span class="o">(</span><span class="kd">final</span> <span class="kt">long</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">try</span> <span class="o">{</span>
+        <span class="n">appendStream</span><span class="o">.</span><span class="na">writeLong</span><span class="o">(</span><span class="n">value</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="n">KafkaException</span><span class="o">(</span><span class="s">&#34;I/O exception when writing to the append stream, closing&#34;</span><span class="o">,</span> <span class="n">e</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">writeLong</span><span class="o">(</span><span class="kt">long</span> <span class="n">v</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+    <span class="n">writeBuffer</span><span class="o">[</span><span class="n">0</span><span class="o">]</span> <span class="o">=</span> <span class="o">(</span><span class="kt">byte</span><span class="o">)</span><span class="o">(</span><span class="n">v</span> <span class="o">&gt;</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">56</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">writeBuffer</span><span class="o">[</span><span class="n">1</span><span class="o">]</span> <span class="o">=</span> <span class="o">(</span><span class="kt">byte</span><span class="o">)</span><span class="o">(</span><span class="n">v</span> <span class="o">&gt;</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">48</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">writeBuffer</span><span class="o">[</span><span class="n">2</span><span class="o">]</span> <span class="o">=</span> <span class="o">(</span><span class="kt">byte</span><span class="o">)</span><span class="o">(</span><span class="n">v</span> <span class="o">&gt;</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">40</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">writeBuffer</span><span class="o">[</span><span class="n">3</span><span class="o">]</span> <span class="o">=</span> <span class="o">(</span><span class="kt">byte</span><span class="o">)</span><span class="o">(</span><span class="n">v</span> <span class="o">&gt;</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">32</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">writeBuffer</span><span class="o">[</span><span class="n">4</span><span class="o">]</span> <span class="o">=</span> <span class="o">(</span><span class="kt">byte</span><span class="o">)</span><span class="o">(</span><span class="n">v</span> <span class="o">&gt;</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">24</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">writeBuffer</span><span class="o">[</span><span class="n">5</span><span class="o">]</span> <span class="o">=</span> <span class="o">(</span><span class="kt">byte</span><span class="o">)</span><span class="o">(</span><span class="n">v</span> <span class="o">&gt;</span><span class="o">&gt;</span><span class="o">&gt;</span> <span class="n">16</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">writeBuffer</span><span class="o">[</span><span class="n">6</span><span class="o">]</span> <span class="o">=</span> <span class="o">(</span><span class="kt">byte</span><span class="o">)</span><span class="o">(</span><span class="n">v</span> <span class="o">&gt;</span><span class="o">&gt;</span><span class="o">&gt;</span>  <span class="n">8</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">writeBuffer</span><span class="o">[</span><span class="n">7</span><span class="o">]</span> <span class="o">=</span> <span class="o">(</span><span class="kt">byte</span><span class="o">)</span><span class="o">(</span><span class="n">v</span> <span class="o">&gt;</span><span class="o">&gt;</span><span class="o">&gt;</span>  <span class="n">0</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">out</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">writeBuffer</span><span class="o">,</span> <span class="n">0</span><span class="o">,</span> <span class="n">8</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">incCount</span><span class="o">(</span><span class="n">8</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从这里就可以看出，Kafka的消息不仅包含消息本身的内容，还包含了一些消息自身的描述信息，如上面append方法中还出现了offset和size等信息的写入。其整体按照一定格式组合起来形成一条完整的消息。</p>
+<p>对于一个消息中间件（其实不仅限于消息中间件）来说，约定好的消息格式可以使框架在整体上能够优化其占用空间、解析速度、IO速度等。本文将以Kafka 0.10为例梳理其消息的格式。</p>
+<h2 id="未压缩的消息">未压缩的消息</h2>
+<p>Kafka生产者利用Compressor将消息写入buffer。之前看过Compressor的初始化：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">Compressor</span><span class="o">(</span><span class="n">ByteBuffer</span> <span class="n">buffer</span><span class="o">,</span> <span class="n">CompressionType</span> <span class="n">type</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">type</span> <span class="o">=</span> <span class="n">type</span><span class="o">;</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">initPos</span> <span class="o">=</span> <span class="n">buffer</span><span class="o">.</span><span class="na">position</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="k">this</span><span class="o">.</span><span class="na">numRecords</span> <span class="o">=</span> <span class="n">0</span><span class="o">;</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">writtenUncompressed</span> <span class="o">=</span> <span class="n">0</span><span class="o">;</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">compressionRate</span> <span class="o">=</span> <span class="n">1</span><span class="o">;</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">maxTimestamp</span> <span class="o">=</span> <span class="n">Record</span><span class="o">.</span><span class="na">NO_TIMESTAMP</span><span class="o">;</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">type</span> <span class="o">!</span><span class="o">=</span> <span class="n">CompressionType</span><span class="o">.</span><span class="na">NONE</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// for compressed records, leave space for the header and the shallow message metadata
+</span><span class="c1"></span>        <span class="c1">// and move the starting position to the value payload offset
+</span><span class="c1"></span>        <span class="n">buffer</span><span class="o">.</span><span class="na">position</span><span class="o">(</span><span class="n">initPos</span> <span class="o">+</span> <span class="n">Records</span><span class="o">.</span><span class="na">LOG_OVERHEAD</span> <span class="o">+</span> <span class="n">Record</span><span class="o">.</span><span class="na">RECORD_OVERHEAD</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="c1">// create the stream
+</span><span class="c1"></span>    <span class="n">bufferStream</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ByteBufferOutputStream</span><span class="o">(</span><span class="n">buffer</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">appendStream</span> <span class="o">=</span> <span class="n">wrapForOutput</span><span class="o">(</span><span class="n">bufferStream</span><span class="o">,</span> <span class="n">type</span><span class="o">,</span> <span class="n">COMPRESSION_DEFAULT_BUFFER_SIZE</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中有一个关键步骤，就是判断Compressor的类型。如果不为NONE，会调用buffer.position方法移动position的位置。显然如果为NONE则不做任何操作。稍后会分析不为NONE时为何会移动position的位置。</p>
+<p>MemoryRecords调用append方法时传入的参数如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kt">long</span> <span class="n">checksum</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">records</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">offsetCounter</span><span class="o">+</span><span class="o">+</span><span class="o">,</span> <span class="n">timestamp</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里的key和value是已经被序列化过后的消息的key和value。timestamp是在外层获取的时间戳。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kt">long</span> <span class="n">timestamp</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="na">timestamp</span><span class="o">(</span><span class="o">)</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">?</span> <span class="n">time</span><span class="o">.</span><span class="na">milliseconds</span><span class="o">(</span><span class="o">)</span> <span class="o">:</span> <span class="n">record</span><span class="o">.</span><span class="na">timestamp</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>而这个offsetCounter并不是我们平时见到的那个Kafka消息的offset，而是RecordBatch对象自己维护的一个内部的偏移量。这个值初始化为0：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="kt">long</span> <span class="n">offsetCounter</span> <span class="o">=</span> <span class="n">0L</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>每一次向这个RecordBatch中添加消息时就加1。</p>
+<p>回到上面的append方法，看看方法内部用这几个参数做了什么事情。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">long</span> <span class="nf">append</span><span class="o">(</span><span class="kt">long</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">long</span> <span class="n">timestamp</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">key</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">writable</span><span class="o">)</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalStateException</span><span class="o">(</span><span class="s">&#34;Memory records is not writable&#34;</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">Record</span><span class="o">.</span><span class="na">recordSize</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">compressor</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">offset</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">compressor</span><span class="o">.</span><span class="na">putInt</span><span class="o">(</span><span class="n">size</span><span class="o">)</span><span class="o">;</span>
+    <span class="kt">long</span> <span class="n">crc</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="na">putRecord</span><span class="o">(</span><span class="n">timestamp</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">compressor</span><span class="o">.</span><span class="na">recordWritten</span><span class="o">(</span><span class="n">size</span> <span class="o">+</span> <span class="n">Records</span><span class="o">.</span><span class="na">LOG_OVERHEAD</span><span class="o">)</span><span class="o">;</span>
+    <span class="k">return</span> <span class="n">crc</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>首先调用一个静态方法recordSize获取消息的大小。这里并不是直接将两个byte数组的长度相加，而是计算了很多信息。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="kt">int</span> <span class="nf">recordSize</span><span class="o">(</span><span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">key</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">recordSize</span><span class="o">(</span><span class="n">key</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">?</span> <span class="n">0</span> <span class="o">:</span> <span class="n">key</span><span class="o">.</span><span class="na">length</span><span class="o">,</span> <span class="n">value</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">?</span> <span class="n">0</span> <span class="o">:</span> <span class="n">value</span><span class="o">.</span><span class="na">length</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">static</span> <span class="kt">int</span> <span class="nf">recordSize</span><span class="o">(</span><span class="kt">int</span> <span class="n">keySize</span><span class="o">,</span> <span class="kt">int</span> <span class="n">valueSize</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">CRC_LENGTH</span> <span class="o">+</span> <span class="n">MAGIC_LENGTH</span> <span class="o">+</span> <span class="n">ATTRIBUTE_LENGTH</span> <span class="o">+</span> <span class="n">TIMESTAMP_LENGTH</span> <span class="o">+</span> <span class="n">KEY_SIZE_LENGTH</span> <span class="o">+</span> <span class="n">keySize</span> <span class="o">+</span> <span class="n">VALUE_SIZE_LENGTH</span> <span class="o">+</span> <span class="n">valueSize</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到它不仅计算了两个byte数组的长度（keySize和valueSize），还把下面这些数据的长度计算了进来：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">CRC_LENGTH</span> <span class="o">=</span> <span class="n">4</span><span class="o">;</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">MAGIC_LENGTH</span> <span class="o">=</span> <span class="n">1</span><span class="o">;</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">ATTRIBUTE_LENGTH</span> <span class="o">=</span> <span class="n">1</span><span class="o">;</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">TIMESTAMP_LENGTH</span> <span class="o">=</span> <span class="n">8</span><span class="o">;</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">KEY_SIZE_LENGTH</span> <span class="o">=</span> <span class="n">4</span><span class="o">;</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">VALUE_SIZE_LENGTH</span> <span class="o">=</span> <span class="n">4</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这意味着之后真正将消息写入buffer时一定也会将该消息的crc、magic_value、attribute、timestamp、key_size、value_size这些信息一同写入。那么这些信息是什么意思呢？</p>
+<p>我们先继续分析流程。计算出消息大小后，调用compressor.putLong(offset)方法用8个字节存储offset的值。再次强调这里的offset是一个RecordBatch内部从0开始自增的一个偏移量，可以理解为消息在一个RecordBatch中的相对偏移量。接着，调用compressor.putInt(size)方法用4个字节存储消息的大小。然后调用putRecord方法将消息写入：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">long</span> <span class="nf">putRecord</span><span class="o">(</span><span class="kt">long</span> <span class="n">timestamp</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">key</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">putRecord</span><span class="o">(</span><span class="n">timestamp</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">,</span> <span class="n">CompressionType</span><span class="o">.</span><span class="na">NONE</span><span class="o">,</span> <span class="n">0</span><span class="o">,</span> <span class="o">-</span><span class="n">1</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="kt">long</span> <span class="nf">putRecord</span><span class="o">(</span><span class="kt">long</span> <span class="n">timestamp</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">key</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">value</span><span class="o">,</span> <span class="n">CompressionType</span> <span class="n">type</span><span class="o">,</span>
+                      <span class="kt">int</span> <span class="n">valueOffset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">valueSize</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kt">long</span> <span class="n">crc</span> <span class="o">=</span> <span class="n">Record</span><span class="o">.</span><span class="na">computeChecksum</span><span class="o">(</span><span class="n">timestamp</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">,</span> <span class="n">type</span><span class="o">,</span> <span class="n">valueOffset</span><span class="o">,</span> <span class="n">valueSize</span><span class="o">)</span><span class="o">;</span>
+    <span class="kt">byte</span> <span class="n">attributes</span> <span class="o">=</span> <span class="n">Record</span><span class="o">.</span><span class="na">computeAttributes</span><span class="o">(</span><span class="n">type</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">putRecord</span><span class="o">(</span><span class="n">crc</span><span class="o">,</span> <span class="n">attributes</span><span class="o">,</span> <span class="n">timestamp</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">,</span> <span class="n">valueOffset</span><span class="o">,</span> <span class="n">valueSize</span><span class="o">)</span><span class="o">;</span>
+    <span class="k">return</span> <span class="n">crc</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中用到了computeChecksum方法计算crc，即消息的检验和。还通过压缩类型获取了消息消息的attrivutes。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="kt">void</span> <span class="nf">putRecord</span><span class="o">(</span><span class="kd">final</span> <span class="kt">long</span> <span class="n">crc</span><span class="o">,</span> <span class="kd">final</span> <span class="kt">byte</span> <span class="n">attributes</span><span class="o">,</span> <span class="kd">final</span> <span class="kt">long</span> <span class="n">timestamp</span><span class="o">,</span> <span class="kd">final</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">key</span><span class="o">,</span> <span class="kd">final</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">value</span><span class="o">,</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">valueOffset</span><span class="o">,</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">valueSize</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">maxTimestamp</span> <span class="o">=</span> <span class="n">Math</span><span class="o">.</span><span class="na">max</span><span class="o">(</span><span class="n">maxTimestamp</span><span class="o">,</span> <span class="n">timestamp</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">Record</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">crc</span><span class="o">,</span> <span class="n">attributes</span><span class="o">,</span> <span class="n">timestamp</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">value</span><span class="o">,</span> <span class="n">valueOffset</span><span class="o">,</span> <span class="n">valueSize</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">write</span><span class="o">(</span><span class="n">Compressor</span> <span class="n">compressor</span><span class="o">,</span> <span class="kt">long</span> <span class="n">crc</span><span class="o">,</span> <span class="kt">byte</span> <span class="n">attributes</span><span class="o">,</span> <span class="kt">long</span> <span class="n">timestamp</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">key</span><span class="o">,</span> <span class="kt">byte</span><span class="o">[</span><span class="o">]</span> <span class="n">value</span><span class="o">,</span> <span class="kt">int</span> <span class="n">valueOffset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">valueSize</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// write crc
+</span><span class="c1"></span>    <span class="n">compressor</span><span class="o">.</span><span class="na">putInt</span><span class="o">(</span><span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="o">(</span><span class="n">crc</span> <span class="o">&amp;</span> <span class="n">0xffffffffL</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// write magic value
+</span><span class="c1"></span>    <span class="n">compressor</span><span class="o">.</span><span class="na">putByte</span><span class="o">(</span><span class="n">CURRENT_MAGIC_VALUE</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// write attributes
+</span><span class="c1"></span>    <span class="n">compressor</span><span class="o">.</span><span class="na">putByte</span><span class="o">(</span><span class="n">attributes</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// write timestamp
+</span><span class="c1"></span>    <span class="n">compressor</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">timestamp</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// write the key
+</span><span class="c1"></span>    <span class="k">if</span> <span class="o">(</span><span class="n">key</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">compressor</span><span class="o">.</span><span class="na">putInt</span><span class="o">(</span><span class="o">-</span><span class="n">1</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">compressor</span><span class="o">.</span><span class="na">putInt</span><span class="o">(</span><span class="n">key</span><span class="o">.</span><span class="na">length</span><span class="o">)</span><span class="o">;</span>
+        <span class="n">compressor</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="n">0</span><span class="o">,</span> <span class="n">key</span><span class="o">.</span><span class="na">length</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="c1">// write the value
+</span><span class="c1"></span>    <span class="k">if</span> <span class="o">(</span><span class="n">value</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">compressor</span><span class="o">.</span><span class="na">putInt</span><span class="o">(</span><span class="o">-</span><span class="n">1</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="n">valueSize</span> <span class="o">&gt;</span><span class="o">=</span> <span class="n">0</span> <span class="o">?</span> <span class="n">valueSize</span> <span class="o">:</span> <span class="o">(</span><span class="n">value</span><span class="o">.</span><span class="na">length</span> <span class="o">-</span> <span class="n">valueOffset</span><span class="o">)</span><span class="o">;</span>
+        <span class="n">compressor</span><span class="o">.</span><span class="na">putInt</span><span class="o">(</span><span class="n">size</span><span class="o">)</span><span class="o">;</span>
+        <span class="n">compressor</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">value</span><span class="o">,</span> <span class="n">valueOffset</span><span class="o">,</span> <span class="n">size</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>write方法中将这些信息一一写入。CURRENT_MAGIC_VALUE代表的是当前日志的版本。Kafka不同版本中消息的格式不一样。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="cm">/**
+</span><span class="cm"> * The &#34;magic&#34; values
+</span><span class="cm"> */</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">byte</span> <span class="n">MAGIC_VALUE_V0</span> <span class="o">=</span> <span class="n">0</span><span class="o">;</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">byte</span> <span class="n">MAGIC_VALUE_V1</span> <span class="o">=</span> <span class="n">1</span><span class="o">;</span>
+
+<span class="cm">/**
+</span><span class="cm"> * The current &#34;magic&#34; value
+</span><span class="cm"> */</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">byte</span> <span class="n">CURRENT_MAGIC_VALUE</span> <span class="o">=</span> <span class="n">MAGIC_VALUE_V1</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在append方法中执行完compressor.putRecord方法后，就完成了消息的写入。最后修改一些Compressor内部维护的元信息。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">compressor</span><span class="o">.</span><span class="na">recordWritten</span><span class="o">(</span><span class="n">size</span> <span class="o">+</span> <span class="n">Records</span><span class="o">.</span><span class="na">LOG_OVERHEAD</span><span class="o">)</span><span class="o">;</span>
+
+
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">recordWritten</span><span class="o">(</span><span class="kt">int</span> <span class="n">size</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">numRecords</span> <span class="o">+</span><span class="o">=</span> <span class="n">1</span><span class="o">;</span>
+    <span class="n">writtenUncompressed</span> <span class="o">+</span><span class="o">=</span> <span class="n">size</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>numRecords字段表示当前添加到该RecordBatch中的消息个数。writtenUncompressed字段表示写入的消息未压缩的总大小。因为size参数就是byte数组长度与描述信息长度的和，这些是还没有压缩时算出来的。而Records.LOG_OVERHEAD表示的是一开始写入offset和size所占的大小，显然是一个固定的值。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kt">int</span> <span class="n">SIZE_LENGTH</span> <span class="o">=</span> <span class="n">4</span><span class="o">;</span>
+<span class="kt">int</span> <span class="n">OFFSET_LENGTH</span> <span class="o">=</span> <span class="n">8</span><span class="o">;</span>
+<span class="kt">int</span> <span class="n">LOG_OVERHEAD</span> <span class="o">=</span> <span class="n">SIZE_LENGTH</span> <span class="o">+</span> <span class="n">OFFSET_LENGTH</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这样就完成了整个append流程。当准备要发送这个batch时，会调用MemoryRecords的close方法，进而调用Compressor的close方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">close</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">try</span> <span class="o">{</span>
+        <span class="n">appendStream</span><span class="o">.</span><span class="na">close</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="n">KafkaException</span><span class="o">(</span><span class="n">e</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">type</span> <span class="o">!</span><span class="o">=</span> <span class="n">CompressionType</span><span class="o">.</span><span class="na">NONE</span><span class="o">)</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+        
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到如果压缩类型不为NONE时还会做一些收尾工作，为NONE时则直接close。</p>
+<p>整条消息格式如下：</p>
+<center><img src="/大数据/kafka/日志存储/log_structure.png" width = "380" height = "150"/></center>
+<p>其中message data部分详细内容如下：</p>
+<center><img src="/大数据/kafka/日志存储/message_data.png" width = "680" height = "140"/></center>
+<p>一个RecordBatch中的消息这样排列：</p>
+<center><img src="/大数据/kafka/日志存储/message_set.png" width = "120" height = "480"/></center>
+<h2 id="压缩的消息">压缩的消息</h2>
+<p>如果指定了压缩类型，消息的格式会有所不同。</p>
+<p>上文看到在Compressor初始化时，有这样的判断：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">if</span> <span class="o">(</span><span class="n">type</span> <span class="o">!</span><span class="o">=</span> <span class="n">CompressionType</span><span class="o">.</span><span class="na">NONE</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// for compressed records, leave space for the header and the shallow message metadata
+</span><span class="c1"></span>    <span class="c1">// and move the starting position to the value payload offset
+</span><span class="c1"></span>    <span class="n">buffer</span><span class="o">.</span><span class="na">position</span><span class="o">(</span><span class="n">initPos</span> <span class="o">+</span> <span class="n">Records</span><span class="o">.</span><span class="na">LOG_OVERHEAD</span> <span class="o">+</span> <span class="n">Record</span><span class="o">.</span><span class="na">RECORD_OVERHEAD</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中LOG_OVERHEAD上面也看到过：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kt">int</span> <span class="n">SIZE_LENGTH</span> <span class="o">=</span> <span class="n">4</span><span class="o">;</span>
+<span class="kt">int</span> <span class="n">OFFSET_LENGTH</span> <span class="o">=</span> <span class="n">8</span><span class="o">;</span>
+<span class="kt">int</span> <span class="n">LOG_OVERHEAD</span> <span class="o">=</span> <span class="n">SIZE_LENGTH</span> <span class="o">+</span> <span class="n">OFFSET_LENGTH</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>而RECORD_OVERHEAD为：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">RECORD_OVERHEAD</span> <span class="o">=</span> <span class="n">HEADER_SIZE</span> <span class="o">+</span> <span class="n">TIMESTAMP_LENGTH</span> <span class="o">+</span> <span class="n">KEY_SIZE_LENGTH</span> <span class="o">+</span> <span class="n">VALUE_SIZE_LENGTH</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中HEADER_SIZE为：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">HEADER_SIZE</span> <span class="o">=</span> <span class="n">CRC_LENGTH</span> <span class="o">+</span> <span class="n">MAGIC_LENGTH</span> <span class="o">+</span> <span class="n">ATTRIBUTE_LENGTH</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>因此RECORD_OVERHEAD等价于crc、magic_value、attribute、timestamp、key_size、value_size的长度加在一起。</p>
+<p>那么，buffer.position的含义就是先预留这部分空间，之后在某时刻再把内容填充进来。</p>
+<p>整个写的过程与上文没有差别，只是Compressor的实现不同。每条消息的格式不变。</p>
+<p>最后close方法会把刚刚空出的部分进行填充。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">if</span> <span class="o">(</span><span class="n">type</span> <span class="o">!</span><span class="o">=</span> <span class="n">CompressionType</span><span class="o">.</span><span class="na">NONE</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">ByteBuffer</span> <span class="n">buffer</span> <span class="o">=</span> <span class="n">bufferStream</span><span class="o">.</span><span class="na">buffer</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// 1.获取当前position的位置。
+</span><span class="c1"></span>    <span class="kt">int</span> <span class="n">pos</span> <span class="o">=</span> <span class="n">buffer</span><span class="o">.</span><span class="na">position</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// 2.将position的位置调整到0。
+</span><span class="c1"></span>    <span class="n">buffer</span><span class="o">.</span><span class="na">position</span><span class="o">(</span><span class="n">initPos</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// 3.写入最后一条消息的offset。
+</span><span class="c1"></span>    <span class="n">buffer</span><span class="o">.</span><span class="na">putLong</span><span class="o">(</span><span class="n">numRecords</span> <span class="o">-</span> <span class="n">1</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// 4.计算RECORD_OVERHEAD与所有消息的大小的和，写入buffer。
+</span><span class="c1"></span>    <span class="n">buffer</span><span class="o">.</span><span class="na">putInt</span><span class="o">(</span><span class="n">pos</span> <span class="o">-</span> <span class="n">initPos</span> <span class="o">-</span> <span class="n">Records</span><span class="o">.</span><span class="na">LOG_OVERHEAD</span><span class="o">)</span><span class="o">;</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>根据上文的分析，已经知道每写入一条消息，就会给numRecords字段加1，由此可以知道最有一条消息的offset，即numRecords-1。还可以直接计算出所有消息的大小，加上RECORD-OVERHEAD的内容，就是整体的size。后面就是具体描述信息的填入，不赘述。</p>
+<p>整个RecordBatch如下图所示：</p>
+<center><img src="/大数据/kafka/日志存储/compressed_message_set.png" width = "680" height = "140"/></center>
+<p>可以将其看作嵌套的结构，外层消息包裹着内层消息。外层的“消息”的格式与内层真正的消息格式完全一致。</p>
+<p>这样的设计是有道理的。因为消息发送到服务端后，服务端根本无法提前知道消息是否有经过压缩。由于上述描述信息的位置都是确定的，所以无论消息有没有经过压缩，服务端都会找到attributes的位置进行解析，查看压缩类型。如果是NONE，说明没有压缩，那么直接遍历即可。如果不是NONE，说明这是外层“消息”，内层还需要遍历解析，因此会找到外层value的部分，对内层真正的消息做深层遍历。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-04-20
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E6%97%A5%E5%BF%97%E5%AD%98%E5%82%A8%E6%97%A5%E5%BF%97%E5%86%99%E5%85%A5%E7%9A%84%E6%95%B4%E4%BD%93%E6%B5%81%E7%A8%8B/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入Kafka源码 - 日志存储（日志写入的整体流程）</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-kafka-server%E7%AB%AF%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E7%9A%84%E6%89%A7%E8%A1%8C/">
+            <span class="next-text nav-default">深入Kafka源码 - Kafka Server端的定时任务（定时任务的执行）</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Kafka源码 - 日志存储（Server端消息的迭代） - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="前文分析了Consumer端消息的迭代。Server端也需要迭代，因为需要对消息进行验证、分配offset（因为生产者带过来的只有相对off" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E6%97%A5%E5%BF%97%E5%AD%98%E5%82%A8server%E7%AB%AF%E6%B6%88%E6%81%AF%E7%9A%84%E8%BF%AD%E4%BB%A3/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Kafka源码 - 日志存储（Server端消息的迭代）" />
+<meta property="og:description" content="前文分析了Consumer端消息的迭代。Server端也需要迭代，因为需要对消息进行验证、分配offset（因为生产者带过来的只有相对off" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E6%97%A5%E5%BF%97%E5%AD%98%E5%82%A8server%E7%AB%AF%E6%B6%88%E6%81%AF%E7%9A%84%E8%BF%AD%E4%BB%A3/" />
+<meta property="article:published_time" content="2020-04-22T16:11:40+08:00" />
+<meta property="article:modified_time" content="2020-04-22T16:11:40+08:00" />
+<meta itemprop="name" content="深入Kafka源码 - 日志存储（Server端消息的迭代）">
+<meta itemprop="description" content="前文分析了Consumer端消息的迭代。Server端也需要迭代，因为需要对消息进行验证、分配offset（因为生产者带过来的只有相对off">
+<meta itemprop="datePublished" content="2020-04-22T16:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-04-22T16:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="5240">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Kafka源码 - 日志存储（Server端消息的迭代）"/>
+<meta name="twitter:description" content="前文分析了Consumer端消息的迭代。Server端也需要迭代，因为需要对消息进行验证、分配offset（因为生产者带过来的只有相对off"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Kafka源码 - 日志存储（Server端消息的迭代）</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-04-22 </span>
+        <div class="post-category">
+            <a href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/"> 大数据 </a>
+            <a href="/categories/kafka/"> kafka </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#analyzeandvalidatemessageset">analyzeAndValidateMessageSet</a></li>
+    <li><a href="#validatemessagesandassignoffsets">validateMessagesAndAssignOffsets</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <p>前文分析了Consumer端消息的迭代。Server端也需要迭代，因为需要对消息进行验证、分配offset（因为生产者带过来的只有相对offset，Server端需要给消息重新赋上真实的offset值）等工作。另外前文还分析过写入消息的整个流程，其中会调用到Log的append方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">append</span><span class="o">(</span><span class="n">messages</span><span class="k">:</span> <span class="kt">ByteBufferMessageSet</span><span class="o">,</span> <span class="n">assignOffsets</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="o">)</span><span class="k">:</span> <span class="kt">LogAppendInfo</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="c1">// 对消息的大小和校验和做验证。
+</span><span class="c1"></span>  <span class="k">val</span> <span class="n">appendInfo</span> <span class="k">=</span> <span class="n">analyzeAndValidateMessageSet</span><span class="o">(</span><span class="n">messages</span><span class="o">)</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="n">lock</span> <span class="n">synchronized</span> <span class="o">{</span>
+
+      <span class="k">if</span> <span class="o">(</span><span class="n">assignOffsets</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// 给消息分配offset。
+</span><span class="c1"></span>        <span class="k">val</span> <span class="n">offset</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">LongRef</span><span class="o">(</span><span class="n">nextOffsetMetadata</span><span class="o">.</span><span class="n">messageOffset</span><span class="o">)</span>
+        <span class="n">appendInfo</span><span class="o">.</span><span class="n">firstOffset</span> <span class="k">=</span> <span class="n">offset</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">val</span> <span class="n">now</span> <span class="k">=</span> <span class="n">time</span><span class="o">.</span><span class="n">milliseconds</span>
+        <span class="k">val</span> <span class="o">(</span><span class="n">validatedMessages</span><span class="o">,</span> <span class="n">messageSizesMaybeChanged</span><span class="o">)</span> <span class="k">=</span> <span class="k">try</span> <span class="o">{</span>
+          <span class="n">validMessages</span><span class="o">.</span><span class="n">validateMessagesAndAssignOffsets</span><span class="o">(</span><span class="n">offset</span><span class="o">,</span>
+                                                         <span class="n">now</span><span class="o">,</span>
+                                                         <span class="n">appendInfo</span><span class="o">.</span><span class="n">sourceCodec</span><span class="o">,</span>
+                                                         <span class="n">appendInfo</span><span class="o">.</span><span class="n">targetCodec</span><span class="o">,</span>
+                                                         <span class="n">config</span><span class="o">.</span><span class="n">compact</span><span class="o">,</span>
+                                                         <span class="n">config</span><span class="o">.</span><span class="n">messageFormatVersion</span><span class="o">.</span><span class="n">messageFormatVersion</span><span class="o">,</span>
+                                                         <span class="n">config</span><span class="o">.</span><span class="n">messageTimestampType</span><span class="o">,</span>
+                                                         <span class="n">config</span><span class="o">.</span><span class="n">messageTimestampDifferenceMaxMs</span><span class="o">)</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="n">e</span><span class="k">:</span> <span class="kt">IOException</span> <span class="o">=&gt;</span> <span class="k">throw</span> <span class="k">new</span> <span class="nc">KafkaException</span><span class="o">(</span><span class="s">&#34;Error in validating messages while appending to log &#39;%s&#39;&#34;</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">name</span><span class="o">)</span><span class="o">,</span> <span class="n">e</span><span class="o">)</span>
+        <span class="o">}</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+        
+      <span class="o">}</span>
+
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+    <span class="o">}</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">e</span><span class="k">:</span> <span class="kt">IOException</span> <span class="o">=&gt;</span> <span class="k">throw</span> <span class="k">new</span> <span class="nc">KafkaStorageException</span><span class="o">(</span><span class="s">&#34;I/O exception in append to log &#39;%s&#39;&#34;</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">name</span><span class="o">)</span><span class="o">,</span> <span class="n">e</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个方法中的analyzeAndValidateMessageSet方法和validateMessagesAndAssignOffsets方法都会涉及到迭代操作。</p>
+<h2 id="analyzeandvalidatemessageset">analyzeAndValidateMessageSet</h2>
+<p>该方法内容如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">analyzeAndValidateMessageSet</span><span class="o">(</span><span class="n">messages</span><span class="k">:</span> <span class="kt">ByteBufferMessageSet</span><span class="o">)</span><span class="k">:</span> <span class="kt">LogAppendInfo</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">var</span> <span class="n">shallowMessageCount</span> <span class="k">=</span> <span class="mi">0</span>
+  <span class="k">var</span> <span class="n">validBytesCount</span> <span class="k">=</span> <span class="mi">0</span>
+  <span class="k">var</span> <span class="n">firstOffset</span><span class="o">,</span> <span class="n">lastOffset</span> <span class="k">=</span> <span class="o">-</span><span class="mi">1L</span>
+  <span class="k">var</span> <span class="n">sourceCodec</span><span class="k">:</span> <span class="kt">CompressionCodec</span> <span class="o">=</span> <span class="nc">NoCompressionCodec</span>
+  <span class="k">var</span> <span class="n">monotonic</span> <span class="k">=</span> <span class="kc">true</span>
+  <span class="k">for</span><span class="o">(</span><span class="n">messageAndOffset</span> <span class="k">&lt;-</span> <span class="n">messages</span><span class="o">.</span><span class="n">shallowIterator</span><span class="o">)</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span>
+
+  <span class="k">val</span> <span class="n">targetCodec</span> <span class="k">=</span> <span class="nc">BrokerCompressionCodec</span><span class="o">.</span><span class="n">getTargetCompressionCodec</span><span class="o">(</span><span class="n">config</span><span class="o">.</span><span class="n">compressionType</span><span class="o">,</span> <span class="n">sourceCodec</span><span class="o">)</span>
+
+  <span class="nc">LogAppendInfo</span><span class="o">(</span><span class="n">firstOffset</span><span class="o">,</span> <span class="n">lastOffset</span><span class="o">,</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">NoTimestamp</span><span class="o">,</span> <span class="n">sourceCodec</span><span class="o">,</span> <span class="n">targetCodec</span><span class="o">,</span> <span class="n">shallowMessageCount</span><span class="o">,</span> <span class="n">validBytesCount</span><span class="o">,</span> <span class="n">monotonic</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个方法主要就是定义了几个变量，中间部分就是对消息进行遍历，给变量赋值，最后封装在LogAppendInfo中返回。</p>
+<p>其中shallowMessageCount表示浅层迭代中消息的个数。validBytesCount表示消息总的大小，包括了offset和size占的空间。firstOffset和lastOffset表示第一条消息的offset值和最后一条消息的offset值。这里的值都是相对offset。monotonic表示消息的offset是否单调递增。sourceCodec表示生产者生产消息时的压缩方式。targetCodec表示broker要对消息进行压缩的方式，一般它与sourceCodec相等。</p>
+<p>下面来看for循环。</p>
+<p>ByteBufferMessageSet类定义了shallowIterator方法，该方法返回一个Iterable对象，所以可以进行迭代。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">shallowIterator</span><span class="k">:</span> <span class="kt">Iterator</span><span class="o">[</span><span class="kt">MessageAndOffset</span><span class="o">]</span> <span class="k">=</span> <span class="n">internalIterator</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>而迭代器内的元素类型为MessageAndOffset，它的结构如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">case</span> <span class="k">class</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">message</span><span class="k">:</span> <span class="kt">Message</span><span class="o">,</span> <span class="n">offset</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中Message类就表示一个消息。它与前文Consumer端分析到的Record类的含义几乎相同。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">Message</span><span class="o">(</span><span class="k">val</span> <span class="n">buffer</span><span class="k">:</span> <span class="kt">ByteBuffer</span><span class="o">,</span>
+              <span class="k">private</span> <span class="k">val</span> <span class="n">wrapperMessageTimestamp</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Long</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span><span class="o">,</span>
+              <span class="k">private</span> <span class="k">val</span> <span class="n">wrapperMessageTimestampType</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">TimestampType</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>for循环内部所做的事情如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="c1">// 1.给firstOffset赋值。
+</span><span class="c1"></span><span class="k">if</span><span class="o">(</span><span class="n">firstOffset</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span>
+  <span class="n">firstOffset</span> <span class="k">=</span> <span class="n">messageAndOffset</span><span class="o">.</span><span class="n">offset</span>
+<span class="c1">// 2.如果offset不是单调递增，则将monotonic置为false。
+</span><span class="c1"></span><span class="k">if</span><span class="o">(</span><span class="n">lastOffset</span> <span class="o">&gt;=</span> <span class="n">messageAndOffset</span><span class="o">.</span><span class="n">offset</span><span class="o">)</span>
+  <span class="n">monotonic</span> <span class="k">=</span> <span class="kc">false</span>
+<span class="c1">// 3.更新lastOffset。
+</span><span class="c1"></span><span class="n">lastOffset</span> <span class="k">=</span> <span class="n">messageAndOffset</span><span class="o">.</span><span class="n">offset</span>
+
+<span class="c1">// 4.获取到MessageAndOffset对象中的message字段。
+</span><span class="c1"></span><span class="k">val</span> <span class="n">m</span> <span class="k">=</span> <span class="n">messageAndOffset</span><span class="o">.</span><span class="n">message</span>
+
+<span class="c1">// 5.获取消息大小并验证。
+</span><span class="c1"></span><span class="k">val</span> <span class="n">messageSize</span> <span class="k">=</span> <span class="nc">MessageSet</span><span class="o">.</span><span class="n">entrySize</span><span class="o">(</span><span class="n">m</span><span class="o">)</span>
+<span class="k">if</span><span class="o">(</span><span class="n">messageSize</span> <span class="o">&gt;</span> <span class="n">config</span><span class="o">.</span><span class="n">maxMessageSize</span><span class="o">)</span> <span class="o">{</span>
+  <span class="nc">BrokerTopicStats</span><span class="o">.</span><span class="n">getBrokerTopicStats</span><span class="o">(</span><span class="n">topicAndPartition</span><span class="o">.</span><span class="n">topic</span><span class="o">)</span><span class="o">.</span><span class="n">bytesRejectedRate</span><span class="o">.</span><span class="n">mark</span><span class="o">(</span><span class="n">messages</span><span class="o">.</span><span class="n">sizeInBytes</span><span class="o">)</span>
+  <span class="nc">BrokerTopicStats</span><span class="o">.</span><span class="n">getBrokerAllTopicsStats</span><span class="o">.</span><span class="n">bytesRejectedRate</span><span class="o">.</span><span class="n">mark</span><span class="o">(</span><span class="n">messages</span><span class="o">.</span><span class="n">sizeInBytes</span><span class="o">)</span>
+  <span class="k">throw</span> <span class="k">new</span> <span class="nc">RecordTooLargeException</span><span class="o">(</span><span class="s">&#34;Message size is %d bytes which exceeds the maximum configured message size of %d.&#34;</span>
+    <span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">messageSize</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">maxMessageSize</span><span class="o">)</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="c1">// 6.验证检验和。
+</span><span class="c1"></span><span class="n">m</span><span class="o">.</span><span class="n">ensureValid</span><span class="o">(</span><span class="o">)</span>
+
+<span class="c1">// 7.更新shallowMessageCount和validBytesCount。
+</span><span class="c1"></span><span class="n">shallowMessageCount</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="n">validBytesCount</span> <span class="o">+=</span> <span class="n">messageSize</span>
+
+<span class="c1">// 8.给sourceCodec赋值。
+</span><span class="c1"></span><span class="k">val</span> <span class="n">messageCodec</span> <span class="k">=</span> <span class="n">m</span><span class="o">.</span><span class="n">compressionCodec</span>
+<span class="k">if</span><span class="o">(</span><span class="n">messageCodec</span> <span class="o">!=</span> <span class="nc">NoCompressionCodec</span><span class="o">)</span>
+  <span class="n">sourceCodec</span> <span class="k">=</span> <span class="n">messageCodec</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>整个过程都非常简单。</p>
+<p>下面分析shallowIterator方法是如何对ByteBufferMessageSet对象进行遍历的。</p>
+<p>从上面可以看到它调用了internalIterator方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">internalIterator</span><span class="o">(</span><span class="n">isShallow</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="o">)</span><span class="k">:</span> <span class="kt">Iterator</span><span class="o">[</span><span class="kt">MessageAndOffset</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">new</span> <span class="nc">IteratorTemplate</span><span class="o">[</span><span class="kt">MessageAndOffset</span><span class="o">]</span> <span class="o">{</span>
+    <span class="k">var</span> <span class="n">topIter</span> <span class="k">=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">slice</span><span class="o">(</span><span class="o">)</span>
+    <span class="k">var</span> <span class="n">innerIter</span><span class="k">:</span> <span class="kt">Iterator</span><span class="o">[</span><span class="kt">MessageAndOffset</span><span class="o">]</span> <span class="k">=</span> <span class="kc">null</span>
+
+    <span class="k">def</span> <span class="n">innerDone</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">(</span><span class="n">innerIter</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="o">!</span><span class="n">innerIter</span><span class="o">.</span><span class="n">hasNext</span><span class="o">)</span>
+
+    <span class="k">def</span> <span class="n">makeNextOuter</span><span class="k">:</span> <span class="kt">MessageAndOffset</span> <span class="o">=</span> <span class="o">{</span>
+      <span class="c1">// if there isn&#39;t at least an offset and size, we are done
+</span><span class="c1"></span>      <span class="k">if</span> <span class="o">(</span><span class="n">topIter</span><span class="o">.</span><span class="n">remaining</span> <span class="o">&lt;</span> <span class="mi">12</span><span class="o">)</span>
+        <span class="k">return</span> <span class="n">allDone</span><span class="o">(</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">offset</span> <span class="k">=</span> <span class="n">topIter</span><span class="o">.</span><span class="n">getLong</span><span class="o">(</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">size</span> <span class="k">=</span> <span class="n">topIter</span><span class="o">.</span><span class="n">getInt</span><span class="o">(</span><span class="o">)</span>
+      <span class="k">if</span><span class="o">(</span><span class="n">size</span> <span class="o">&lt;</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">MinMessageOverhead</span><span class="o">)</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nc">InvalidMessageException</span><span class="o">(</span><span class="s">&#34;Message found with corrupt size (&#34;</span> <span class="o">+</span> <span class="n">size</span> <span class="o">+</span> <span class="s">&#34;) in shallow iterator&#34;</span><span class="o">)</span>
+
+      <span class="c1">// we have an incomplete message
+</span><span class="c1"></span>      <span class="k">if</span><span class="o">(</span><span class="n">topIter</span><span class="o">.</span><span class="n">remaining</span> <span class="o">&lt;</span> <span class="n">size</span><span class="o">)</span>
+        <span class="k">return</span> <span class="n">allDone</span><span class="o">(</span><span class="o">)</span>
+
+      <span class="c1">// read the current message and check correctness
+</span><span class="c1"></span>      <span class="k">val</span> <span class="n">message</span> <span class="k">=</span> <span class="n">topIter</span><span class="o">.</span><span class="n">slice</span><span class="o">(</span><span class="o">)</span>
+      <span class="n">message</span><span class="o">.</span><span class="n">limit</span><span class="o">(</span><span class="n">size</span><span class="o">)</span>
+      <span class="n">topIter</span><span class="o">.</span><span class="n">position</span><span class="o">(</span><span class="n">topIter</span><span class="o">.</span><span class="n">position</span> <span class="o">+</span> <span class="n">size</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">newMessage</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Message</span><span class="o">(</span><span class="n">message</span><span class="o">)</span>
+      <span class="k">if</span><span class="o">(</span><span class="n">isShallow</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">new</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">newMessage</span><span class="o">,</span> <span class="n">offset</span><span class="o">)</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">newMessage</span><span class="o">.</span><span class="n">compressionCodec</span> <span class="k">match</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="nc">NoCompressionCodec</span> <span class="k">=&gt;</span>
+            <span class="n">innerIter</span> <span class="k">=</span> <span class="kc">null</span>
+            <span class="k">new</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">newMessage</span><span class="o">,</span> <span class="n">offset</span><span class="o">)</span>
+          <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span>
+            <span class="n">innerIter</span> <span class="k">=</span> <span class="nc">ByteBufferMessageSet</span><span class="o">.</span><span class="n">deepIterator</span><span class="o">(</span><span class="k">new</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">newMessage</span><span class="o">,</span> <span class="n">offset</span><span class="o">)</span><span class="o">)</span>
+            <span class="k">if</span><span class="o">(</span><span class="o">!</span><span class="n">innerIter</span><span class="o">.</span><span class="n">hasNext</span><span class="o">)</span>
+              <span class="n">innerIter</span> <span class="k">=</span> <span class="kc">null</span>
+            <span class="n">makeNext</span><span class="o">(</span><span class="o">)</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="k">override</span> <span class="k">def</span> <span class="n">makeNext</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">MessageAndOffset</span> <span class="o">=</span> <span class="o">{</span>
+      <span class="k">if</span><span class="o">(</span><span class="n">isShallow</span><span class="o">)</span><span class="o">{</span>
+        <span class="n">makeNextOuter</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="k">if</span><span class="o">(</span><span class="n">innerDone</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+          <span class="n">makeNextOuter</span>
+        <span class="k">else</span>
+          <span class="n">innerIter</span><span class="o">.</span><span class="n">next</span><span class="o">(</span><span class="o">)</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个方法直接返回一个IteratorTemplate对象。这个方法内部定义了很多方法和字段。经过前文的分析，这些方法应该一眼就能看明白其含义。它与Consumer端的代码几乎完全一致，只不过改成了scala语言。其next和hasNext等方法也完全一致：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">next</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">if</span><span class="o">(</span><span class="o">!</span><span class="n">hasNext</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">NoSuchElementException</span><span class="o">(</span><span class="o">)</span>
+  <span class="n">state</span> <span class="k">=</span> <span class="nc">NOT_READY</span>
+  <span class="k">if</span><span class="o">(</span><span class="n">nextItem</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">IllegalStateException</span><span class="o">(</span><span class="s">&#34;Expected item but none found.&#34;</span><span class="o">)</span>
+  <span class="n">nextItem</span>
+<span class="o">}</span>
+
+<span class="k">def</span> <span class="n">hasNext</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">if</span><span class="o">(</span><span class="n">state</span> <span class="o">==</span> <span class="nc">FAILED</span><span class="o">)</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">IllegalStateException</span><span class="o">(</span><span class="s">&#34;Iterator is in failed state&#34;</span><span class="o">)</span>
+  <span class="n">state</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="nc">DONE</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+    <span class="k">case</span> <span class="nc">READY</span> <span class="k">=&gt;</span> <span class="kc">true</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="n">maybeComputeNext</span><span class="o">(</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="k">def</span> <span class="n">maybeComputeNext</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="n">state</span> <span class="k">=</span> <span class="nc">FAILED</span>
+  <span class="n">nextItem</span> <span class="k">=</span> <span class="n">makeNext</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">if</span><span class="o">(</span><span class="n">state</span> <span class="o">==</span> <span class="nc">DONE</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kc">false</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+    <span class="n">state</span> <span class="k">=</span> <span class="nc">READY</span>
+    <span class="kc">true</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+</code></pre></td></tr></table>
+</div>
+</div><p>我们看到在makeNextOuter方法中，有这样的逻辑：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">if</span><span class="o">(</span><span class="n">isShallow</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">new</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">newMessage</span><span class="o">,</span> <span class="n">offset</span><span class="o">)</span>
+<span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+  <span class="n">newMessage</span><span class="o">.</span><span class="n">compressionCodec</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="nc">NoCompressionCodec</span> <span class="k">=&gt;</span>
+      <span class="n">innerIter</span> <span class="k">=</span> <span class="kc">null</span>
+      <span class="k">new</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">newMessage</span><span class="o">,</span> <span class="n">offset</span><span class="o">)</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span>
+      <span class="n">innerIter</span> <span class="k">=</span> <span class="nc">ByteBufferMessageSet</span><span class="o">.</span><span class="n">deepIterator</span><span class="o">(</span><span class="k">new</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">newMessage</span><span class="o">,</span> <span class="n">offset</span><span class="o">)</span><span class="o">)</span>
+      <span class="k">if</span><span class="o">(</span><span class="o">!</span><span class="n">innerIter</span><span class="o">.</span><span class="n">hasNext</span><span class="o">)</span>
+        <span class="n">innerIter</span> <span class="k">=</span> <span class="kc">null</span>
+      <span class="n">makeNext</span><span class="o">(</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>由于调用internalIterator方法时传入的参数为true，所以会进入if分支，直接返回MessageAndOffset对象。如果是没有压缩过的消息，messages.shallowIterator方法会一条条遍历；如果是压缩过的消息，这里只做到浅层迭代，因此对于外层来说就只有一条消息。如果debug就可以看到对于压缩过的消息，迭代结束后shallowMessageCount变量的值为1。</p>
+<h2 id="validatemessagesandassignoffsets">validateMessagesAndAssignOffsets</h2>
+<p>经过analyzeAndValidateMessageSet方法后，返回了一个描述信息，里面包含的内容上文已经分析过。接下来需要给消息分配真实的offset。首先经过了这么两步：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">offset</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">LongRef</span><span class="o">(</span><span class="n">nextOffsetMetadata</span><span class="o">.</span><span class="n">messageOffset</span><span class="o">)</span>
+<span class="n">appendInfo</span><span class="o">.</span><span class="n">firstOffset</span> <span class="k">=</span> <span class="n">offset</span><span class="o">.</span><span class="n">value</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>获取了一个offset值。这个值是什么？</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="nd">@volatile</span> <span class="k">var</span> <span class="n">nextOffsetMetadata</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">LogOffsetMetadata</span><span class="o">(</span><span class="n">activeSegment</span><span class="o">.</span><span class="n">nextOffset</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="n">activeSegment</span><span class="o">.</span><span class="n">baseOffset</span><span class="o">,</span> <span class="n">activeSegment</span><span class="o">.</span><span class="n">size</span><span class="o">.</span><span class="n">toInt</span><span class="o">)</span>
+
+
+<span class="k">case</span> <span class="k">class</span> <span class="nc">LogOffsetMetadata</span><span class="o">(</span><span class="n">messageOffset</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span>
+                             <span class="n">segmentBaseOffset</span><span class="k">:</span> <span class="kt">Long</span> <span class="o">=</span> <span class="nc">LogOffsetMetadata</span><span class="o">.</span><span class="nc">UnknownSegBaseOffset</span><span class="o">,</span>
+                             <span class="n">relativePositionInSegment</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="nc">LogOffsetMetadata</span><span class="o">.</span><span class="nc">UnknownFilePosition</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中activeSegment的nextOffset方法及其注释如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="cm">/*</span><span class="cm">*</span><span class="cm">
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> Calculate the offset that would be used for the next message to be append to this segment.
+</span><span class="cm"> </span><span class="cm">*</span><span class="cm"> Note that this is expensive.
+</span><span class="cm"> </span><span class="cm">*/</span>
+<span class="nd">@threadsafe</span>
+<span class="k">def</span> <span class="n">nextOffset</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Long</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">ms</span> <span class="k">=</span> <span class="n">read</span><span class="o">(</span><span class="n">index</span><span class="o">.</span><span class="n">lastOffset</span><span class="o">,</span> <span class="nc">None</span><span class="o">,</span> <span class="n">log</span><span class="o">.</span><span class="n">sizeInBytes</span><span class="o">)</span>
+  <span class="k">if</span><span class="o">(</span><span class="n">ms</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">baseOffset</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+    <span class="n">ms</span><span class="o">.</span><span class="n">messageSet</span><span class="o">.</span><span class="n">lastOption</span> <span class="k">match</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="n">baseOffset</span>
+      <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">last</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">last</span><span class="o">.</span><span class="n">nextOffset</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>即获取的这个offset值为下一条马上要添加的消息的真实offset。获取到这个值以后先把它赋给了appendInfo对象的firstOffset字段。这个操作是符合逻辑的，因为appendInfo代表的就是消息的描述信息，应当将其中的相对offset改成绝对offset。</p>
+<p>接着执行validateMessagesAndAssignOffsets方法，这个offset也作为参数传了进来：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span><span class="o">[</span><span class="kt">kafka</span><span class="o">]</span> <span class="k">def</span> <span class="n">validateMessagesAndAssignOffsets</span><span class="o">(</span><span class="n">offsetCounter</span><span class="k">:</span> <span class="kt">LongRef</span><span class="o">,</span>
+                                                    <span class="n">now</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span>
+                                                    <span class="n">sourceCodec</span><span class="k">:</span> <span class="kt">CompressionCodec</span><span class="o">,</span>
+                                                    <span class="n">targetCodec</span><span class="k">:</span> <span class="kt">CompressionCodec</span><span class="o">,</span>
+                                                    <span class="n">compactedTopic</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="o">,</span>
+                                                    <span class="n">messageFormatVersion</span><span class="k">:</span> <span class="kt">Byte</span> <span class="o">=</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">CurrentMagicValue</span><span class="o">,</span>
+                                                    <span class="n">messageTimestampType</span><span class="k">:</span> <span class="kt">TimestampType</span><span class="o">,</span>
+                                                    <span class="n">messageTimestampDiffMaxMs</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span><span class="k">:</span> <span class="o">(</span><span class="kt">ByteBufferMessageSet</span><span class="o">,</span> <span class="kt">Boolean</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">sourceCodec</span> <span class="o">==</span> <span class="nc">NoCompressionCodec</span> <span class="o">&amp;&amp;</span> <span class="n">targetCodec</span> <span class="o">==</span> <span class="nc">NoCompressionCodec</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// check the magic value
+</span><span class="c1"></span>    <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">isMagicValueInAllWrapperMessages</span><span class="o">(</span><span class="n">messageFormatVersion</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">// Message format conversion
+</span><span class="c1"></span>      <span class="o">(</span><span class="n">convertNonCompressedMessages</span><span class="o">(</span><span class="n">offsetCounter</span><span class="o">,</span> <span class="n">compactedTopic</span><span class="o">,</span> <span class="n">now</span><span class="o">,</span> <span class="n">messageTimestampType</span><span class="o">,</span> <span class="n">messageTimestampDiffMaxMs</span><span class="o">,</span>
+        <span class="n">messageFormatVersion</span><span class="o">)</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="c1">// Do in-place validation, offset assignment and maybe set timestamp
+</span><span class="c1"></span>      <span class="o">(</span><span class="n">validateNonCompressedMessagesAndAssignOffsetInPlace</span><span class="o">(</span><span class="n">offsetCounter</span><span class="o">,</span> <span class="n">now</span><span class="o">,</span> <span class="n">compactedTopic</span><span class="o">,</span> <span class="n">messageTimestampType</span><span class="o">,</span>
+        <span class="n">messageTimestampDiffMaxMs</span><span class="o">)</span><span class="o">,</span> <span class="kc">false</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>对于未压缩的消息，会进入if分支；压缩的消息进入else分支，这里为了展示方便先略去了else分支的内容。</p>
+<p>对于未压缩的消息一般情况下进入validateNonCompressedMessagesAndAssignOffsetInPlace方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">validateNonCompressedMessagesAndAssignOffsetInPlace</span><span class="o">(</span><span class="n">offsetCounter</span><span class="k">:</span> <span class="kt">LongRef</span><span class="o">,</span>
+                                                                <span class="n">now</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span>
+                                                                <span class="n">compactedTopic</span><span class="k">:</span> <span class="kt">Boolean</span><span class="o">,</span>
+                                                                <span class="n">timestampType</span><span class="k">:</span> <span class="kt">TimestampType</span><span class="o">,</span>
+                                                                <span class="n">timestampDiffMaxMs</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span><span class="k">:</span> <span class="kt">ByteBufferMessageSet</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="c1">// do in-place validation and offset assignment
+</span><span class="c1"></span>  <span class="k">var</span> <span class="n">messagePosition</span> <span class="k">=</span> <span class="mi">0</span>
+  <span class="n">buffer</span><span class="o">.</span><span class="n">mark</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">while</span> <span class="o">(</span><span class="n">messagePosition</span> <span class="o">&lt;</span> <span class="n">sizeInBytes</span> <span class="o">-</span> <span class="nc">MessageSet</span><span class="o">.</span><span class="nc">LogOverhead</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">buffer</span><span class="o">.</span><span class="n">position</span><span class="o">(</span><span class="n">messagePosition</span><span class="o">)</span>
+    <span class="c1">// 给消息分配offset。
+</span><span class="c1"></span>    <span class="n">buffer</span><span class="o">.</span><span class="n">putLong</span><span class="o">(</span><span class="n">offsetCounter</span><span class="o">.</span><span class="n">getAndIncrement</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+    <span class="k">val</span> <span class="n">messageSize</span> <span class="k">=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">getInt</span><span class="o">(</span><span class="o">)</span>
+    <span class="k">val</span> <span class="n">messageBuffer</span> <span class="k">=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">slice</span><span class="o">(</span><span class="o">)</span>
+    <span class="n">messageBuffer</span><span class="o">.</span><span class="n">limit</span><span class="o">(</span><span class="n">messageSize</span><span class="o">)</span>
+    <span class="k">val</span> <span class="n">message</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Message</span><span class="o">(</span><span class="n">messageBuffer</span><span class="o">)</span>
+    <span class="n">validateMessageKey</span><span class="o">(</span><span class="n">message</span><span class="o">,</span> <span class="n">compactedTopic</span><span class="o">)</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">message</span><span class="o">.</span><span class="n">magic</span> <span class="o">&gt;</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">MagicValue_V0</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">validateTimestamp</span><span class="o">(</span><span class="n">message</span><span class="o">,</span> <span class="n">now</span><span class="o">,</span> <span class="n">timestampType</span><span class="o">,</span> <span class="n">timestampDiffMaxMs</span><span class="o">)</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">timestampType</span> <span class="o">==</span> <span class="nc">TimestampType</span><span class="o">.</span><span class="nc">LOG_APPEND_TIME</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">message</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">putLong</span><span class="o">(</span><span class="nc">Message</span><span class="o">.</span><span class="nc">TimestampOffset</span><span class="o">,</span> <span class="n">now</span><span class="o">)</span>
+        <span class="n">message</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">put</span><span class="o">(</span><span class="nc">Message</span><span class="o">.</span><span class="nc">AttributesOffset</span><span class="o">,</span> <span class="n">timestampType</span><span class="o">.</span><span class="n">updateAttributes</span><span class="o">(</span><span class="n">message</span><span class="o">.</span><span class="n">attributes</span><span class="o">)</span><span class="o">)</span>
+        <span class="nc">Utils</span><span class="o">.</span><span class="n">writeUnsignedInt</span><span class="o">(</span><span class="n">message</span><span class="o">.</span><span class="n">buffer</span><span class="o">,</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">CrcOffset</span><span class="o">,</span> <span class="n">message</span><span class="o">.</span><span class="n">computeChecksum</span><span class="o">)</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="n">messagePosition</span> <span class="o">+=</span> <span class="nc">MessageSet</span><span class="o">.</span><span class="nc">LogOverhead</span> <span class="o">+</span> <span class="n">messageSize</span>
+  <span class="o">}</span>
+  <span class="n">buffer</span><span class="o">.</span><span class="n">reset</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">this</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面注释的部分就是给消息分配真实offset的地方。</p>
+<p>分配完后，回到最外层的append方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="o">(</span><span class="n">validatedMessages</span><span class="o">,</span> <span class="n">messageSizesMaybeChanged</span><span class="o">)</span> <span class="k">=</span> <span class="k">try</span> <span class="o">{</span>
+  <span class="n">validMessages</span><span class="o">.</span><span class="n">validateMessagesAndAssignOffsets</span><span class="o">(</span><span class="n">offset</span><span class="o">,</span>
+                                                 <span class="n">now</span><span class="o">,</span>
+                                                 <span class="n">appendInfo</span><span class="o">.</span><span class="n">sourceCodec</span><span class="o">,</span>
+                                                 <span class="n">appendInfo</span><span class="o">.</span><span class="n">targetCodec</span><span class="o">,</span>
+                                                 <span class="n">config</span><span class="o">.</span><span class="n">compact</span><span class="o">,</span>
+                                                 <span class="n">config</span><span class="o">.</span><span class="n">messageFormatVersion</span><span class="o">.</span><span class="n">messageFormatVersion</span><span class="o">,</span>
+                                                 <span class="n">config</span><span class="o">.</span><span class="n">messageTimestampType</span><span class="o">,</span>
+                                                 <span class="n">config</span><span class="o">.</span><span class="n">messageTimestampDifferenceMaxMs</span><span class="o">)</span>
+<span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="n">e</span><span class="k">:</span> <span class="kt">IOException</span> <span class="o">=&gt;</span> <span class="k">throw</span> <span class="k">new</span> <span class="nc">KafkaException</span><span class="o">(</span><span class="s">&#34;Error in validating messages while appending to log &#39;%s&#39;&#34;</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">name</span><span class="o">)</span><span class="o">,</span> <span class="n">e</span><span class="o">)</span>
+<span class="o">}</span>
+<span class="n">validMessages</span> <span class="k">=</span> <span class="n">validatedMessages</span>
+<span class="n">appendInfo</span><span class="o">.</span><span class="n">lastOffset</span> <span class="k">=</span> <span class="n">offset</span><span class="o">.</span><span class="n">value</span> <span class="o">-</span> <span class="mi">1</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>返回的validatedMessages就是重新分配过offset的消息集合，用它的值覆盖之前的validMessages变量。同时，offset变量不断递增，validateMessagesAndAssignOffsets方法结束后用它对appendInfo的lastOffset值做修改。这样整个过程基本就结束了，append方法的后面就是获取最新的segment，然后添加数据。最后更新LEO。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="c1">// maybe roll the log if this segment is full
+</span><span class="c1"></span><span class="k">val</span> <span class="n">segment</span> <span class="k">=</span> <span class="n">maybeRoll</span><span class="o">(</span><span class="n">validMessages</span><span class="o">.</span><span class="n">sizeInBytes</span><span class="o">)</span>
+
+<span class="c1">// now append to the log
+</span><span class="c1"></span><span class="n">segment</span><span class="o">.</span><span class="n">append</span><span class="o">(</span><span class="n">appendInfo</span><span class="o">.</span><span class="n">firstOffset</span><span class="o">,</span> <span class="n">validMessages</span><span class="o">)</span>
+
+<span class="c1">// increment the log end offset
+</span><span class="c1"></span><span class="n">updateLogEndOffset</span><span class="o">(</span><span class="n">appendInfo</span><span class="o">.</span><span class="n">lastOffset</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>对于压缩的消息，后面的过程与上面一致。只是分配offset的过程不一样。进入到上面的else分支，内容如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">var</span> <span class="n">inPlaceAssignment</span> <span class="k">=</span> <span class="n">sourceCodec</span> <span class="o">==</span> <span class="n">targetCodec</span> <span class="o">&amp;&amp;</span> <span class="n">messageFormatVersion</span> <span class="o">&gt;</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">MagicValue_V0</span>
+
+<span class="k">var</span> <span class="n">maxTimestamp</span> <span class="k">=</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">NoTimestamp</span>
+<span class="k">val</span> <span class="n">expectedInnerOffset</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">LongRef</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">validatedMessages</span> <span class="k">=</span> <span class="k">new</span> <span class="n">mutable</span><span class="o">.</span><span class="nc">ArrayBuffer</span><span class="o">[</span><span class="kt">Message</span><span class="o">]</span>
+<span class="k">this</span><span class="o">.</span><span class="n">internalIterator</span><span class="o">(</span><span class="n">isShallow</span> <span class="k">=</span> <span class="kc">false</span><span class="o">)</span><span class="o">.</span><span class="n">foreach</span> <span class="o">{</span> <span class="n">messageAndOffset</span> <span class="k">=&gt;</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+<span class="o">}</span>
+
+<span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">inPlaceAssignment</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+<span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>先根据一些条件获取一个布尔类型的变量inPlaceAssignment。变量inPlaceAssignment标识是否可以直接复用当前ByteBufferMessageSet对象。下面四种情况不能复用：</p>
+<p>1.消息当前压缩类型与此Broker指定的压缩类型不一致，需要重新压缩。</p>
+<p>2.Magic为0时，需要重写消息的offset为绝对offset。</p>
+<p>3.Magic大于0，但内部压缩消息某些字段需要修改，例如时间戳。</p>
+<p>4.消息格式需要转换。</p>
+<p>一般情况下都是可以复用的。如果不能复用，则会在下面判断if(!inPlaceAssignment)处进入if分支，生成新的ByteBufferMessageSet对象，会调用到ByteBufferMessageSet的create方法。这里不展开分析。</p>
+<p>然后再次迭代消息。这一次的迭代是深层迭代。暂时先不看迭代器的工作原理，先来看迭代出来的每个对象都做了什么，即foreach里面的逻辑。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">message</span> <span class="k">=</span> <span class="n">messageAndOffset</span><span class="o">.</span><span class="n">message</span>
+<span class="n">validateMessageKey</span><span class="o">(</span><span class="n">message</span><span class="o">,</span> <span class="n">compactedTopic</span><span class="o">)</span>
+
+<span class="k">if</span> <span class="o">(</span><span class="n">message</span><span class="o">.</span><span class="n">magic</span> <span class="o">&gt;</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">MagicValue_V0</span> <span class="o">&amp;&amp;</span> <span class="n">messageFormatVersion</span> <span class="o">&gt;</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">MagicValue_V0</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">validateTimestamp</span><span class="o">(</span><span class="n">message</span><span class="o">,</span> <span class="n">now</span><span class="o">,</span> <span class="n">messageTimestampType</span><span class="o">,</span> <span class="n">messageTimestampDiffMaxMs</span><span class="o">)</span>
+  <span class="c1">// 检查内部相对offset是否正常。
+</span><span class="c1"></span>  <span class="k">if</span> <span class="o">(</span><span class="n">messageAndOffset</span><span class="o">.</span><span class="n">offset</span> <span class="o">!=</span> <span class="n">expectedInnerOffset</span><span class="o">.</span><span class="n">getAndIncrement</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+    <span class="n">inPlaceAssignment</span> <span class="k">=</span> <span class="kc">false</span>
+  <span class="n">maxTimestamp</span> <span class="k">=</span> <span class="n">math</span><span class="o">.</span><span class="n">max</span><span class="o">(</span><span class="n">maxTimestamp</span><span class="o">,</span> <span class="n">message</span><span class="o">.</span><span class="n">timestamp</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="k">if</span> <span class="o">(</span><span class="n">sourceCodec</span> <span class="o">!=</span> <span class="nc">NoCompressionCodec</span> <span class="o">&amp;&amp;</span> <span class="n">message</span><span class="o">.</span><span class="n">compressionCodec</span> <span class="o">!=</span> <span class="nc">NoCompressionCodec</span><span class="o">)</span>
+  <span class="k">throw</span> <span class="k">new</span> <span class="nc">InvalidMessageException</span><span class="o">(</span><span class="s">&#34;Compressed outer message should not have an inner message with a &#34;</span> <span class="o">+</span>
+    <span class="s">s&#34;</span><span class="s">compression attribute set: </span><span class="si">$message</span><span class="s">&#34;</span><span class="o">)</span>
+
+<span class="k">if</span> <span class="o">(</span><span class="n">message</span><span class="o">.</span><span class="n">magic</span> <span class="o">!=</span> <span class="n">messageFormatVersion</span><span class="o">)</span>
+  <span class="n">inPlaceAssignment</span> <span class="k">=</span> <span class="kc">false</span>
+
+<span class="n">validatedMessages</span> <span class="o">+=</span> <span class="n">message</span><span class="o">.</span><span class="n">toFormatVersion</span><span class="o">(</span><span class="n">messageFormatVersion</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>代码中基本上都是在做验证，没有分配offset的逻辑。这是符合预期的。Kafka对于压缩的消息只会修改外层的offset，该offset表示的是内层最后一条消息的真实offset值，而内层保持相对offset的值。所以这里没有修改offset的逻辑。</p>
+<p>迭代结束后，进入else分支：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="c1">// Do not do re-compression but simply update the offset, timestamp and attributes field of the wrapper message.
+</span><span class="c1"></span><span class="n">buffer</span><span class="o">.</span><span class="n">putLong</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="n">offsetCounter</span><span class="o">.</span><span class="n">addAndGet</span><span class="o">(</span><span class="n">validatedMessages</span><span class="o">.</span><span class="n">size</span><span class="o">)</span> <span class="o">-</span> <span class="mi">1</span><span class="o">)</span>
+<span class="c1">// validate the messages
+</span><span class="c1"></span><span class="n">validatedMessages</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">ensureValid</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+
+<span class="k">var</span> <span class="n">crcUpdateNeeded</span> <span class="k">=</span> <span class="kc">true</span>
+<span class="k">val</span> <span class="n">timestampOffset</span> <span class="k">=</span> <span class="nc">MessageSet</span><span class="o">.</span><span class="nc">LogOverhead</span> <span class="o">+</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">TimestampOffset</span>
+<span class="k">val</span> <span class="n">attributeOffset</span> <span class="k">=</span> <span class="nc">MessageSet</span><span class="o">.</span><span class="nc">LogOverhead</span> <span class="o">+</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">AttributesOffset</span>
+<span class="k">val</span> <span class="n">timestamp</span> <span class="k">=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">getLong</span><span class="o">(</span><span class="n">timestampOffset</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">attributes</span> <span class="k">=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">attributeOffset</span><span class="o">)</span>
+<span class="k">if</span> <span class="o">(</span><span class="n">messageTimestampType</span> <span class="o">==</span> <span class="nc">TimestampType</span><span class="o">.</span><span class="nc">CREATE_TIME</span> <span class="o">&amp;&amp;</span> <span class="n">timestamp</span> <span class="o">==</span> <span class="n">maxTimestamp</span><span class="o">)</span>
+  <span class="c1">// We don&#39;t need to recompute crc if the timestamp is not updated.
+</span><span class="c1"></span>  <span class="n">crcUpdateNeeded</span> <span class="k">=</span> <span class="kc">false</span>
+<span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">messageTimestampType</span> <span class="o">==</span> <span class="nc">TimestampType</span><span class="o">.</span><span class="nc">LOG_APPEND_TIME</span><span class="o">)</span> <span class="o">{</span>
+  <span class="c1">// Set timestamp type and timestamp
+</span><span class="c1"></span>  <span class="n">buffer</span><span class="o">.</span><span class="n">putLong</span><span class="o">(</span><span class="n">timestampOffset</span><span class="o">,</span> <span class="n">now</span><span class="o">)</span>
+  <span class="n">buffer</span><span class="o">.</span><span class="n">put</span><span class="o">(</span><span class="n">attributeOffset</span><span class="o">,</span> <span class="n">messageTimestampType</span><span class="o">.</span><span class="n">updateAttributes</span><span class="o">(</span><span class="n">attributes</span><span class="o">)</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="k">if</span> <span class="o">(</span><span class="n">crcUpdateNeeded</span><span class="o">)</span> <span class="o">{</span>
+  <span class="c1">// need to recompute the crc value
+</span><span class="c1"></span>  <span class="n">buffer</span><span class="o">.</span><span class="n">position</span><span class="o">(</span><span class="nc">MessageSet</span><span class="o">.</span><span class="nc">LogOverhead</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">wrapperMessage</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Message</span><span class="o">(</span><span class="n">buffer</span><span class="o">.</span><span class="n">slice</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+  <span class="nc">Utils</span><span class="o">.</span><span class="n">writeUnsignedInt</span><span class="o">(</span><span class="n">buffer</span><span class="o">,</span> <span class="nc">MessageSet</span><span class="o">.</span><span class="nc">LogOverhead</span> <span class="o">+</span> <span class="nc">Message</span><span class="o">.</span><span class="nc">CrcOffset</span><span class="o">,</span> <span class="n">wrapperMessage</span><span class="o">.</span><span class="n">computeChecksum</span><span class="o">)</span>
+<span class="o">}</span>
+<span class="n">buffer</span><span class="o">.</span><span class="n">rewind</span><span class="o">(</span><span class="o">)</span>
+<span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="kc">false</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>因为将消息都放入了validatedMessages列表中，所以可以直接用offsetCounter加上列表大小，便得到了最后一条消息的真实offset。通过buffer.putLong重新设置。后面的代码没有核心逻辑。操作完后将结果返回。</p>
+<p>最后返回来看看深层迭代时做了做了什么操作，即internalIterator(isShallow = false)方法。直接来到makeNextOuter方法中判断if(isShallow)的else分支：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">newMessage</span><span class="o">.</span><span class="n">compressionCodec</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">NoCompressionCodec</span> <span class="k">=&gt;</span>
+    <span class="n">innerIter</span> <span class="k">=</span> <span class="kc">null</span>
+    <span class="k">new</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">newMessage</span><span class="o">,</span> <span class="n">offset</span><span class="o">)</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span>
+    <span class="n">innerIter</span> <span class="k">=</span> <span class="nc">ByteBufferMessageSet</span><span class="o">.</span><span class="n">deepIterator</span><span class="o">(</span><span class="k">new</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">newMessage</span><span class="o">,</span> <span class="n">offset</span><span class="o">)</span><span class="o">)</span>
+    <span class="k">if</span><span class="o">(</span><span class="o">!</span><span class="n">innerIter</span><span class="o">.</span><span class="n">hasNext</span><span class="o">)</span>
+      <span class="n">innerIter</span> <span class="k">=</span> <span class="kc">null</span>
+    <span class="n">makeNext</span><span class="o">(</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>理所应当走进case _。执行deepIterator方法，将返回值赋值给innerIter字段，即内层迭代器。最后调用makeNext方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">override</span> <span class="k">def</span> <span class="n">makeNext</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">MessageAndOffset</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">if</span><span class="o">(</span><span class="n">isShallow</span><span class="o">)</span><span class="o">{</span>
+    <span class="n">makeNextOuter</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+    <span class="k">if</span><span class="o">(</span><span class="n">innerDone</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+      <span class="n">makeNextOuter</span>
+    <span class="k">else</span>
+      <span class="n">innerIter</span><span class="o">.</span><span class="n">next</span><span class="o">(</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>deepIterator方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span><span class="lnt">79
+</span><span class="lnt">80
+</span><span class="lnt">81
+</span><span class="lnt">82
+</span><span class="lnt">83
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">deepIterator</span><span class="o">(</span><span class="n">wrapperMessageAndOffset</span><span class="k">:</span> <span class="kt">MessageAndOffset</span><span class="o">)</span><span class="k">:</span> <span class="kt">Iterator</span><span class="o">[</span><span class="kt">MessageAndOffset</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+
+  <span class="k">import</span> <span class="nn">Message._</span>
+
+  <span class="k">new</span> <span class="nc">IteratorTemplate</span><span class="o">[</span><span class="kt">MessageAndOffset</span><span class="o">]</span> <span class="o">{</span>
+
+    <span class="k">val</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">wrapperMessage</span><span class="o">,</span> <span class="n">wrapperMessageOffset</span><span class="o">)</span> <span class="k">=</span> <span class="n">wrapperMessageAndOffset</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">payload</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="nc">KafkaException</span><span class="o">(</span><span class="s">s&#34;</span><span class="s">Message payload is null: </span><span class="si">$wrapperMessage</span><span class="s">&#34;</span><span class="o">)</span>
+
+    <span class="k">val</span> <span class="n">wrapperMessageTimestampOpt</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Long</span><span class="o">]</span> <span class="k">=</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">magic</span> <span class="o">&gt;</span> <span class="nc">MagicValue_V0</span><span class="o">)</span> <span class="nc">Some</span><span class="o">(</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">timestamp</span><span class="o">)</span> <span class="k">else</span> <span class="nc">None</span>
+    <span class="k">val</span> <span class="n">wrapperMessageTimestampTypeOpt</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">TimestampType</span><span class="o">]</span> <span class="k">=</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">magic</span> <span class="o">&gt;</span> <span class="nc">MagicValue_V0</span><span class="o">)</span> <span class="nc">Some</span><span class="o">(</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">timestampType</span><span class="o">)</span> <span class="k">else</span> <span class="nc">None</span>
+
+    <span class="k">var</span> <span class="n">lastInnerOffset</span> <span class="k">=</span> <span class="o">-</span><span class="mi">1L</span>
+
+    <span class="k">val</span> <span class="n">messageAndOffsets</span> <span class="k">=</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">inputStream</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ByteBufferBackedInputStream</span><span class="o">(</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">payload</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">compressed</span> <span class="k">=</span> <span class="k">try</span> <span class="o">{</span>
+        <span class="k">new</span> <span class="nc">DataInputStream</span><span class="o">(</span><span class="nc">CompressionFactory</span><span class="o">(</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">compressionCodec</span><span class="o">,</span> <span class="n">wrapperMessage</span><span class="o">.</span><span class="n">magic</span><span class="o">,</span> <span class="n">inputStream</span><span class="o">)</span><span class="o">)</span>
+      <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="n">ioe</span><span class="k">:</span> <span class="kt">IOException</span> <span class="o">=&gt;</span>
+          <span class="k">throw</span> <span class="k">new</span> <span class="nc">InvalidMessageException</span><span class="o">(</span><span class="s">s&#34;</span><span class="s">Failed to instantiate input stream compressed with </span><span class="si">${</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">compressionCodec</span><span class="si">}</span><span class="s">&#34;</span><span class="o">,</span> <span class="n">ioe</span><span class="o">)</span>
+      <span class="o">}</span>
+
+      <span class="k">val</span> <span class="n">innerMessageAndOffsets</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ArrayDeque</span><span class="o">[</span><span class="kt">MessageAndOffset</span><span class="o">]</span><span class="o">(</span><span class="o">)</span>
+      <span class="k">try</span> <span class="o">{</span>
+        <span class="k">while</span> <span class="o">(</span><span class="kc">true</span><span class="o">)</span>
+          <span class="n">innerMessageAndOffsets</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="n">readMessageFromStream</span><span class="o">(</span><span class="n">compressed</span><span class="o">)</span><span class="o">)</span>
+      <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="n">eofe</span><span class="k">:</span> <span class="kt">EOFException</span> <span class="o">=&gt;</span>
+          <span class="c1">// we don&#39;t do anything at all here, because the finally
+</span><span class="c1"></span>          <span class="c1">// will close the compressed input stream, and we simply
+</span><span class="c1"></span>          <span class="c1">// want to return the innerMessageAndOffsets
+</span><span class="c1"></span>        <span class="k">case</span> <span class="n">ioe</span><span class="k">:</span> <span class="kt">IOException</span> <span class="o">=&gt;</span>
+          <span class="k">throw</span> <span class="k">new</span> <span class="nc">InvalidMessageException</span><span class="o">(</span><span class="s">s&#34;</span><span class="s">Error while reading message from stream compressed with </span><span class="si">${</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">compressionCodec</span><span class="si">}</span><span class="s">&#34;</span><span class="o">,</span> <span class="n">ioe</span><span class="o">)</span>
+      <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+        <span class="nc">CoreUtils</span><span class="o">.</span><span class="n">swallow</span><span class="o">(</span><span class="n">compressed</span><span class="o">.</span><span class="n">close</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+      <span class="o">}</span>
+
+      <span class="n">innerMessageAndOffsets</span>
+    <span class="o">}</span>
+
+    <span class="k">private</span> <span class="k">def</span> <span class="n">readMessageFromStream</span><span class="o">(</span><span class="n">compressed</span><span class="k">:</span> <span class="kt">DataInputStream</span><span class="o">)</span><span class="k">:</span> <span class="kt">MessageAndOffset</span> <span class="o">=</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">innerOffset</span> <span class="k">=</span> <span class="n">compressed</span><span class="o">.</span><span class="n">readLong</span><span class="o">(</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">recordSize</span> <span class="k">=</span> <span class="n">compressed</span><span class="o">.</span><span class="n">readInt</span><span class="o">(</span><span class="o">)</span>
+
+      <span class="k">if</span> <span class="o">(</span><span class="n">recordSize</span> <span class="o">&lt;</span> <span class="nc">MinMessageOverhead</span><span class="o">)</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nc">InvalidMessageException</span><span class="o">(</span><span class="s">s&#34;</span><span class="s">Message found with corrupt size `</span><span class="si">$recordSize</span><span class="s">` in deep iterator</span><span class="s">&#34;</span><span class="o">)</span>
+
+      <span class="c1">// read the record into an intermediate record buffer (i.e. extra copy needed)
+</span><span class="c1"></span>      <span class="k">val</span> <span class="n">bufferArray</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Array</span><span class="o">[</span><span class="kt">Byte</span><span class="o">]</span><span class="o">(</span><span class="n">recordSize</span><span class="o">)</span>
+      <span class="n">compressed</span><span class="o">.</span><span class="n">readFully</span><span class="o">(</span><span class="n">bufferArray</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">recordSize</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">buffer</span> <span class="k">=</span> <span class="nc">ByteBuffer</span><span class="o">.</span><span class="n">wrap</span><span class="o">(</span><span class="n">bufferArray</span><span class="o">)</span>
+
+      <span class="c1">// Override the timestamp if necessary
+</span><span class="c1"></span>      <span class="k">val</span> <span class="n">newMessage</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Message</span><span class="o">(</span><span class="n">buffer</span><span class="o">,</span> <span class="n">wrapperMessageTimestampOpt</span><span class="o">,</span> <span class="n">wrapperMessageTimestampTypeOpt</span><span class="o">)</span>
+
+      <span class="c1">// Inner message and wrapper message must have same magic value
+</span><span class="c1"></span>      <span class="k">if</span> <span class="o">(</span><span class="n">newMessage</span><span class="o">.</span><span class="n">magic</span> <span class="o">!=</span> <span class="n">wrapperMessage</span><span class="o">.</span><span class="n">magic</span><span class="o">)</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nc">IllegalStateException</span><span class="o">(</span><span class="s">s&#34;</span><span class="s">Compressed message has magic value </span><span class="si">${</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">magic</span><span class="si">}</span><span class="s"> </span><span class="s">&#34;</span> <span class="o">+</span>
+          <span class="s">s&#34;</span><span class="s">but inner message has magic value </span><span class="si">${</span><span class="n">newMessage</span><span class="o">.</span><span class="n">magic</span><span class="si">}</span><span class="s">&#34;</span><span class="o">)</span>
+      <span class="n">lastInnerOffset</span> <span class="k">=</span> <span class="n">innerOffset</span>
+      <span class="k">new</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">newMessage</span><span class="o">,</span> <span class="n">innerOffset</span><span class="o">)</span>
+    <span class="o">}</span>
+
+    <span class="k">override</span> <span class="k">def</span> <span class="n">makeNext</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">MessageAndOffset</span> <span class="o">=</span> <span class="o">{</span>
+      <span class="n">messageAndOffsets</span><span class="o">.</span><span class="n">pollFirst</span><span class="o">(</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="kc">null</span> <span class="k">=&gt;</span> <span class="n">allDone</span><span class="o">(</span><span class="o">)</span>
+        <span class="k">case</span> <span class="n">nextMessage</span><span class="k">@</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">message</span><span class="o">,</span> <span class="n">offset</span><span class="o">)</span> <span class="k">=&gt;</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">wrapperMessage</span><span class="o">.</span><span class="n">magic</span> <span class="o">&gt;</span> <span class="nc">MagicValue_V0</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">val</span> <span class="n">relativeOffset</span> <span class="k">=</span> <span class="n">offset</span> <span class="o">-</span> <span class="n">lastInnerOffset</span>
+            <span class="k">val</span> <span class="n">absoluteOffset</span> <span class="k">=</span> <span class="n">wrapperMessageOffset</span> <span class="o">+</span> <span class="n">relativeOffset</span>
+            <span class="k">new</span> <span class="nc">MessageAndOffset</span><span class="o">(</span><span class="n">message</span><span class="o">,</span> <span class="n">absoluteOffset</span><span class="o">)</span>
+          <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="n">nextMessage</span>
+          <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>看起来代码很多，其实很简单。next方法会调用到这里的makeNext方法，而这里的makeNext方法首先需要获取到messageAndOffsets这个变量的值。从上面代码可以看到这个变量是一个队列，先通过readMessageFromStream方法读取除了内层消息的值，然后封装成了MessageAndOffset对象，添加到这个队列中然后返回这个队列。makeNext方法的case中看起来好像在给消息分配真实的offset，实际上并没有，debug的话会发现这里封装的仍是相对offset。</p>
+<p>至此validateMessagesAndAssignOffsets方法分析完毕。它的核心逻辑就是对消息做深层遍历，给消息分配真实的offset。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-04-22
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E6%97%A5%E5%BF%97%E5%AD%98%E5%82%A8logmanager/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入Kafka源码 - 日志存储（LogManager）</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E6%97%A5%E5%BF%97%E5%AD%98%E5%82%A8consumer%E7%AB%AF%E6%B6%88%E6%81%AF%E7%9A%84%E8%BF%AD%E4%BB%A3/">
+            <span class="next-text nav-default">深入Kafka源码 - 日志存储（Consumer端消息的迭代）</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>
