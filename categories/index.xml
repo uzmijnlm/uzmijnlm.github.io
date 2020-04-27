@@ -6,10 +6,19 @@
     <description>Recent content in Categories on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Thu, 23 Apr 2020 11:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Mon, 27 Apr 2020 15:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/categories/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>历史碎片</title>
+      <link>http://localhost:1313/categories/%E5%8E%86%E5%8F%B2%E7%A2%8E%E7%89%87/</link>
+      <pubDate>Mon, 27 Apr 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/categories/%E5%8E%86%E5%8F%B2%E7%A2%8E%E7%89%87/</guid>
+      <description></description>
+    </item>
     
     <item>
       <title>kafka</title>
