@@ -3,21 +3,42 @@
   
   <url>
     <loc>http://localhost:1313/categories/</loc>
-    <lastmod>2020-04-27T15:11:40+08:00</lastmod>
+    <lastmod>2020-04-28T16:11:40+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
     <loc>http://localhost:1313/</loc>
-    <lastmod>2020-04-27T15:11:40+08:00</lastmod>
+    <lastmod>2020-04-28T16:11:40+08:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>http://localhost:1313/categories/java%E5%9F%BA%E7%A1%80/</loc>
+    <lastmod>2020-04-28T16:11:40+08:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E5%9F%BA%E4%BA%8Ejdk%E4%B8%AD%E7%9A%84future%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</loc>
+    <lastmod>2020-04-28T16:11:40+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
     <loc>http://localhost:1313/post/</loc>
-    <lastmod>2020-04-27T15:11:40+08:00</lastmod>
+    <lastmod>2020-04-28T16:11:40+08:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E4%BD%BF%E7%94%A8%E7%BA%BF%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</loc>
+    <lastmod>2020-04-28T15:11:40+08:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>

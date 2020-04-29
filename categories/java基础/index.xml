@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Java基础 on Even - A super concise theme for Hugo</title>
+    <link>http://localhost:1313/categories/java%E5%9F%BA%E7%A1%80/</link>
+    <description>Recent content in Java基础 on Even - A super concise theme for Hugo</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Tue, 28 Apr 2020 16:11:40 +0800</lastBuildDate>
+    
+	<atom:link href="http://localhost:1313/categories/java%E5%9F%BA%E7%A1%80/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Java基础 - 基于JDK中的Future实现异步编程</title>
+      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E5%9F%BA%E4%BA%8Ejdk%E4%B8%AD%E7%9A%84future%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</link>
+      <pubDate>Tue, 28 Apr 2020 16:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E5%9F%BA%E4%BA%8Ejdk%E4%B8%AD%E7%9A%84future%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</guid>
+      <description>上文讲到说用用线程实现异步编程，有两个问题比较突出： 1.实际场景中任务个数非常多，如果每次都创建一个新的线程则资源消耗太大。 2.获取一个线程</description>
+    </item>
+    
+    <item>
+      <title>Java基础 - 使用线程和线程池实现异步编程</title>
+      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E4%BD%BF%E7%94%A8%E7%BA%BF%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</link>
+      <pubDate>Tue, 28 Apr 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E4%BD%BF%E7%94%A8%E7%BA%BF%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</guid>
+      <description>在I/O模型中，有两对概念经常让人混淆——阻塞和非阻塞、同步和异步。 在不同的语境下，这些概念有着不同的内涵。其中一种比较严谨的描述来自UNI</description>
+    </item>
+    
+  </channel>
+</rss>
