@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Netty源码 - 创建NioEventLoopGroup - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="Netty的服务端代码通常都会编写成如下形式： 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 public class NettyServer { public static void main(String[] args) throws InterruptedException { EventLoopGroup bossGroup=new NioEventLoopGroup(1); EventLoopGroup workerGroup=new NioEventLoopGroup(); ServerBootstrap serverBootstrap=new ServerBootstrap();" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/netty/%E6%B7%B1%E5%85%A5netty%E6%BA%90%E7%A0%81-%E5%88%9B%E5%BB%BAnioeventloopgroup/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Netty源码 - 创建NioEventLoopGroup" />
+<meta property="og:description" content="Netty的服务端代码通常都会编写成如下形式： 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 public class NettyServer { public static void main(String[] args) throws InterruptedException { EventLoopGroup bossGroup=new NioEventLoopGroup(1); EventLoopGroup workerGroup=new NioEventLoopGroup(); ServerBootstrap serverBootstrap=new ServerBootstrap();" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/netty/%E6%B7%B1%E5%85%A5netty%E6%BA%90%E7%A0%81-%E5%88%9B%E5%BB%BAnioeventloopgroup/" />
+<meta property="article:published_time" content="2020-05-01T12:11:40+08:00" />
+<meta property="article:modified_time" content="2020-05-01T12:11:40+08:00" />
+<meta itemprop="name" content="深入Netty源码 - 创建NioEventLoopGroup">
+<meta itemprop="description" content="Netty的服务端代码通常都会编写成如下形式： 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 public class NettyServer { public static void main(String[] args) throws InterruptedException { EventLoopGroup bossGroup=new NioEventLoopGroup(1); EventLoopGroup workerGroup=new NioEventLoopGroup(); ServerBootstrap serverBootstrap=new ServerBootstrap();">
+<meta itemprop="datePublished" content="2020-05-01T12:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-05-01T12:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="3351">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Netty源码 - 创建NioEventLoopGroup"/>
+<meta name="twitter:description" content="Netty的服务端代码通常都会编写成如下形式： 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 public class NettyServer { public static void main(String[] args) throws InterruptedException { EventLoopGroup bossGroup=new NioEventLoopGroup(1); EventLoopGroup workerGroup=new NioEventLoopGroup(); ServerBootstrap serverBootstrap=new ServerBootstrap();"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Netty源码 - 创建NioEventLoopGroup</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-05-01 </span>
+        <div class="post-category">
+            <a href="/categories/netty/"> Netty </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#构造方法">构造方法</a></li>
+    <li><a href="#executor">Executor</a></li>
+    <li><a href="#eventexecutor">EventExecutor</a></li>
+    <li><a href="#eventexecutorchooser">EventExecutorChooser</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <p>Netty的服务端代码通常都会编写成如下形式：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">NettyServer</span> <span class="o">{</span>
+    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[</span><span class="o">]</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">InterruptedException</span> <span class="o">{</span>
+
+        <span class="n">EventLoopGroup</span> <span class="n">bossGroup</span><span class="o">=</span><span class="k">new</span> <span class="n">NioEventLoopGroup</span><span class="o">(</span><span class="n">1</span><span class="o">)</span><span class="o">;</span>
+        <span class="n">EventLoopGroup</span> <span class="n">workerGroup</span><span class="o">=</span><span class="k">new</span> <span class="n">NioEventLoopGroup</span><span class="o">(</span><span class="o">)</span><span class="o">;</span> 
+      
+        <span class="n">ServerBootstrap</span> <span class="n">serverBootstrap</span><span class="o">=</span><span class="k">new</span> <span class="n">ServerBootstrap</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+        <span class="n">serverBootstrap</span><span class="o">.</span><span class="na">group</span><span class="o">(</span><span class="n">bossGroup</span><span class="o">,</span><span class="n">workerGroup</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">channel</span><span class="o">(</span><span class="n">NioServerSocketChannel</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">option</span><span class="o">(</span><span class="n">ChannelOption</span><span class="o">.</span><span class="na">SO_BACKLOG</span><span class="o">,</span><span class="n">128</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">childOption</span><span class="o">(</span><span class="n">ChannelOption</span><span class="o">.</span><span class="na">SO_KEEPALIVE</span><span class="o">,</span><span class="kc">true</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">handler</span><span class="o">(</span><span class="k">new</span> <span class="n">NettyTestHandler</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">childHandler</span><span class="o">(</span><span class="k">new</span> <span class="n">ChannelInitializer</span><span class="o">&lt;</span><span class="n">NioSocketChannel</span><span class="o">&gt;</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+            <span class="nd">@Override</span>
+            <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">initChannel</span><span class="o">(</span><span class="n">NioSocketChannel</span> <span class="n">nioSocketChannel</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+                <span class="n">nioSocketChannel</span><span class="o">.</span><span class="na">pipeline</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">addLast</span><span class="o">(</span><span class="k">new</span> <span class="n">StringDecoder</span><span class="o">(</span><span class="o">)</span><span class="o">,</span><span class="k">new</span> <span class="n">NettyServerHendler</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span><span class="o">)</span><span class="o">;</span>
+      
+        <span class="n">ChannelFuture</span> <span class="n">future</span> <span class="o">=</span> <span class="n">serverBootstrap</span><span class="o">.</span><span class="na">bind</span><span class="o">(</span><span class="n">9090</span><span class="o">)</span><span class="o">.</span><span class="na">sync</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+        <span class="n">future</span><span class="o">.</span><span class="na">channel</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">closeFuture</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">sync</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+        <span class="n">bossGroup</span><span class="o">.</span><span class="na">shutdownGracefully</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+        <span class="n">workerGroup</span><span class="o">.</span><span class="na">shutdownGracefully</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+      
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>我们知道Netty遵循Reactor模式，所以一开始需要创建两个NioEventLoopGroup对象，分别代表Reactor模式中的主从。根据对Java NIO和Reactor模式的理解，可以推测NioEventLoopGroup中应该是维护了多个Selector对象和多个线程。本文将深入到源码内部，分析NioEventLoopGroup具体封装了哪些对象，以及初始化过程做了什么事情。</p>
+<h2 id="构造方法">构造方法</h2>
+<p>其构造方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">NioEventLoopGroup</span><span class="o">(</span><span class="kt">int</span> <span class="n">nThreads</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">(</span><span class="n">nThreads</span><span class="o">,</span> <span class="o">(</span><span class="n">Executor</span><span class="o">)</span> <span class="kc">null</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="nf">NioEventLoopGroup</span><span class="o">(</span><span class="kt">int</span> <span class="n">nThreads</span><span class="o">,</span> <span class="n">Executor</span> <span class="n">executor</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">(</span><span class="n">nThreads</span><span class="o">,</span> <span class="n">executor</span><span class="o">,</span> <span class="n">SelectorProvider</span><span class="o">.</span><span class="na">provider</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="nf">NioEventLoopGroup</span><span class="o">(</span>
+        <span class="kt">int</span> <span class="n">nThreads</span><span class="o">,</span> <span class="n">Executor</span> <span class="n">executor</span><span class="o">,</span> <span class="kd">final</span> <span class="n">SelectorProvider</span> <span class="n">selectorProvider</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">(</span><span class="n">nThreads</span><span class="o">,</span> <span class="n">executor</span><span class="o">,</span> <span class="n">selectorProvider</span><span class="o">,</span> <span class="n">DefaultSelectStrategyFactory</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="nf">NioEventLoopGroup</span><span class="o">(</span><span class="kt">int</span> <span class="n">nThreads</span><span class="o">,</span> <span class="n">Executor</span> <span class="n">executor</span><span class="o">,</span> <span class="kd">final</span> <span class="n">SelectorProvider</span> <span class="n">selectorProvider</span><span class="o">,</span>
+                         <span class="kd">final</span> <span class="n">SelectStrategyFactory</span> <span class="n">selectStrategyFactory</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">super</span><span class="o">(</span><span class="n">nThreads</span><span class="o">,</span> <span class="n">executor</span><span class="o">,</span> <span class="n">selectorProvider</span><span class="o">,</span> <span class="n">selectStrategyFactory</span><span class="o">,</span> <span class="n">RejectedExecutionHandlers</span><span class="o">.</span><span class="na">reject</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>层层调用后，最后的参数包括线程数、一个Executor对象、一个SelectorProvider对象、一个SelectStrategyFactory对象、一个RejectedExecutionHandler对象。</p>
+<p>其中SelectorProvider就是Java NIO中的对象。在Java NIO代码中，会调用到open方法获取一个Selector对象：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="n">Selector</span> <span class="nf">open</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">SelectorProvider</span><span class="o">.</span><span class="na">provider</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">openSelector</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到内部就是先获取了SelectorProvider对象，然后调用其openSelector方法。</p>
+<p>另外，获取ServerSocketChannel对象也是类似：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">static</span> <span class="n">ServerSocketChannel</span> <span class="nf">open</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">SelectorProvider</span><span class="o">.</span><span class="na">provider</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">openServerSocketChannel</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>所以这里的这个SelectorProvider对象一定会在后面的代码中用来获取这些对象。</p>
+<p>SelectStrategyFactory对象这里默认是一个DefaultSelectStrategyFactory类的对象，用来创建一个新的SelectStrategy对象，在之后的代码中会看到。</p>
+<p>RejectedExecutionHandler表示任务添加失败时的拒绝策略。默认是抛一个异常。</p>
+<p>构造方法继续向下调用：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="nf">MultithreadEventLoopGroup</span><span class="o">(</span><span class="kt">int</span> <span class="n">nThreads</span><span class="o">,</span> <span class="n">Executor</span> <span class="n">executor</span><span class="o">,</span> <span class="n">Object</span><span class="o">.</span><span class="o">.</span><span class="o">.</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">super</span><span class="o">(</span><span class="n">nThreads</span> <span class="o">=</span><span class="o">=</span> <span class="n">0</span> <span class="o">?</span> <span class="n">DEFAULT_EVENT_LOOP_THREADS</span> <span class="o">:</span> <span class="n">nThreads</span><span class="o">,</span> <span class="n">executor</span><span class="o">,</span> <span class="n">args</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">protected</span> <span class="nf">MultithreadEventExecutorGroup</span><span class="o">(</span><span class="kt">int</span> <span class="n">nThreads</span><span class="o">,</span> <span class="n">Executor</span> <span class="n">executor</span><span class="o">,</span> <span class="n">Object</span><span class="o">.</span><span class="o">.</span><span class="o">.</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">(</span><span class="n">nThreads</span><span class="o">,</span> <span class="n">executor</span><span class="o">,</span> <span class="n">DefaultEventExecutorChooserFactory</span><span class="o">.</span><span class="na">INSTANCE</span><span class="o">,</span> <span class="n">args</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到刚才的SelectorProvider对象、SelectStrategyFactory对象和RejectedExecutionHandler对象被接收成了args，并且又有了新的参数DefaultEventExecutorChooserFactory对象。这个对象是一个选择器工厂，之后会用它创建一个选择器。那么选择器又是什么？下文会分析。</p>
+<p>最后，来到真正包含初始化逻辑的构造方法中：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="nf">MultithreadEventExecutorGroup</span><span class="o">(</span><span class="kt">int</span> <span class="n">nThreads</span><span class="o">,</span> <span class="n">Executor</span> <span class="n">executor</span><span class="o">,</span>
+                                        <span class="n">EventExecutorChooserFactory</span> <span class="n">chooserFactory</span><span class="o">,</span> <span class="n">Object</span><span class="o">.</span><span class="o">.</span><span class="o">.</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">executor</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// 1.实例化Executor对象。
+</span><span class="c1"></span>        <span class="n">executor</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ThreadPerTaskExecutor</span><span class="o">(</span><span class="n">newDefaultThreadFactory</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="n">children</span> <span class="o">=</span> <span class="k">new</span> <span class="n">EventExecutor</span><span class="o">[</span><span class="n">nThreads</span><span class="o">]</span><span class="o">;</span>
+
+    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">nThreads</span><span class="o">;</span> <span class="n">i</span> <span class="o">+</span><span class="o">+</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kt">boolean</span> <span class="n">success</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="c1">// 2.实例化EventExecutor对象。
+</span><span class="c1"></span>            <span class="n">children</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">newChild</span><span class="o">(</span><span class="n">executor</span><span class="o">,</span> <span class="n">args</span><span class="o">)</span><span class="o">;</span>
+            <span class="n">success</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+          
+          <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+            
+        <span class="o">}</span>
+    <span class="o">}</span>
+    
+    <span class="c1">// 3.获取一个选择器。
+</span><span class="c1"></span>    <span class="n">chooser</span> <span class="o">=</span> <span class="n">chooserFactory</span><span class="o">.</span><span class="na">newChooser</span><span class="o">(</span><span class="n">children</span><span class="o">)</span><span class="o">;</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>核心逻辑可以分为上面的三步，下面逐个分析。</p>
+<h2 id="executor">Executor</h2>
+<p>上面代码的第一步，是实例化一个Executor对象。首先需要调用newDefaultThreadFactory方法获得一个ThreadFactory对象。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="n">ThreadFactory</span> <span class="nf">newDefaultThreadFactory</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="n">DefaultThreadFactory</span><span class="o">(</span><span class="n">getClass</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="nf">DefaultThreadFactory</span><span class="o">(</span><span class="n">Class</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">poolType</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">(</span><span class="n">poolType</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="n">Thread</span><span class="o">.</span><span class="na">NORM_PRIORITY</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="nf">DefaultThreadFactory</span><span class="o">(</span><span class="n">Class</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">poolType</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">daemon</span><span class="o">,</span> <span class="kt">int</span> <span class="n">priority</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">(</span><span class="n">toPoolName</span><span class="o">(</span><span class="n">poolType</span><span class="o">)</span><span class="o">,</span> <span class="n">daemon</span><span class="o">,</span> <span class="n">priority</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="nf">DefaultThreadFactory</span><span class="o">(</span><span class="n">String</span> <span class="n">poolName</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">daemon</span><span class="o">,</span> <span class="kt">int</span> <span class="n">priority</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">this</span><span class="o">(</span><span class="n">poolName</span><span class="o">,</span> <span class="n">daemon</span><span class="o">,</span> <span class="n">priority</span><span class="o">,</span> <span class="n">System</span><span class="o">.</span><span class="na">getSecurityManager</span><span class="o">(</span><span class="o">)</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">?</span>
+            <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">getThreadGroup</span><span class="o">(</span><span class="o">)</span> <span class="o">:</span> <span class="n">System</span><span class="o">.</span><span class="na">getSecurityManager</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">getThreadGroup</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="nf">DefaultThreadFactory</span><span class="o">(</span><span class="n">String</span> <span class="n">poolName</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">daemon</span><span class="o">,</span> <span class="kt">int</span> <span class="n">priority</span><span class="o">,</span> <span class="n">ThreadGroup</span> <span class="n">threadGroup</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">poolName</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="n">NullPointerException</span><span class="o">(</span><span class="s">&#34;poolName&#34;</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">priority</span> <span class="o">&lt;</span> <span class="n">Thread</span><span class="o">.</span><span class="na">MIN_PRIORITY</span> <span class="o">|</span><span class="o">|</span> <span class="n">priority</span> <span class="o">&gt;</span> <span class="n">Thread</span><span class="o">.</span><span class="na">MAX_PRIORITY</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span>
+                <span class="s">&#34;priority: &#34;</span> <span class="o">+</span> <span class="n">priority</span> <span class="o">+</span> <span class="s">&#34; (expected: Thread.MIN_PRIORITY &lt;= priority &lt;= Thread.MAX_PRIORITY)&#34;</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">poolName</span> <span class="o">+</span> <span class="sc">&#39;-&#39;</span> <span class="o">+</span> <span class="n">poolId</span><span class="o">.</span><span class="na">incrementAndGet</span><span class="o">(</span><span class="o">)</span> <span class="o">+</span> <span class="sc">&#39;-&#39;</span><span class="o">;</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">daemon</span> <span class="o">=</span> <span class="n">daemon</span><span class="o">;</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">priority</span> <span class="o">=</span> <span class="n">priority</span><span class="o">;</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">threadGroup</span> <span class="o">=</span> <span class="n">threadGroup</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>整个过程就是层层调用，最后实例化一个DefaultThreadFactory对象，其中的字段主要包括类名、线程优先级、是否为守护线程等。根据经验，这个类一定会有一个方法用来创建线程，经过分析，就是newThread这个方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Thread</span> <span class="nf">newThread</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">Thread</span> <span class="n">t</span> <span class="o">=</span> <span class="n">newThread</span><span class="o">(</span><span class="n">FastThreadLocalRunnable</span><span class="o">.</span><span class="na">wrap</span><span class="o">(</span><span class="n">r</span><span class="o">)</span><span class="o">,</span> <span class="n">prefix</span> <span class="o">+</span> <span class="n">nextId</span><span class="o">.</span><span class="na">incrementAndGet</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+    <span class="k">return</span> <span class="n">t</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">protected</span> <span class="n">Thread</span> <span class="nf">newThread</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="n">FastThreadLocalThread</span><span class="o">(</span><span class="n">threadGroup</span><span class="o">,</span> <span class="n">r</span><span class="o">,</span> <span class="n">name</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里返回的是一个FastThreadLocalThread对象，是Netty自己定义的线程类。但本质上它就是一个Thread类。</p>
+<p>而ThreadPerTaskExecutor的构造方法就是把这个线程工厂封装起来。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">ThreadPerTaskExecutor</span><span class="o">(</span><span class="n">ThreadFactory</span> <span class="n">threadFactory</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">threadFactory</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="n">NullPointerException</span><span class="o">(</span><span class="s">&#34;threadFactory&#34;</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="k">this</span><span class="o">.</span><span class="na">threadFactory</span> <span class="o">=</span> <span class="n">threadFactory</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个类还有一个execute方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">execute</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">command</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">threadFactory</span><span class="o">.</span><span class="na">newThread</span><span class="o">(</span><span class="n">command</span><span class="o">)</span><span class="o">.</span><span class="na">start</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里就调用到了newThread方法，并且直接调用start将线程启动了。往下分析的时候关注何时调用的execute方法，以及传入的参数表示的是什么。</p>
+<h2 id="eventexecutor">EventExecutor</h2>
+<p>回到上面MultithreadEventExecutorGroup的构造方法。</p>
+<p>根据对Reactor的理解，一个NioEventLoopGroup对象（上面的MultithreadEventExecutorGroup就是它的父类）应该封装了多个Selector对象。实际上在Netty中，Selector对象就在上面构造方法创建的children数组中。</p>
+<p>每个children属于EventExecutor类，调用newChild方法进行实例化。注意到其参数有上面获得的那个executor，也包括了最开始的SelectorProvider对象、SelectStrategyFactory对象和RejectedExecutionHandler对象（即args）。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="n">EventLoop</span> <span class="nf">newChild</span><span class="o">(</span><span class="n">Executor</span> <span class="n">executor</span><span class="o">,</span> <span class="n">Object</span><span class="o">.</span><span class="o">.</span><span class="o">.</span> <span class="n">args</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="n">NioEventLoop</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">executor</span><span class="o">,</span> <span class="o">(</span><span class="n">SelectorProvider</span><span class="o">)</span> <span class="n">args</span><span class="o">[</span><span class="n">0</span><span class="o">]</span><span class="o">,</span>
+        <span class="o">(</span><span class="o">(</span><span class="n">SelectStrategyFactory</span><span class="o">)</span> <span class="n">args</span><span class="o">[</span><span class="n">1</span><span class="o">]</span><span class="o">)</span><span class="o">.</span><span class="na">newSelectStrategy</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="o">(</span><span class="n">RejectedExecutionHandler</span><span class="o">)</span> <span class="n">args</span><span class="o">[</span><span class="n">2</span><span class="o">]</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="n">NioEventLoop</span><span class="o">(</span><span class="n">NioEventLoopGroup</span> <span class="n">parent</span><span class="o">,</span> <span class="n">Executor</span> <span class="n">executor</span><span class="o">,</span> <span class="n">SelectorProvider</span> <span class="n">selectorProvider</span><span class="o">,</span>
+             <span class="n">SelectStrategy</span> <span class="n">strategy</span><span class="o">,</span> <span class="n">RejectedExecutionHandler</span> <span class="n">rejectedExecutionHandler</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">super</span><span class="o">(</span><span class="n">parent</span><span class="o">,</span> <span class="n">executor</span><span class="o">,</span> <span class="kc">false</span><span class="o">,</span> <span class="n">DEFAULT_MAX_PENDING_TASKS</span><span class="o">,</span> <span class="n">rejectedExecutionHandler</span><span class="o">)</span><span class="o">;</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+    <span class="n">provider</span> <span class="o">=</span> <span class="n">selectorProvider</span><span class="o">;</span>
+    <span class="kd">final</span> <span class="n">SelectorTuple</span> <span class="n">selectorTuple</span> <span class="o">=</span> <span class="n">openSelector</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">selector</span> <span class="o">=</span> <span class="n">selectorTuple</span><span class="o">.</span><span class="na">selector</span><span class="o">;</span>
+    <span class="n">unwrappedSelector</span> <span class="o">=</span> <span class="n">selectorTuple</span><span class="o">.</span><span class="na">unwrappedSelector</span><span class="o">;</span>
+    <span class="n">selectStrategy</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在构造方法中，首先调用了父类的构造方法，基本上都是赋值操作。下面的openSelector方法比较关键：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java">    <span class="kd">private</span> <span class="n">SelectorTuple</span> <span class="nf">openSelector</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kd">final</span> <span class="n">Selector</span> <span class="n">unwrappedSelector</span><span class="o">;</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="c1">// 1.获取Java NIO原生的Selector对象。
+</span><span class="c1"></span>            <span class="n">unwrappedSelector</span> <span class="o">=</span> <span class="n">provider</span><span class="o">.</span><span class="na">openSelector</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+          
+          <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+            
+        <span class="o">}</span>
+
+        <span class="c1">// 2.得到SelectorImpl的类类型。
+</span><span class="c1"></span>        <span class="n">Object</span> <span class="n">maybeSelectorImplClass</span> <span class="o">=</span> <span class="n">AccessController</span><span class="o">.</span><span class="na">doPrivileged</span><span class="o">(</span><span class="k">new</span> <span class="n">PrivilegedAction</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+            <span class="nd">@Override</span>
+            <span class="kd">public</span> <span class="n">Object</span> <span class="nf">run</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+                <span class="k">try</span> <span class="o">{</span>
+                    <span class="k">return</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span>
+                            <span class="s">&#34;sun.nio.ch.SelectorImpl&#34;</span><span class="o">,</span>
+                            <span class="kc">false</span><span class="o">,</span>
+                            <span class="n">PlatformDependent</span><span class="o">.</span><span class="na">getSystemClassLoader</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+                <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Throwable</span> <span class="n">cause</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="k">return</span> <span class="n">cause</span><span class="o">;</span>
+                <span class="o">}</span>
+            <span class="o">}</span>
+        <span class="o">}</span><span class="o">)</span><span class="o">;</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+        <span class="kd">final</span> <span class="n">Class</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">selectorImplClass</span> <span class="o">=</span> <span class="o">(</span><span class="n">Class</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span><span class="o">)</span> <span class="n">maybeSelectorImplClass</span><span class="o">;</span>
+        <span class="c1">// 3.创建Netty自定义的Set。
+</span><span class="c1"></span>        <span class="kd">final</span> <span class="n">SelectedSelectionKeySet</span> <span class="n">selectedKeySet</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SelectedSelectionKeySet</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+        <span class="n">Object</span> <span class="n">maybeException</span> <span class="o">=</span> <span class="n">AccessController</span><span class="o">.</span><span class="na">doPrivileged</span><span class="o">(</span><span class="k">new</span> <span class="n">PrivilegedAction</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+            <span class="nd">@Override</span>
+            <span class="kd">public</span> <span class="n">Object</span> <span class="nf">run</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+                <span class="k">try</span> <span class="o">{</span>
+                    
+                    <span class="c1">// 4.取出selectedKeys和publicSelectedKeys两个字段。
+</span><span class="c1"></span>                    <span class="n">Field</span> <span class="n">selectedKeysField</span> <span class="o">=</span> <span class="n">selectorImplClass</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">&#34;selectedKeys&#34;</span><span class="o">)</span><span class="o">;</span>
+                    <span class="n">Field</span> <span class="n">publicSelectedKeysField</span> <span class="o">=</span> <span class="n">selectorImplClass</span><span class="o">.</span><span class="na">getDeclaredField</span><span class="o">(</span><span class="s">&#34;publicSelectedKeys&#34;</span><span class="o">)</span><span class="o">;</span>
+                  
+                  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+                    <span class="c1">// 5.替换SelectorImpl中原先使用的Set实现类。
+</span><span class="c1"></span>                    <span class="n">selectedKeysField</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">,</span> <span class="n">selectedKeySet</span><span class="o">)</span><span class="o">;</span>
+                    <span class="n">publicSelectedKeysField</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">,</span> <span class="n">selectedKeySet</span><span class="o">)</span><span class="o">;</span>
+                    <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+                <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">NoSuchFieldException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="k">return</span> <span class="n">e</span><span class="o">;</span>
+                <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IllegalAccessException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="k">return</span> <span class="n">e</span><span class="o">;</span>
+                <span class="o">}</span>
+            <span class="o">}</span>
+        <span class="o">}</span><span class="o">)</span><span class="o">;</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+        
+        <span class="n">selectedKeys</span> <span class="o">=</span> <span class="n">selectedKeySet</span><span class="o">;</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="n">SelectorTuple</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">,</span>
+                                 <span class="k">new</span> <span class="n">SelectedSelectionKeySetSelector</span><span class="o">(</span><span class="n">unwrappedSelector</span><span class="o">,</span> <span class="n">selectedKeySet</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个方法做的事情看上去很复杂，其实也比较简单。因为Java NIO原生的SelectorImpl实现类中有selectedKeys和publicSelectedKeys两个字段，默认初始化为HashSet类型。Netty自己定义了一个更加高效的Set实现类，上述代码就是用反射的方式，将这两个字段的值给改了。最后封装了一个SelectorTuple对象返回。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">SelectorImpl</span> <span class="kd">extends</span> <span class="n">AbstractSelector</span> <span class="o">{</span>
+    <span class="kd">protected</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">SelectionKey</span><span class="o">&gt;</span> <span class="n">selectedKeys</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HashSet</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="kd">protected</span> <span class="n">HashSet</span><span class="o">&lt;</span><span class="n">SelectionKey</span><span class="o">&gt;</span> <span class="n">keys</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HashSet</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">SelectionKey</span><span class="o">&gt;</span> <span class="n">publicKeys</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">SelectionKey</span><span class="o">&gt;</span> <span class="n">publicSelectedKeys</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>然后NioEventLoop构造方法中剩下的操作也都是简单的赋值操作。这样就封装好了NioEventLoop对象返回给children数组。</p>
+<h2 id="eventexecutorchooser">EventExecutorChooser</h2>
+<p>回到MultithreadEventExecutorGroup构造方法中，第三步就是生成了选择器。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">EventExecutorChooser</span> <span class="nf">newChooser</span><span class="o">(</span><span class="n">EventExecutor</span><span class="o">[</span><span class="o">]</span> <span class="n">executors</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">isPowerOfTwo</span><span class="o">(</span><span class="n">executors</span><span class="o">.</span><span class="na">length</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="n">PowerOfTwoEventExecutorChooser</span><span class="o">(</span><span class="n">executors</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="n">GenericEventExecutorChooser</span><span class="o">(</span><span class="n">executors</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>同时把上面的children数组传入了。根据数组大小是否是2的次方生成不同的选择器。 选择器接口有一个next方法，用来返回数组中的一个EventExecutor对象。具体实现类的实现略过。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">interface</span> <span class="nc">EventExecutorChooser</span> <span class="o">{</span>
+
+    <span class="cm">/**
+</span><span class="cm">     * Returns the new {@link EventExecutor} to use.
+</span><span class="cm">     */</span>
+    <span class="n">EventExecutor</span> <span class="nf">next</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在后面的分析中，关注何时调用next方法。</p>
+<h2 id="总结">总结</h2>
+<p>NioEventLoopGroup的构造方法中，核心逻辑是生成了ThreadPerTaskExecutor对象，封装到了children数组的每个元素中。children数组的每个元素为NioEventLoop类型，其中封装了Selector对象，而且Selector对象的字段用反射的方法赋了值。最后children被封装到了选择器中。选择器的next方法会返回一个ΝioEventLoop对象，该对象的execute方法会创建并启动线程。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-05-01
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/netty/%E6%B7%B1%E5%85%A5netty%E6%BA%90%E7%A0%81-%E6%9C%8D%E5%8A%A1%E7%AB%AF%E5%88%9D%E5%A7%8B%E5%8C%96/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入Netty源码 - 服务端初始化</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E5%9F%BA%E4%BA%8Ejdk%E4%B8%AD%E7%9A%84future%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/">
+            <span class="next-text nav-default">Java基础 - 基于JDK中的Future实现异步编程</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>
