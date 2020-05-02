@@ -6,10 +6,19 @@
     <description>Recent content in Posts on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Fri, 01 May 2020 15:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Sat, 02 May 2020 12:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>深入Netty源码 - 客户端连接</title>
+      <link>http://localhost:1313/post/netty/%E6%B7%B1%E5%85%A5netty%E6%BA%90%E7%A0%81-%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%BF%9E%E6%8E%A5/</link>
+      <pubDate>Sat, 02 May 2020 12:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/netty/%E6%B7%B1%E5%85%A5netty%E6%BA%90%E7%A0%81-%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%BF%9E%E6%8E%A5/</guid>
+      <description>接收网络连接事件 前文分析过，在服务端bind方法中，会启动一个新的线程，这个线程相当于就是Reactor模式中的主线程。其核心逻辑在run方</description>
+    </item>
     
     <item>
       <title>深入Netty源码 - 服务端初始化</title>
