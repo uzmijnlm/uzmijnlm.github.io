@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Kafka源码 - 副本机制 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="核心概念 副本、leader、follower 分布式系统常用副本(Replica)来实现数据的备份，进而实现容错、高可用等功能。在Kafka中" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E5%89%AF%E6%9C%AC%E6%9C%BA%E5%88%B6/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Kafka源码 - 副本机制" />
+<meta property="og:description" content="核心概念 副本、leader、follower 分布式系统常用副本(Replica)来实现数据的备份，进而实现容错、高可用等功能。在Kafka中" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/%E5%A4%A7%E6%95%B0%E6%8D%AE/kafka/%E6%B7%B1%E5%85%A5kafka%E6%BA%90%E7%A0%81-%E5%89%AF%E6%9C%AC%E6%9C%BA%E5%88%B6/" />
+<meta property="article:published_time" content="2020-05-10T12:11:40+08:00" />
+<meta property="article:modified_time" content="2020-05-10T12:11:40+08:00" />
+<meta itemprop="name" content="深入Kafka源码 - 副本机制">
+<meta itemprop="description" content="核心概念 副本、leader、follower 分布式系统常用副本(Replica)来实现数据的备份，进而实现容错、高可用等功能。在Kafka中">
+<meta itemprop="datePublished" content="2020-05-10T12:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-05-10T12:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="4491">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Kafka源码 - 副本机制"/>
+<meta name="twitter:description" content="核心概念 副本、leader、follower 分布式系统常用副本(Replica)来实现数据的备份，进而实现容错、高可用等功能。在Kafka中"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Kafka源码 - 副本机制</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-05-10 </span>
+        <div class="post-category">
+            <a href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/"> 大数据 </a>
+            <a href="/categories/kafka/"> kafka </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#核心概念">核心概念</a>
+      <ul>
+        <li><a href="#副本leaderfollower">副本、leader、follower</a></li>
+        <li><a href="#ar与isr">AR与ISR</a></li>
+        <li><a href="#leo与hw">LEO与HW</a></li>
+      </ul>
+    </li>
+    <li><a href="#replica与partition类">Replica与Partition类</a></li>
+    <li><a href="#partition的功能">Partition的功能</a>
+      <ul>
+        <li><a href="#写入消息">写入消息</a></li>
+        <li><a href="#副本角色切换">副本角色切换</a></li>
+        <li><a href="#isr集合管理">ISR集合管理</a></li>
+        <li><a href="#创建副本">创建副本</a></li>
+      </ul>
+    </li>
+    <li><a href="#replicamanager">ReplicaManager</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <h2 id="核心概念">核心概念</h2>
+<h3 id="副本leaderfollower">副本、leader、follower</h3>
+<p>分布式系统常用副本(Replica)来实现数据的备份，进而实现容错、高可用等功能。在Kafka中，副本是针对分区Partition而言的，即每个分区会有一个或多个副本。所有副本中，必须有一个为leader副本，对外提供读写服务，其余为follower副本，不对外提供服务，只会去同步leader的数据。当分区只有一个副本时，就只有leader副本，没有follower副本。</p>
+<h3 id="ar与isr">AR与ISR</h3>
+<p>分区的所有副本称为AR(Assigned Replicas)，所有与leader副本保持一定程度同步的副本（包括leader副本）叫做ISR(In-Sync Replicas)。只有处于ISR集合中的副本才有资格参与leader的选举（比如之前的leader挂了，新选举的leader必须处于ISR集合中）。</p>
+<h3 id="leo与hw">LEO与HW</h3>
+<p>另外还有两个非常重要的概念：LEO(log end offset)和HW(high watermark)。</p>
+<p>每个副本对象都会有这两个属性（注意不是只有leader副本才有）。LEO表示该副本最后一条日志的下一条消息的offset，HW表示消费者可以消费到的最后一条数据的offset。由于只有leader副本才负责读写，所以可以认为follower副本的HW值只有当其变成了leader时才有用。HW的值等于ISR集合中副本LEO的最小值。</p>
+<h2 id="replica与partition类">Replica与Partition类</h2>
+<p>在分析日志写入的过程中，说到Kafka用Log类表示一个分区的日志，但Log并不代表一个文件，而是代表一个目录。在一个Log中，有多个LogSegment。LogSegment对应磁盘上一个日志文件和一个索引文件。具体的读写操作都会落到对这些对象的操作。</p>
+<p>那么Replica和Partition又代表什么呢？</p>
+<p>回顾写日志的方法，在appendToLocalLog方法中，会根据传入的topic和partition取出一个Partition对象，然后调用它的appendMessagesToLeader方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">appendToLocalLog</span><span class="o">(</span><span class="n">internalTopicsAllowed</span><span class="k">:</span> <span class="kt">Boolean</span><span class="o">,</span>
+                             <span class="n">messagesPerPartition</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">TopicPartition</span>, <span class="kt">MessageSet</span><span class="o">]</span><span class="o">,</span>
+                             <span class="n">requiredAcks</span><span class="k">:</span> <span class="kt">Short</span><span class="o">)</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">TopicPartition</span>, <span class="kt">LogAppendResult</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+    <span class="k">if</span> <span class="o">(</span><span class="nc">Topic</span><span class="o">.</span><span class="n">isInternal</span><span class="o">(</span><span class="n">topicPartition</span><span class="o">.</span><span class="n">topic</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">internalTopicsAllowed</span><span class="o">)</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="k">try</span> <span class="o">{</span>
+        <span class="k">val</span> <span class="n">partitionOpt</span> <span class="k">=</span> <span class="n">getPartition</span><span class="o">(</span><span class="n">topicPartition</span><span class="o">.</span><span class="n">topic</span><span class="o">,</span> <span class="n">topicPartition</span><span class="o">.</span><span class="n">partition</span><span class="o">)</span>
+        <span class="k">val</span> <span class="n">info</span> <span class="k">=</span> <span class="n">partitionOpt</span> <span class="k">match</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">partition</span><span class="o">)</span> <span class="k">=&gt;</span>
+            <span class="n">partition</span><span class="o">.</span><span class="n">appendMessagesToLeader</span><span class="o">(</span><span class="n">messages</span><span class="o">.</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">ByteBufferMessageSet</span><span class="o">]</span><span class="o">,</span> <span class="n">requiredAcks</span><span class="o">)</span>
+          
+          <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+          
+          
+          
+          
+<span class="k">def</span> <span class="n">appendMessagesToLeader</span><span class="o">(</span><span class="n">messages</span><span class="k">:</span> <span class="kt">ByteBufferMessageSet</span><span class="o">,</span> <span class="n">requiredAcks</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="o">(</span><span class="n">info</span><span class="o">,</span> <span class="n">leaderHWIncremented</span><span class="o">)</span> <span class="k">=</span> <span class="n">inReadLock</span><span class="o">(</span><span class="n">leaderIsrUpdateLock</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">leaderReplicaOpt</span> <span class="k">=</span> <span class="n">leaderReplicaIfLocal</span><span class="o">(</span><span class="o">)</span>
+    <span class="n">leaderReplicaOpt</span> <span class="k">match</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">leaderReplica</span><span class="o">)</span> <span class="k">=&gt;</span>
+        <span class="k">val</span> <span class="n">log</span> <span class="k">=</span> <span class="n">leaderReplica</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">get</span>
+        <span class="k">val</span> <span class="n">minIsr</span> <span class="k">=</span> <span class="n">log</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">minInSyncReplicas</span>
+        <span class="k">val</span> <span class="n">inSyncSize</span> <span class="k">=</span> <span class="n">inSyncReplicas</span><span class="o">.</span><span class="n">size</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+        <span class="k">val</span> <span class="n">info</span> <span class="k">=</span> <span class="n">log</span><span class="o">.</span><span class="n">append</span><span class="o">(</span><span class="n">messages</span><span class="o">,</span> <span class="n">assignOffsets</span> <span class="k">=</span> <span class="kc">true</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在appendMessagesToLeader方法中调用的leaderReplicaIfLocal方法返回的对象就是一个Replica对象，而该对象又可以取出一个Log对象。leaderReplicaIfLocal方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">leaderReplicaIfLocal</span><span class="o">(</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Replica</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="n">leaderReplicaIdOpt</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">leaderReplicaId</span><span class="o">)</span> <span class="k">=&gt;</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">leaderReplicaId</span> <span class="o">==</span> <span class="n">localBrokerId</span><span class="o">)</span>
+        <span class="n">getReplica</span><span class="o">(</span><span class="n">localBrokerId</span><span class="o">)</span>
+      <span class="k">else</span>
+        <span class="nc">None</span>
+    <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nc">None</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="k">def</span> <span class="n">getReplica</span><span class="o">(</span><span class="n">replicaId</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">localBrokerId</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Replica</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">replica</span> <span class="k">=</span> <span class="n">assignedReplicaMap</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">replicaId</span><span class="o">)</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">replica</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+    <span class="nc">None</span>
+  <span class="k">else</span>
+    <span class="nc">Some</span><span class="o">(</span><span class="n">replica</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>assignedReplicaMap是Partition类中的字段，表示AR集合。</p>
+<p>由此可以分析出几个类之间的关系。Kafka的每个分区都用一个Partition对象表示。根据上面的基本概念，每个分区会有多个副本，所以Partition类会维护一个Replica对象的集合，其中会有一个Replica对象表示本地的副本，其余的则是follower副本，即本地副本和远程副本。Replica类包含一个Log类对象的字段。本地副本的Log在当前broker，远程副本的Log在在其他节点。</p>
+<p>Replica类如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">Replica</span><span class="o">(</span><span class="k">val</span> <span class="n">brokerId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+              <span class="k">val</span> <span class="n">partition</span><span class="k">:</span> <span class="kt">Partition</span><span class="o">,</span>
+              <span class="n">time</span><span class="k">:</span> <span class="kt">Time</span> <span class="o">=</span> <span class="nc">SystemTime</span><span class="o">,</span>
+              <span class="n">initialHighWatermarkValue</span><span class="k">:</span> <span class="kt">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="o">,</span>
+              <span class="k">val</span> <span class="n">log</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Log</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Logging</span> <span class="o">{</span>
+  <span class="nd">@volatile</span> <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">var</span> <span class="n">highWatermarkMetadata</span><span class="k">:</span> <span class="kt">LogOffsetMetadata</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">LogOffsetMetadata</span><span class="o">(</span><span class="n">initialHighWatermarkValue</span><span class="o">)</span>
+  <span class="nd">@volatile</span> <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">var</span> <span class="n">logEndOffsetMetadata</span><span class="k">:</span> <span class="kt">LogOffsetMetadata</span> <span class="o">=</span> <span class="nc">LogOffsetMetadata</span><span class="o">.</span><span class="nc">UnknownOffsetMetadata</span>
+
+  <span class="k">val</span> <span class="n">topic</span> <span class="k">=</span> <span class="n">partition</span><span class="o">.</span><span class="n">topic</span>
+  <span class="k">val</span> <span class="n">partitionId</span> <span class="k">=</span> <span class="n">partition</span><span class="o">.</span><span class="n">partitionId</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到这些字段与上面的分析一致。</p>
+<p>此外，Replica类中还提供了获取LEO、判断该Replica是否为本地副本等方法，此处不再展开。</p>
+<p>Partitionl类如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">Partition</span><span class="o">(</span><span class="k">val</span> <span class="n">topic</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+                <span class="k">val</span> <span class="n">partitionId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                <span class="n">time</span><span class="k">:</span> <span class="kt">Time</span><span class="o">,</span>
+                <span class="n">replicaManager</span><span class="k">:</span> <span class="kt">ReplicaManager</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Logging</span> <span class="k">with</span> <span class="nc">KafkaMetricsGroup</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">localBrokerId</span> <span class="k">=</span> <span class="n">replicaManager</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">brokerId</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">logManager</span> <span class="k">=</span> <span class="n">replicaManager</span><span class="o">.</span><span class="n">logManager</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">zkUtils</span> <span class="k">=</span> <span class="n">replicaManager</span><span class="o">.</span><span class="n">zkUtils</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">assignedReplicaMap</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Pool</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">Replica</span><span class="o">]</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">leaderIsrUpdateLock</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ReentrantReadWriteLock</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">zkVersion</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="nc">LeaderAndIsr</span><span class="o">.</span><span class="n">initialZKVersion</span>
+  <span class="nd">@volatile</span> <span class="k">private</span> <span class="k">var</span> <span class="n">leaderEpoch</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="nc">LeaderAndIsr</span><span class="o">.</span><span class="n">initialLeaderEpoch</span> <span class="o">-</span> <span class="mi">1</span>
+  <span class="nd">@volatile</span> <span class="k">var</span> <span class="n">leaderReplicaIdOpt</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span>
+  <span class="nd">@volatile</span> <span class="k">var</span> <span class="n">inSyncReplicas</span><span class="k">:</span> <span class="kt">Set</span><span class="o">[</span><span class="kt">Replica</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Set</span><span class="o">.</span><span class="n">empty</span><span class="o">[</span><span class="kt">Replica</span><span class="o">]</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中assignedReplicaMap表示AR集合，inSyncReplicas表示ISR集合。Partition类中还有replicaManager和logManager，意味着它可以对副本和日志进行一些管理。</p>
+<h2 id="partition的功能">Partition的功能</h2>
+<h3 id="写入消息">写入消息</h3>
+<p>这个功能就是上面说到的appendMessagesToLeader。之前我们只知道它取出了一个Log对象然后写入消息，现在还知道了它是先从Partition维护的集合中取出leader副本对应的Replica对象，然后从Replica对象中取出Log对象开始写入。而且写入之前还有这样的判断：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">minIsr</span> <span class="k">=</span> <span class="n">log</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">minInSyncReplicas</span>
+
+<span class="k">if</span> <span class="o">(</span><span class="n">inSyncSize</span> <span class="o">&lt;</span> <span class="n">minIsr</span> <span class="o">&amp;&amp;</span> <span class="n">requiredAcks</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">throw</span> <span class="k">new</span> <span class="nc">NotEnoughReplicasException</span><span class="o">(</span><span class="s">&#34;Number of insync replicas for partition [%s,%d] is [%d], below required minimum [%d]&#34;</span>
+    <span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">topic</span><span class="o">,</span> <span class="n">partitionId</span><span class="o">,</span> <span class="n">inSyncSize</span><span class="o">,</span> <span class="n">minIsr</span><span class="o">)</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>获取了配置制定的最小ISR集合大小的限制，然后判断当前ISR集合中副本的数量是不是小于该限制。</p>
+<h3 id="副本角色切换">副本角色切换</h3>
+<p>副本角色的切换是由Kafka另一个组件KafkaController负责的，它会发送LeaderAndISRRequest请求到Server端，然后进入handleLeaderAndIsrRequest方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">handle</span><span class="o">(</span><span class="n">request</span><span class="k">:</span> <span class="kt">RequestChannel</span><span class="kt">.</span><span class="kt">Request</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">try</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+      <span class="k">case</span> <span class="nc">ApiKeys</span><span class="o">.</span><span class="nc">LEADER_AND_ISR</span> <span class="k">=&gt;</span> <span class="n">handleLeaderAndIsrRequest</span><span class="o">(</span><span class="n">request</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个方法最终会调用到Partition的makeLeader或makeFollower方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">handleLeaderAndIsrRequest</span><span class="o">(</span><span class="n">request</span><span class="k">:</span> <span class="kt">RequestChannel</span><span class="kt">.</span><span class="kt">Request</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">correlationId</span> <span class="k">=</span> <span class="n">request</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">correlationId</span>
+  <span class="k">val</span> <span class="n">leaderAndIsrRequest</span> <span class="k">=</span> <span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">LeaderAndIsrRequest</span><span class="o">]</span>
+
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">onLeadershipChange</span><span class="o">(</span><span class="n">updatedLeaders</span><span class="k">:</span> <span class="kt">Iterable</span><span class="o">[</span><span class="kt">Partition</span><span class="o">]</span><span class="o">,</span> <span class="n">updatedFollowers</span><span class="k">:</span> <span class="kt">Iterable</span><span class="o">[</span><span class="kt">Partition</span><span class="o">]</span><span class="o">)</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+    <span class="o">}</span>
+
+    <span class="k">val</span> <span class="n">responseHeader</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ResponseHeader</span><span class="o">(</span><span class="n">correlationId</span><span class="o">)</span>
+    <span class="k">val</span> <span class="n">leaderAndIsrResponse</span> <span class="k">=</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">authorize</span><span class="o">(</span><span class="n">request</span><span class="o">.</span><span class="n">session</span><span class="o">,</span> <span class="nc">ClusterAction</span><span class="o">,</span> <span class="nc">Resource</span><span class="o">.</span><span class="nc">ClusterResource</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// 角色切换。
+</span><span class="c1"></span>        <span class="k">val</span> <span class="n">result</span> <span class="k">=</span> <span class="n">replicaManager</span><span class="o">.</span><span class="n">becomeLeaderOrFollower</span><span class="o">(</span><span class="n">correlationId</span><span class="o">,</span> <span class="n">leaderAndIsrRequest</span><span class="o">,</span> <span class="n">metadataCache</span><span class="o">,</span> <span class="n">onLeadershipChange</span><span class="o">)</span>
+        <span class="k">new</span> <span class="nc">LeaderAndIsrResponse</span><span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="n">errorCode</span><span class="o">,</span> <span class="n">result</span><span class="o">.</span><span class="n">responseMap</span><span class="o">.</span><span class="n">mapValues</span><span class="o">(</span><span class="k">new</span> <span class="nc">JShort</span><span class="o">(</span><span class="k">_</span><span class="o">)</span><span class="o">)</span><span class="o">.</span><span class="n">asJava</span><span class="o">)</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+        
+      <span class="o">}</span>
+
+    <span class="n">requestChannel</span><span class="o">.</span><span class="n">sendResponse</span><span class="o">(</span><span class="k">new</span> <span class="nc">Response</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="k">new</span> <span class="nc">ResponseSend</span><span class="o">(</span><span class="n">request</span><span class="o">.</span><span class="n">connectionId</span><span class="o">,</span> <span class="n">responseHeader</span><span class="o">,</span> <span class="n">leaderAndIsrResponse</span><span class="o">)</span><span class="o">)</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中replicaManager.becomeLeaderOrFollower方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">becomeLeaderOrFollower</span><span class="o">(</span><span class="n">correlationId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span><span class="n">leaderAndISRRequest</span><span class="k">:</span> <span class="kt">LeaderAndIsrRequest</span><span class="o">,</span>
+                           <span class="n">metadataCache</span><span class="k">:</span> <span class="kt">MetadataCache</span><span class="o">,</span>
+                           <span class="n">onLeadershipChange</span><span class="k">:</span> <span class="o">(</span><span class="kt">Iterable</span><span class="o">[</span><span class="kt">Partition</span><span class="o">]</span><span class="o">,</span> <span class="nc">Iterable</span><span class="o">[</span><span class="kt">Partition</span><span class="o">]</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span><span class="k">:</span> <span class="kt">BecomeLeaderOrFollowerResult</span> <span class="o">=</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+  
+  <span class="n">replicaStateChangeLock</span> <span class="n">synchronized</span> <span class="o">{</span>
+    
+    <span class="k">val</span> <span class="n">responseMap</span> <span class="k">=</span> <span class="k">new</span> <span class="n">mutable</span><span class="o">.</span><span class="nc">HashMap</span><span class="o">[</span><span class="kt">TopicPartition</span>, <span class="kt">Short</span><span class="o">]</span>
+    
+    <span class="k">if</span> <span class="o">(</span><span class="n">leaderAndISRRequest</span><span class="o">.</span><span class="n">controllerEpoch</span> <span class="o">&lt;</span> <span class="n">controllerEpoch</span><span class="o">)</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      
+      <span class="k">val</span> <span class="n">controllerId</span> <span class="k">=</span> <span class="n">leaderAndISRRequest</span><span class="o">.</span><span class="n">controllerId</span>
+      <span class="n">controllerEpoch</span> <span class="k">=</span> <span class="n">leaderAndISRRequest</span><span class="o">.</span><span class="n">controllerEpoch</span>
+      <span class="c1">// 创建一个Map用来存放分区及分区信息。
+</span><span class="c1"></span>      <span class="k">val</span> <span class="n">partitionState</span> <span class="k">=</span> <span class="k">new</span> <span class="n">mutable</span><span class="o">.</span><span class="nc">HashMap</span><span class="o">[</span><span class="kt">Partition</span>, <span class="kt">PartitionState</span><span class="o">]</span><span class="o">(</span><span class="o">)</span>
+      
+      <span class="n">leaderAndISRRequest</span><span class="o">.</span><span class="n">partitionStates</span><span class="o">.</span><span class="n">asScala</span><span class="o">.</span><span class="n">foreach</span> <span class="o">{</span> <span class="k">case</span> <span class="o">(</span><span class="n">topicPartition</span><span class="o">,</span> <span class="n">stateInfo</span><span class="o">)</span> <span class="k">=&gt;</span>
+        <span class="k">val</span> <span class="n">partition</span> <span class="k">=</span> <span class="n">getOrCreatePartition</span><span class="o">(</span><span class="n">topicPartition</span><span class="o">.</span><span class="n">topic</span><span class="o">,</span> <span class="n">topicPartition</span><span class="o">.</span><span class="n">partition</span><span class="o">)</span>
+        <span class="k">val</span> <span class="n">partitionLeaderEpoch</span> <span class="k">=</span> <span class="n">partition</span><span class="o">.</span><span class="n">getLeaderEpoch</span><span class="o">(</span><span class="o">)</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">partitionLeaderEpoch</span> <span class="o">&lt;</span> <span class="n">stateInfo</span><span class="o">.</span><span class="n">leaderEpoch</span><span class="o">)</span> <span class="o">{</span>
+          <span class="k">if</span><span class="o">(</span><span class="n">stateInfo</span><span class="o">.</span><span class="n">replicas</span><span class="o">.</span><span class="n">contains</span><span class="o">(</span><span class="n">config</span><span class="o">.</span><span class="n">brokerId</span><span class="o">)</span><span class="o">)</span>
+            <span class="c1">// 将分区和分区信息放入该Map。
+</span><span class="c1"></span>            <span class="n">partitionState</span><span class="o">.</span><span class="n">put</span><span class="o">(</span><span class="n">partition</span><span class="o">,</span> <span class="n">stateInfo</span><span class="o">)</span>
+          <span class="k">else</span> <span class="o">{</span>
+            
+            <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+            
+          <span class="o">}</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+          
+          <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+          
+        <span class="o">}</span>
+      <span class="o">}</span>
+      <span class="c1">// 选出要成为leader的分区。
+</span><span class="c1"></span>      <span class="k">val</span> <span class="n">partitionsTobeLeader</span> <span class="k">=</span> <span class="n">partitionState</span><span class="o">.</span><span class="n">filter</span> <span class="o">{</span> <span class="k">case</span> <span class="o">(</span><span class="n">partition</span><span class="o">,</span> <span class="n">stateInfo</span><span class="o">)</span> <span class="k">=&gt;</span>
+        <span class="n">stateInfo</span><span class="o">.</span><span class="n">leader</span> <span class="o">==</span> <span class="n">config</span><span class="o">.</span><span class="n">brokerId</span>
+      <span class="o">}</span>
+      <span class="c1">// 选出要成为follower的分区。
+</span><span class="c1"></span>      <span class="k">val</span> <span class="n">partitionsToBeFollower</span> <span class="k">=</span> <span class="o">(</span><span class="n">partitionState</span> <span class="o">--</span> <span class="n">partitionsTobeLeader</span><span class="o">.</span><span class="n">keys</span><span class="o">)</span>
+
+      <span class="k">val</span> <span class="n">partitionsBecomeLeader</span> <span class="k">=</span> <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">partitionsTobeLeader</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span>
+        <span class="c1">// makeLeader。
+</span><span class="c1"></span>        <span class="n">makeLeaders</span><span class="o">(</span><span class="n">controllerId</span><span class="o">,</span> <span class="n">controllerEpoch</span><span class="o">,</span> <span class="n">partitionsTobeLeader</span><span class="o">,</span> <span class="n">correlationId</span><span class="o">,</span> <span class="n">responseMap</span><span class="o">)</span>
+      <span class="k">else</span>
+        <span class="nc">Set</span><span class="o">.</span><span class="n">empty</span><span class="o">[</span><span class="kt">Partition</span><span class="o">]</span>
+      <span class="k">val</span> <span class="n">partitionsBecomeFollower</span> <span class="k">=</span> <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">partitionsToBeFollower</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span>
+        <span class="c1">// makeFollower。
+</span><span class="c1"></span>        <span class="n">makeFollowers</span><span class="o">(</span><span class="n">controllerId</span><span class="o">,</span> <span class="n">controllerEpoch</span><span class="o">,</span> <span class="n">partitionsToBeFollower</span><span class="o">,</span> <span class="n">correlationId</span><span class="o">,</span> <span class="n">responseMap</span><span class="o">,</span> <span class="n">metadataCache</span><span class="o">)</span>
+      <span class="k">else</span>
+        <span class="nc">Set</span><span class="o">.</span><span class="n">empty</span><span class="o">[</span><span class="kt">Partition</span><span class="o">]</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面的方法最后调用了makeLeaders和makeFollowers方法，对该broker上的Partition对象进行了角色切换工作。</p>
+<p>进入makeLeaders方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">private</span> <span class="k">def</span> <span class="n">makeLeaders</span><span class="o">(</span><span class="n">controllerId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                        <span class="n">epoch</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                        <span class="n">partitionState</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">Partition</span>, <span class="kt">PartitionState</span><span class="o">]</span><span class="o">,</span>
+                        <span class="n">correlationId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+                        <span class="n">responseMap</span><span class="k">:</span> <span class="kt">mutable.Map</span><span class="o">[</span><span class="kt">TopicPartition</span>, <span class="kt">Short</span><span class="o">]</span><span class="o">)</span><span class="k">:</span> <span class="kt">Set</span><span class="o">[</span><span class="kt">Partition</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+  <span class="k">for</span> <span class="o">(</span><span class="n">partition</span> <span class="k">&lt;-</span> <span class="n">partitionState</span><span class="o">.</span><span class="n">keys</span><span class="o">)</span>
+    <span class="n">responseMap</span><span class="o">.</span><span class="n">put</span><span class="o">(</span><span class="k">new</span> <span class="nc">TopicPartition</span><span class="o">(</span><span class="n">partition</span><span class="o">.</span><span class="n">topic</span><span class="o">,</span> <span class="n">partition</span><span class="o">.</span><span class="n">partitionId</span><span class="o">)</span><span class="o">,</span> <span class="nc">Errors</span><span class="o">.</span><span class="nc">NONE</span><span class="o">.</span><span class="n">code</span><span class="o">)</span>
+
+  <span class="k">val</span> <span class="n">partitionsToMakeLeaders</span><span class="k">:</span> <span class="kt">mutable.Set</span><span class="o">[</span><span class="kt">Partition</span><span class="o">]</span> <span class="k">=</span> <span class="n">mutable</span><span class="o">.</span><span class="nc">Set</span><span class="o">(</span><span class="o">)</span>
+
+  <span class="k">try</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+    <span class="n">partitionState</span><span class="o">.</span><span class="n">foreach</span><span class="o">{</span> <span class="k">case</span> <span class="o">(</span><span class="n">partition</span><span class="o">,</span> <span class="n">partitionStateInfo</span><span class="o">)</span> <span class="k">=&gt;</span>
+      <span class="c1">// makeLeader。
+</span><span class="c1"></span>      <span class="k">if</span> <span class="o">(</span><span class="n">partition</span><span class="o">.</span><span class="n">makeLeader</span><span class="o">(</span><span class="n">controllerId</span><span class="o">,</span> <span class="n">partitionStateInfo</span><span class="o">,</span> <span class="n">correlationId</span><span class="o">)</span><span class="o">)</span>
+        <span class="n">partitionsToMakeLeaders</span> <span class="o">+=</span> <span class="n">partition</span>
+      <span class="k">else</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+      
+    <span class="o">}</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+    <span class="o">}</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+    
+    <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+  <span class="o">}</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+  <span class="n">partitionsToMakeLeaders</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>核心方法就是makeLeader方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">makeLeader</span><span class="o">(</span><span class="n">controllerId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">partitionStateInfo</span><span class="k">:</span> <span class="kt">PartitionState</span><span class="o">,</span> <span class="n">correlationId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="o">(</span><span class="n">leaderHWIncremented</span><span class="o">,</span> <span class="n">isNewLeader</span><span class="o">)</span> <span class="k">=</span> <span class="n">inWriteLock</span><span class="o">(</span><span class="n">leaderIsrUpdateLock</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// 1.获取需要分配的AR集合。
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">allReplicas</span> <span class="k">=</span> <span class="n">partitionStateInfo</span><span class="o">.</span><span class="n">replicas</span><span class="o">.</span><span class="n">asScala</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">toInt</span><span class="o">)</span>
+    <span class="n">controllerEpoch</span> <span class="k">=</span> <span class="n">partitionStateInfo</span><span class="o">.</span><span class="n">controllerEpoch</span>
+    <span class="c1">// 2.创建AR集合中所有副本对应的Replica对象。
+</span><span class="c1"></span>    <span class="n">allReplicas</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">replica</span> <span class="k">=&gt;</span> <span class="n">getOrCreateReplica</span><span class="o">(</span><span class="n">replica</span><span class="o">)</span><span class="o">)</span>
+    <span class="c1">// 3.获取ISR集合。
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">newInSyncReplicas</span> <span class="k">=</span> <span class="n">partitionStateInfo</span><span class="o">.</span><span class="n">isr</span><span class="o">.</span><span class="n">asScala</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">r</span> <span class="k">=&gt;</span> <span class="n">getOrCreateReplica</span><span class="o">(</span><span class="n">r</span><span class="o">)</span><span class="o">)</span><span class="o">.</span><span class="n">toSet</span>
+    <span class="c1">// 4.更新操作。
+</span><span class="c1"></span>    <span class="o">(</span><span class="n">assignedReplicas</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">brokerId</span><span class="o">)</span> <span class="o">--</span> <span class="n">allReplicas</span><span class="o">)</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">removeReplica</span><span class="o">(</span><span class="k">_</span><span class="o">)</span><span class="o">)</span>
+    <span class="n">inSyncReplicas</span> <span class="k">=</span> <span class="n">newInSyncReplicas</span>
+    <span class="n">leaderEpoch</span> <span class="k">=</span> <span class="n">partitionStateInfo</span><span class="o">.</span><span class="n">leaderEpoch</span>
+    <span class="n">zkVersion</span> <span class="k">=</span> <span class="n">partitionStateInfo</span><span class="o">.</span><span class="n">zkVersion</span>
+    <span class="c1">// 5.检测leader是否发生变化。
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">isNewLeader</span> <span class="k">=</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">leaderReplicaIdOpt</span><span class="o">.</span><span class="n">isDefined</span> <span class="o">&amp;&amp;</span> <span class="n">leaderReplicaIdOpt</span><span class="o">.</span><span class="n">get</span> <span class="o">==</span> <span class="n">localBrokerId</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kc">false</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">leaderReplicaIdOpt</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="n">localBrokerId</span><span class="o">)</span>
+        <span class="kc">true</span>
+      <span class="o">}</span>
+    <span class="c1">// 6.获取本地副本。
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">leaderReplica</span> <span class="k">=</span> <span class="n">getReplica</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="n">get</span>
+    <span class="c1">// 7.更新LEO、HW等信息。
+</span><span class="c1"></span>    <span class="k">if</span> <span class="o">(</span><span class="n">isNewLeader</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">leaderReplica</span><span class="o">.</span><span class="n">convertHWToLocalOffsetMetadata</span><span class="o">(</span><span class="o">)</span>
+      <span class="n">assignedReplicas</span><span class="o">.</span><span class="n">filter</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">brokerId</span> <span class="o">!=</span> <span class="n">localBrokerId</span><span class="o">)</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">updateLogReadResult</span><span class="o">(</span><span class="nc">LogReadResult</span><span class="o">.</span><span class="nc">UnknownLogReadResult</span><span class="o">)</span><span class="o">)</span>
+    <span class="o">}</span>
+    <span class="o">(</span><span class="n">maybeIncrementLeaderHW</span><span class="o">(</span><span class="n">leaderReplica</span><span class="o">)</span><span class="o">,</span> <span class="n">isNewLeader</span><span class="o">)</span>
+  <span class="o">}</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+  
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>核心逻辑就是成为leader后要对LEO、HW等信息做更新。</p>
+<p>makeFollower方法与此类似，不展开讨论。</p>
+<h3 id="isr集合管理">ISR集合管理</h3>
+<p>Partition类还负责ISR集合的管理。当follower副本拉取消息时，会判断是否需要将这个副本加入到ISR集合中。最终调用的方法是maybeExpandIsr。这个方法比较简单，就是对ISR集合的操作。只需要注意其判断条件：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">if</span><span class="o">(</span><span class="o">!</span><span class="n">inSyncReplicas</span><span class="o">.</span><span class="n">contains</span><span class="o">(</span><span class="n">replica</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+   <span class="n">assignedReplicas</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">brokerId</span><span class="o">)</span><span class="o">.</span><span class="n">contains</span><span class="o">(</span><span class="n">replicaId</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+        <span class="n">replica</span><span class="o">.</span><span class="n">logEndOffset</span><span class="o">.</span><span class="n">offsetDiff</span><span class="o">(</span><span class="n">leaderHW</span><span class="o">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">newInSyncReplicas</span> <span class="k">=</span> <span class="n">inSyncReplicas</span> <span class="o">+</span> <span class="n">replica</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>即该副本不在ISR中，但在AR中，而且其LEO已经追上leader的HW。</p>
+<p>有对ISR的添加操作，自然就有对其删减的操作。Kafka会启动一个定时任务，定期检查是否需要将一些副本剔除出ISR集合。</p>
+<p>在Kafka Server启动时，会初始化ReplicaManager，它会启动定时任务：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">replicaManager</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ReplicaManager</span><span class="o">(</span><span class="n">config</span><span class="o">,</span> <span class="n">metrics</span><span class="o">,</span> <span class="n">time</span><span class="o">,</span> <span class="n">kafkaMetricsTime</span><span class="o">,</span> <span class="n">zkUtils</span><span class="o">,</span> <span class="n">kafkaScheduler</span><span class="o">,</span> <span class="n">logManager</span><span class="o">,</span>
+  <span class="n">isShuttingDown</span><span class="o">)</span>
+<span class="n">replicaManager</span><span class="o">.</span><span class="n">startup</span><span class="o">(</span><span class="o">)</span>
+
+<span class="k">def</span> <span class="n">startup</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">scheduler</span><span class="o">.</span><span class="n">schedule</span><span class="o">(</span><span class="s">&#34;isr-expiration&#34;</span><span class="o">,</span> <span class="n">maybeShrinkIsr</span><span class="o">,</span> <span class="n">period</span> <span class="k">=</span> <span class="n">config</span><span class="o">.</span><span class="n">replicaLagTimeMaxMs</span><span class="o">,</span> <span class="n">unit</span> <span class="k">=</span> <span class="nc">TimeUnit</span><span class="o">.</span><span class="nc">MILLISECONDS</span><span class="o">)</span>
+  <span class="n">scheduler</span><span class="o">.</span><span class="n">schedule</span><span class="o">(</span><span class="s">&#34;isr-change-propagation&#34;</span><span class="o">,</span> <span class="n">maybePropagateIsrChanges</span><span class="o">,</span> <span class="n">period</span> <span class="k">=</span> <span class="mi">2500L</span><span class="o">,</span> <span class="n">unit</span> <span class="k">=</span> <span class="nc">TimeUnit</span><span class="o">.</span><span class="nc">MILLISECONDS</span><span class="o">)</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中maybeShrinkIsr方法就是用来检查ISR集合中是否有副本需要删除。该方法中，会将长时间没有追上leader的副本删除。</p>
+<h3 id="创建副本">创建副本</h3>
+<p>注意到在上面makeLeader等方法中，会调用到getOrCreateReplica方法。这个方法用来创建或查找副本。如果是创建本地副本，则会创建或恢复对应的Log并初始化HW。HW会保存到replication-offset-checkpoint文件中。ReplicaManager启动时会读取此文件。</p>
+<h2 id="replicamanager">ReplicaManager</h2>
+<p>上面提到的很多操作，都看到了ReplicaManager的身影。比如消息写入时，一开始就是调用的replicaManager.appendMessages方法进行消息的写入。上面提及的ISR缩减操作，也是利用ReplicaManager启动的定时任务。包括副本角色的切换，最外层也是调用replicaManager.becomeLeaderOrFollower方法。可以说，与副本相关的操作都是由ReplicaManager来管理。ReplicaManager的方法最终会调用到上面提到的Partition的方法，进而对具体的Replica进行操作。</p>
+<p>显然，ReplicaManager必然需要维护一个Partition集合。</p>
+<p>ReplicaManager类如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">class</span> <span class="nc">ReplicaManager</span><span class="o">(</span><span class="k">val</span> <span class="n">config</span><span class="k">:</span> <span class="kt">KafkaConfig</span><span class="o">,</span>
+                     <span class="n">metrics</span><span class="k">:</span> <span class="kt">Metrics</span><span class="o">,</span>
+                     <span class="n">time</span><span class="k">:</span> <span class="kt">Time</span><span class="o">,</span>
+                     <span class="n">jTime</span><span class="k">:</span> <span class="kt">JTime</span><span class="o">,</span>
+                     <span class="k">val</span> <span class="n">zkUtils</span><span class="k">:</span> <span class="kt">ZkUtils</span><span class="o">,</span>
+                     <span class="n">scheduler</span><span class="k">:</span> <span class="kt">Scheduler</span><span class="o">,</span>
+                     <span class="k">val</span> <span class="n">logManager</span><span class="k">:</span> <span class="kt">LogManager</span><span class="o">,</span>
+                     <span class="k">val</span> <span class="n">isShuttingDown</span><span class="k">:</span> <span class="kt">AtomicBoolean</span><span class="o">,</span>
+                     <span class="n">threadNamePrefix</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Logging</span> <span class="k">with</span> <span class="nc">KafkaMetricsGroup</span> <span class="o">{</span>
+  <span class="nd">@volatile</span> <span class="k">var</span> <span class="n">controllerEpoch</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="nc">KafkaController</span><span class="o">.</span><span class="nc">InitialControllerEpoch</span> <span class="o">-</span> <span class="mi">1</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">localBrokerId</span> <span class="k">=</span> <span class="n">config</span><span class="o">.</span><span class="n">brokerId</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">allPartitions</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Pool</span><span class="o">[</span><span class="o">(</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">)</span>, <span class="kt">Partition</span><span class="o">]</span><span class="o">(</span><span class="n">valueFactory</span> <span class="k">=</span> <span class="nc">Some</span> <span class="o">{</span> <span class="k">case</span> <span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">p</span><span class="o">)</span> <span class="k">=&gt;</span>
+    <span class="k">new</span> <span class="nc">Partition</span><span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">p</span><span class="o">,</span> <span class="n">time</span><span class="o">,</span> <span class="k">this</span><span class="o">)</span>
+  <span class="o">}</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">replicaStateChangeLock</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Object</span>
+  <span class="k">val</span> <span class="n">replicaFetcherManager</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ReplicaFetcherManager</span><span class="o">(</span><span class="n">config</span><span class="o">,</span> <span class="k">this</span><span class="o">,</span> <span class="n">metrics</span><span class="o">,</span> <span class="n">jTime</span><span class="o">,</span> <span class="n">threadNamePrefix</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">highWatermarkCheckPointThreadStarted</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">AtomicBoolean</span><span class="o">(</span><span class="kc">false</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">highWatermarkCheckpoints</span> <span class="k">=</span> <span class="n">config</span><span class="o">.</span><span class="n">logDirs</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">dir</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="n">dir</span><span class="o">)</span><span class="o">.</span><span class="n">getAbsolutePath</span><span class="o">,</span> <span class="k">new</span> <span class="nc">OffsetCheckpoint</span><span class="o">(</span><span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="n">dir</span><span class="o">,</span> <span class="nc">ReplicaManager</span><span class="o">.</span><span class="nc">HighWatermarkFilename</span><span class="o">)</span><span class="o">)</span><span class="o">)</span><span class="o">)</span><span class="o">.</span><span class="n">toMap</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">hwThreadInitialized</span> <span class="k">=</span> <span class="kc">false</span>
+  <span class="k">this</span><span class="o">.</span><span class="n">logIdent</span> <span class="k">=</span> <span class="s">&#34;[Replica Manager on Broker &#34;</span> <span class="o">+</span> <span class="n">localBrokerId</span> <span class="o">+</span> <span class="s">&#34;]: &#34;</span>
+  <span class="k">val</span> <span class="n">stateChangeLogger</span> <span class="k">=</span> <span class="nc">KafkaController</span><span class="o">.</span><span class="n">stateChangeLogger</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">isrChangeSet</span><span class="k">:</span> <span class="kt">mutable.Set</span><span class="o">[</span><span class="kt">TopicAndPartition</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="n">mutable</span><span class="o">.</span><span class="nc">HashSet</span><span class="o">[</span><span class="kt">TopicAndPartition</span><span class="o">]</span><span class="o">(</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">lastIsrChangeMs</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">AtomicLong</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="n">currentTimeMillis</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">lastIsrPropagationMs</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">AtomicLong</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="n">currentTimeMillis</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+
+  <span class="k">val</span> <span class="n">delayedProducePurgatory</span> <span class="k">=</span> <span class="nc">DelayedOperationPurgatory</span><span class="o">[</span><span class="kt">DelayedProduce</span><span class="o">]</span><span class="o">(</span>
+    <span class="n">purgatoryName</span> <span class="k">=</span> <span class="s">&#34;Produce&#34;</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">brokerId</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">producerPurgatoryPurgeIntervalRequests</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">delayedFetchPurgatory</span> <span class="k">=</span> <span class="nc">DelayedOperationPurgatory</span><span class="o">[</span><span class="kt">DelayedFetch</span><span class="o">]</span><span class="o">(</span>
+    <span class="n">purgatoryName</span> <span class="k">=</span> <span class="s">&#34;Fetch&#34;</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">brokerId</span><span class="o">,</span> <span class="n">config</span><span class="o">.</span><span class="n">fetchPurgatoryPurgeIntervalRequests</span><span class="o">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>重要字段有：</p>
+<p>logManager: LogManager对象。管理对Log的操作。</p>
+<p>scheduler: 负责定时任务。</p>
+<p>allPartitions: Pool[(String, Int), Partition]类型，维护了该节点的所有分区。</p>
+<p>replicaFetcherManager: 负责follower副本向leader副本同步数据的任务。</p>
+<p>delayedProducePurgatory和delayedFetchPurgatory: 负责定时任务。在定时任务的文章中有详细的分析。</p>
+<p>许多功能的底层实现依靠Replica和Partition类，replicaFetcherManager的任务会有其他线程执行。</p>
+<h2 id="总结">总结</h2>
+<p>本文总结了副本机制相关的核心概念，介绍了最重要的Replica类和Partition类。ReplicaManager负责总体的管理，它在Server启动时初始化，并启动定时任务。ReplicaManager的底层实现依靠Replica类和Partition类。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-05-10
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        
+        <a class="next" href="/post/netty/%E6%B7%B1%E5%85%A5netty%E6%BA%90%E7%A0%81-%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%BF%9E%E6%8E%A5/">
+            <span class="next-text nav-default">深入Netty源码 - 客户端连接</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>
