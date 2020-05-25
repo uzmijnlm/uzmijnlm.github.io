@@ -135,7 +135,7 @@
   </div>
 </div>
     <div class="post-content">
-      <h2 id="线性回归简介">线性回归简介</h2>
+      <h2 id="线性回归简介"><strong>线性回归简介</strong></h2>
 
 <p>我们手头有一堆样本的输入 <span  class="math">\(X=\begin{pmatrix}x_{11} & x_{12} & \cdots & x_{1p} \\ x_{21} & x_{22} & \cdots & x_{2p} \\\vdots & \vdots & & \vdots \\ x_{n1} & x_{n2} & \cdots & x_{np} \end{pmatrix}$ 和输出 $Y=\begin{pmatrix}y_1\\y_2\\\vdots\\y_n\end{pmatrix}\)</span> ，想要找到一个线性模型 <span  class="math">\(f(X)=X\theta\)</span> 描绘它们之间的关系，使得 $f(X)$ 尽可能地等于 $Y$ 。这就是线性回归模型。$X$ 的每一行代表一个样本，一共有 $n$ 个样本，每个样本有 $p$ 个特征。 <span  class="math">\(\theta=\begin{pmatrix}\theta_{1} \\ \theta_{2} \\ \vdots \\ \theta_{p}\end{pmatrix}\)</span> ，表示线性模型的 $p$ 个参数。</p>
 
@@ -163,7 +163,7 @@
 
 <p>有没有什么办法能够解决计算量大和不能在线训练这两个问题呢？</p>
 
-<h2 id="梯度下降法">梯度下降法</h2>
+<h2 id="梯度下降法"><strong>梯度下降法</strong></h2>
 
 <p>回到刚才的公式：</p>
 
@@ -195,7 +195,7 @@
 
 <p>迭代多少次呢？这个可以人为设置次数，也可以通过别的人为指定的规则来决定什么时候停止迭代。</p>
 
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 
 <p>这一小节我们对线性回归模型有了一个基本的认识。它有一个解析解，但是由于不可逆、计算量大等问题，我们通常不会去求这个解，而是用梯度下降的方式迭代地去找到每一个 $\theta_{j}$ 。</p>
 

@@ -151,8 +151,8 @@
       <p>在开启了Flink的checkpoint机制后，每一次成功地进行checkpoint都可以在checkpoint的目录下看到一个新的检查点目录，目录下会有一个_metadata文件，还会有数个文件名为随机字符串的文件。这个_metadata文件记录了本次checkpoint状态数据的文件元信息，其他文件里记录的是实际的状态数据。</p>
 <p>这里一定要注意，状态本身是有元信息的，如序列化器等信息，这部分信息本文统一称为“<strong>状态元信息</strong>”，这些状态元信息随着状态数据一起存入了状态数据文件中（即文件名为随机字符串的文件）。而_metadata中记录的是状态数据文件的文件路径、文件大小，以及每个状态在具体哪个文件的哪个位置，这部分信息本文统一称为“<strong>文件元信息</strong>”。在接下来的分析中注意区分两者。</p>
 <p>本文将以OperatorState为例，分析checkpoint相关文件的写入和读取流程。KeyedState的调用链略有不同，但流程类似。</p>
-<h2 id="task端的操作">Task端的操作</h2>
-<h3 id="写入状态元信息">写入状态元信息</h3>
+<h2 id="task端的操作"><strong>Task端的操作</strong></h2>
+<h3 id="写入状态元信息"><strong>写入状态元信息</strong></h3>
 <p>分析每次触发checkpoint的方法调用链，最后会来到DefaultOperatorStateBackendSnapshotStrategy.snapshot方法，这个方法会启动一个异步任务，如下：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -394,7 +394,7 @@
 <p>其中writeUTF写入的字节长度不确定，该方法的描述是先写入2个字节，表示接下来这个字符串会占用的长度，然后将String写入。在读取时只需调用readUTF方法即可。写完name后，用4个字节记录状态类型（OperatorState或KeyedState等）。用4个字节记录options的大小，遍历options记录key和value。用4个字节记录serializerConfigSnapshotsMap的大小，这个对象内部封装的也是序列化器等信息。每次循环内部先记录key的信息，然后调用writeSerializerSnapshot方法。方法内部主要逻辑是先用4个字节记录版本信息，然后用writeUTF写入TypeSerializerSnapshot实现类的类名，用4个字节写入snapshot的版本。接着又会用4个字节写入MAGIC_NUMBER，用四个字节写snapshot的版本信息，用writeUTF写入这个snapshot对象中tupleClass字段的值，这里是flink Tuple2类的全类名。</p>
 <p>由于TupleSerializerSnapshot继承了CompositeTypeSerializerSnapshot类（MapSerializerSnapshot、ListSerializerSnapshot等类都集成了这个类），所以还需要写入Tuple2内部的类的信息。先用4个字节记录MAGIC_NUMBER，用4个字节记录版本，用4个字节内部有多少个元素（比如对于Tuple2来说就是2），接着writeUTF记录snapshot的类名，用4个字节记录版本。这里的snapshot是KryoSerializerSnapshot，还需要记录下内部到底封装了什么具体的类，对于offset来说就是KafkaTopicPartition类。后面过程比较重复，不再分析。</p>
 <p>总之，调用完backendSerializationProxy.write方法后，flink将序列化信息写入到了byte数组中。并且localOut对象知道当前写入的位置。</p>
-<h3 id="写入状态数据">写入状态数据</h3>
+<h3 id="写入状态数据"><strong>写入状态数据</strong></h3>
 <p>接下来的操作：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -691,7 +691,7 @@
 <p>flush方法结束后，outStream.getPos获取当前写入的位置，也就是文件的大小，随后将文件路径和文件大小封装成FileStateHandle对象。回到外层方法，又将FileStateHandle对象和writtenStatesMetaData一起封装成OperatorStreamStateHandle对象。最后的返回结果，包含了如下信息：</p>
 <p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/Checkpoint%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B/retValue.png" alt="retValue"></p>
 <p>可以看到这个状态被保存在了哪个文件、该文件的大小以及各状态在文件中的位置。</p>
-<h2 id="处理文件元信息">处理文件元信息</h2>
+<h2 id="处理文件元信息"><strong>处理文件元信息</strong></h2>
 <p>那么这个返回信息被返回并封装到了哪里呢？</p>
 <p>回到AbstractStreamOperator的snapshotState方法：</p>
 <div class="highlight"><div class="chroma">
@@ -888,7 +888,7 @@
 </div><p>operatorSnapshotsInProgress中的信息经过转换，封装进了jobManagerTaskOperatorSubtaskStates中：</p>
 <p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/Checkpoint%E6%96%87%E4%BB%B6%E7%9A%84%E5%86%99%E5%85%A5%E6%B5%81%E7%A8%8B/jobManagerTaskOperatorSubtaskStates.png" alt="jobManagerTaskOperatorSubtaskStates"></p>
 <p>还是同样的信息，维护了每个算子与其包含的所有状态的关系。</p>
-<h2 id="jobmanager端的操作">JobManager端的操作</h2>
+<h2 id="jobmanager端的操作"><strong>JobManager端的操作</strong></h2>
 <p>接下来调用reportCompletedSnapshotStates方法，将信息发送到JobManager端。调用链为：</p>
 <p>StreamTask.reportCompletedSnapshotStates -&gt; TaskStateManagerImpl.reportTaskStateSnapshots -&gt; RpcCheckpointResponder.acknowledgeCheckpoint -&gt; JobMaster.acknowledgeCheckpoint -&gt; LegacyScheduler.acknowledgeCheckpoint。</p>
 <p>到这里，文件元信息被封装进了AcknowledgeCheckpoint类。</p>
@@ -1541,7 +1541,7 @@
 *  +--------------+---------------+-----------------+
 </code></pre></td></tr></table>
 </div>
-</div><h2 id="总结">总结</h2>
+</div><h2 id="总结"><strong>总结</strong></h2>
 <p>checkpoint文件的写入流程从Task端开始，每个并行实例独自写自己的状态数据。这部分数据包含这个Task中每个算子每个状态的序列化器等信息（本文称为“<strong>状态元信息</strong>”）和状态数据。写完状态数据文件后，Task端会有一个对象保存了文件路径、文件大小、每个状态在文件中的位置等信息（本文称为“<strong>文件元信息</strong>”），这个对象会发送给JobManager端。JobManager端会将并行实例与文件元信息关系对应起来，这样就知道了每个算子的每个并行实例中该算子的状态信息。JobManager端等所有并行实例都完成了chekcpoint操作后，会将文件元信息写入到_metadata文件中，并且会触发notifyCheckpointComplete操作。</p>
 
     </div>

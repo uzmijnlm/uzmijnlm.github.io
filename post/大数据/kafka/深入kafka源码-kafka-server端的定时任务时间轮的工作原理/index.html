@@ -144,7 +144,7 @@
   </div>
 </div>
     <div class="post-content">
-      <h2 id="时间轮的整体结构">时间轮的整体结构</h2>
+      <h2 id="时间轮的整体结构"><strong>时间轮的整体结构</strong></h2>
 <center><img src="/大数据/kafka/Kafka Server端的定时任务/时间轮结构.png" width = "450" height = "250"/></center>
 <p>如上图所示，时间轮可以描绘为这样一个环形结构。任务存放在每个单元格中。不过并不是一个单元格就对应一个任务，而是一个单元格对应一个列表。这个列表是一个双向链表，其中每个元素才对应一个定时任务。</p>
 <p>具体而言，上图的一个环对应在代码中就是一个TimingWheel对象，一个TimingWheel对象持有一个数组，数组中的元素类型为TimerTaskList，即一个任务列表。TimerTaskList列表中的元素为TimerTaskEntry，TimerTaskEntry对应一个定时任务，该类的TimerTask类型的字段timerTask表示一个具体的任务。TimerTask类继承了Runnable接口，其实现类有DelayedFetch、DelayedProduce、DelayedHearbeat、DelayedJoin。服务端处理这几个类型的请求时，不会立刻响应，其相应的逻辑其实都传入了上面这几个类，由时间轮延时执行。</p>
@@ -214,7 +214,7 @@
 <span class="o">)</span>
 </code></pre></td></tr></table>
 </div>
-</div><h2 id="timingwheel">TimingWheel</h2>
+</div><h2 id="timingwheel"><strong>TimingWheel</strong></h2>
 <p>这个类有如下几个重要字段。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -267,7 +267,7 @@
 </div><p>其中的tickMs字段的值变成了外层TimingWheel的interval字段的值。也就是说，第一层TimingWheel的单元格是1ms，整个时间轮是20ms，那么第二层时间轮每个单元格就是20ms，整个时间轮是400ms。</p>
 <center><img src="/大数据/kafka/Kafka Server端的定时任务/多层时间轮.png" width = "550" height = "500"/></center>
 <p>稍后解释这个层次结构的作用。</p>
-<h2 id="timertasklisttimertaskentry和timertask">TimerTaskList、TimerTaskEntry和TimerTask</h2>
+<h2 id="timertasklisttimertaskentry和timertask"><strong>TimerTaskList、TimerTaskEntry和TimerTask</strong></h2>
 <p>每个单元格存放的是一个TimerTaskList。有如下重要字段：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -376,7 +376,7 @@
 <p>再添加一个元素，变成如下这样：</p>
 <center><img src="/大数据/kafka/Kafka Server端的定时任务/TaskList3.png" width = "320" height = "240"/></center>
 <p>每一次先得到tail节点，即root的上一个节点，将新节点放在tail节点的下游，并将新节点的上一个节点记为tail节点，新节点的下一个节点指向root，root的上一个指向新节点。再次添加时这个上一次最新的节点就成了tail节点。这样添加节点的逻辑就完成了。</p>
-<h2 id="时间轮的工作原理">时间轮的工作原理</h2>
+<h2 id="时间轮的工作原理"><strong>时间轮的工作原理</strong></h2>
 <p>上面已经了解了时间轮的数据结构，现在来看看其工作原理。</p>
 <p>第一层时间轮每个单元格代表1ms，总共20个单元格，因此这个时间轮能够表示20ms内的定时任务。一开始时间轮指向0，此时有个定时2ms的任务需要添加，那么此时将其添加到2ms处单元格内即可。然后时间不断推移，来到1ms处时，此时该时间轮所能表示的时间便不再是 $$[0,20]$$ ，而是 $$[1,21]$$ 。每次添加任务时，任务本身会有一个过期时间，添加进单元格后会将该单元格的过期时间设置为该值（严格来说应该是设置为取整后的值，即同一个单元格内的任务过期时间会不同，但取整后是相同的）。可以设想，如果在某一个添加完任务后，该单元格的过期时间变了，说明时间轮的指针（其实并没有一个类表示指针，只是用它来描述时间的流逝）已经走过该单元格了。</p>
 <p>如下图，比如一开始时间轮表示 $$[0,20]$$ ，延时1ms的任务放在单元格1中，添加任务后该单元格的过期时间为1ms。假设指针走到单元格5了，此时时间轮表示 $$[5,25]$$ 。如果要添加一个延时为22ms的任务，那么此时仍会添加到单元格1中，添加完后单元格的过期时间发生变化。</p>
@@ -494,7 +494,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>而bucket.add方法之前已经分析过，就是引用地址的变换。</p>
-<h2 id="时间轮降级">时间轮降级</h2>
+<h2 id="时间轮降级"><strong>时间轮降级</strong></h2>
 <p>随着时间的推移，时间轮表示的时间会发生变化，但总的时间跨度是固定的，始终在currentTime和currentTime+interval之间。这时时间轮的层级结构就派上用场了。</p>
 <p>假设在时刻0时添加了350ms的延时任务。第一级的时间轮一共只能表示 $$[0,20]$$ ，不能满足要求，这时会初始化一个新的时间轮，将任务添加进去。仍然是在TimingWheel的add方法中。</p>
 <div class="highlight"><div class="chroma">

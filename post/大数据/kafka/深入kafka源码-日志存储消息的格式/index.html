@@ -221,7 +221,7 @@
 </div>
 </div><p>从这里就可以看出，Kafka的消息不仅包含消息本身的内容，还包含了一些消息自身的描述信息，如上面append方法中还出现了offset和size等信息的写入。其整体按照一定格式组合起来形成一条完整的消息。</p>
 <p>对于一个消息中间件（其实不仅限于消息中间件）来说，约定好的消息格式可以使框架在整体上能够优化其占用空间、解析速度、IO速度等。本文将以Kafka 0.10为例梳理其消息的格式。</p>
-<h2 id="未压缩的消息">未压缩的消息</h2>
+<h2 id="未压缩的消息"><strong>未压缩的消息</strong></h2>
 <p>Kafka生产者利用Compressor将消息写入buffer。之前看过Compressor的初始化：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -565,7 +565,7 @@
 <center><img src="/大数据/kafka/日志存储/message_data.png" width = "680" height = "140"/></center>
 <p>一个RecordBatch中的消息这样排列：</p>
 <center><img src="/大数据/kafka/日志存储/message_set.png" width = "120" height = "480"/></center>
-<h2 id="压缩的消息">压缩的消息</h2>
+<h2 id="压缩的消息"><strong>压缩的消息</strong></h2>
 <p>如果指定了压缩类型，消息的格式会有所不同。</p>
 <p>上文看到在Compressor初始化时，有这样的判断：</p>
 <div class="highlight"><div class="chroma">

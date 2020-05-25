@@ -146,7 +146,7 @@
     <div class="post-content">
       <p>Flink关于并行度有两个概念——并行度与最大并行度。在做业务代码的开发时，算子后面可以跟setMaxParallelism或者setParallelism，在配置中也可对其进行设置。</p>
 <p>这两者在Flink状态管理和恢复过程中起着重要作用。</p>
-<h2 id="为什么要有最大并行度">为什么要有最大并行度</h2>
+<h2 id="为什么要有最大并行度"><strong>为什么要有最大并行度</strong></h2>
 <p>最大并行度的概念主要是针对KeyedState提出的。通过对Checkpoint写入和读取流程的分析，我们可以设想一下，在改变了算子并行度的情况下，让我们自己实现KeyedState的恢复，应该如何做？</p>
 <p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/withoutKeyGroup.png" alt="withoutKeyGroup"></p>
 <p>一般逻辑是像上图一样。设原来有3个并行度，经过keyBy操作后，key为0、3、6……的数据到了Subtask 0中，key为1、4、7……的数据到了Subtask 1中，key为2、5、8……的数据到了Subtask 2中。在checkpoint阶段，每个并行实例独立进行状态数据的存储，于是，数据写入到文件后如上图排列。</p>
@@ -156,7 +156,7 @@
 <p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/withKeyGroup.png" alt="withKeyGroup"></p>
 <p>比如有10个KeyGroup。有了这个概念，整个过程就变得非常不一样。首先，数据不是按照key去决定它被分配到哪个Subtask。它会先根据key决定它属于哪个KeyGroup。key为1、11……的数据属于KeyGroup 1，key为2、12……的数据属于KeyGroup 2，以此类推。然后，会根据最大并行度和并行度计算出每个Subtask负责哪部分KeyGroup。当并行度为3时，KeyGroup 0～KeyGroup 3由Subtask 0负责，KeyGroup 4~KeyGroup 6由Subtask 1负责，KeyGroup 7~KeyGroup 9由Subtask 2负责。这样，每条数据就知道自己应该分配到哪个并行实例。在checkpoint写入时，仍然时每个并行实例单独写入，在写入时，每个KeyGroup的数据排列在一起，如上图所示。</p>
 <p>当并行度改变时，不需要计算每个key要被分配到哪个并行实例，而只计算每个KeyGroup应该被分配到哪里。并行度变成4时，KeyGroup 0~KeyGroup 2由新的Subtask 0负责，KeyGroup 3~KeyGroup4由Subtask 1负责，KeyGroup 5~KeyGroup 7由Subtask 2负责，剩下的由Subtask 3负责。因此，在读取时，少了大量随机IO，变成了顺序IO。Subtask 0只需要发一次请求就获得了所有数据，而Subtask 1的数据在两个文件中，也只需要发送两次请求就获得了所有数据。</p>
-<h2 id="为什么不能修改最大并行度">为什么不能修改最大并行度</h2>
+<h2 id="为什么不能修改最大并行度"><strong>为什么不能修改最大并行度</strong></h2>
 <p>在分析checkpoint文件恢复的源码过程中，看到Flink做了判断，在设置了最大并行度的情况下，如果最大并行度与checkpoint中相比发生了改变，直接抛异常。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -203,7 +203,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>这是因为，数据是根据key的hash值决定它属于哪个KeyGroup的。如果最大并行度发生改变（且设并行度未发生改变这种简单场景），那么恢复后新到来的数据很可能与之前相同key的数据不属于同一个KeyGroup，而由于最大并行度发生了改变，每个并行实例所负责的KeyGroup也会发生改变，后果是新来的数据与之前相同key的数据会在不同的Subtask中。这就会造成业务上的错误。</p>
-<h2 id="并行度改变时keyedstate文件元信息的重分配">并行度改变时KeyedState文件元信息的重分配</h2>
+<h2 id="并行度改变时keyedstate文件元信息的重分配"><strong>并行度改变时KeyedState文件元信息的重分配</strong></h2>
 <p>业务代码核心逻辑如下：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -592,7 +592,7 @@
 <p>就这样经过多层循环，给每个新的并行实例找到交叉部分并交由新的并行实例维护。</p>
 <p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/%E5%B9%B6%E8%A1%8C%E5%BA%A6%E4%B8%8E%E6%9C%80%E5%A4%A7%E5%B9%B6%E8%A1%8C%E5%BA%A6/newManagedKeyedStateCompleted.png" alt="newManagedKeyedStateCompleted"></p>
 <p>这样，新的并行实例就知道自己应该去哪些文件取数据，并且知道自己要取的KeyGroup在文件的什么位置。</p>
-<h2 id="keyedstate的恢复">KeyedState的恢复</h2>
+<h2 id="keyedstate的恢复"><strong>KeyedState的恢复</strong></h2>
 <p>状态数据的恢复由每个Task自己执行。在StreamTaskStateInitializerImpl.streamOperatorStateContext方法中：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -1251,7 +1251,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>实际上把key、KeyGroup和状态数据都存入了进去。</p>
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 <p>本文分析了并行度与最大并行度之间的关系，并且演示了在修改并行度后，KeyedState是如何重新分配到各个算子并行实例上的。</p>
 <p>在KeyedState进行保存的过程中，也是先写入状态元信息（序列化器等信息），然后按照KeyGroup依次写入。每个KeyGroup又有一个或多个状态，依次序列化到文件，记录每个KeyGroup在文件中的起始位置。</p>
 

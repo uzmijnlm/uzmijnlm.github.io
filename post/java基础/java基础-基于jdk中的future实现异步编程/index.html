@@ -197,7 +197,7 @@
 </div><p>doSomethingA和doSomethingB方法都是有返回值的，这时就需要将它们封装在FutureTask对象中，然后把FutureTask对象封装到线程中提交。之后，如果想要获取到任务的返回值，调用get方法即可。</p>
 <p>虽然目前还不知道FutureTask内部封装了哪些东西，也不知道为什么get方法可以返回执行结果，但至少可以推测出来，FutureTask也是一个Runnable对象，在启动了该任务后会执行我们定义的方法，而且它内部会有一些字段表示它的状态。而get方法必然是一个阻塞的方法（很可能就是一个死循环，只有当任务执行结束后，通过内部状态的改变才能结束循环），任务结束后获得返回值。</p>
 <p>而把上述代码转换为用线程池实现也是非常简单的，直接把FutureTask对象提交给execute方法即可；或者直接通过submit方法传入执行逻辑。获取返回值的方式是一样的。</p>
-<h2 id="futuretask的结构">FutureTask的结构</h2>
+<h2 id="futuretask的结构"><strong>FutureTask的结构</strong></h2>
 <p>FutureTask实现了RunnableFuture接口：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -541,7 +541,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>这个方法的核心逻辑是从头开始遍历waiters链表，唤醒（unpark）它封装的那个线程，然后把没有用的对象全部置为null，方便gc。这里涉及到了一个unpark操作，所以一定在某处有一个park操作。目前还看不太明白这个方法在做什么，需要结合get方法来看。最后的done方法是一个空实现。</p>
-<h2 id="get方法">get方法</h2>
+<h2 id="get方法"><strong>get方法</strong></h2>
 <p>get方法内容如下：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -677,7 +677,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>如果运行正常，则将结果返回。否则抛异常。</p>
-<h2 id="cancel方法">cancel方法</h2>
+<h2 id="cancel方法"><strong>cancel方法</strong></h2>
 <p>想要取消一个任务，要调用cancel方法：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -726,7 +726,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>这个方法主要是给任务设置状态，如果可以中断的话则中断线程。</p>
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 <p>FutureTask类出现的目的，主要就是想获取一个任务运行结束后的结果。FutureTask在继承了Runnable接口的基础上，还继承了Future接口，并且FutureTask类的内部定义了字段表示状态和任务运行的结果。在实现上，就是一个线程去执行任务，另一个线程等待任务结束获取结果并返回。</p>
 
     </div>

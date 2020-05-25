@@ -143,9 +143,9 @@
 </div>
     <div class="post-content">
       <p>Reactor模式是一种事件驱动模式，常见于IO模型中，Java NIO提供了实现该模式的API。本文略去概念的介绍，直接从代码学习。</p>
-<h2 id="单线程reactor">单线程Reactor</h2>
+<h2 id="单线程reactor"><strong>单线程Reactor</strong></h2>
 <p>单线程的原理如下图所示：</p>
-<center><img src="/大数据/kafka/Kafka Server端的网络层/单线程Reactor.png" width = "500" height = "300"/></center>
+<center><img src="/单线程Reactor.png" width = "500" height = "300"/></center>
 <p>它会首先创建ServerSocketChannel对象，并在Selector上注册OP_ACCEPT事件，ServerSocketChannel负责监听指定端口上的连接请求。当客户端发起连接时，会触发Acceptor来处理OP_ACCEPT事件。</p>
 <p>通常这部分代码会这样写：</p>
 <div class="highlight"><div class="chroma">
@@ -204,12 +204,12 @@
 </div>
 </div><p>TCPHandler类定义了处理OP_READ事件的逻辑，完全由业务决定。</p>
 <p>上面的Acceptor类和TCPHandler类虽然都实现了Runnable接口，但完全可以通过调用其run方法（而不是start方法）执行其中的逻辑，从而使整个代码都运行在单线程中。</p>
-<h2 id="多线程单selector的reactor">多线程单Selector的Reactor</h2>
+<h2 id="多线程单selector的reactor"><strong>多线程单Selector的Reactor</strong></h2>
 <p>上述单线程的模式处理简单的业务场景没有问题，但复杂场景中显然会因为单个任务运行时间较长而对其他任务造成阻塞。因此可以用多线程的方式来缓解这个问题。</p>
 <center><img src="/大数据/kafka/Kafka Server端的网络层/多线程单Selector的Reactor.png" width = "500" height = "300"/></center>
 <p>在这种设计模式下，仍然用一个Selector接收连接事件。但处理该事件的逻辑发生了变化。接收到连接事件后仍会创建一个相应的SocketChannel，注册I/O事件，但是整个过程会由多个线程来处理。换句话说，在初始化Server端时就会初始化一个线程池，每个线程对象都会在内部维护一个SocketChannel列表。当有连接进来时，会选择一个线程来处理，将新生成的SocketChannel放入其列表中。一个SocketChannel接收到OP_READ事件后，将请求放入一个MessageQueue队列，另外一个线程池中的线程从中取出请求，执行业务逻辑进行处理，处理完后产生响应发送给客户端。</p>
 <p>由此保证了任务之间不阻塞。Kafka Server端采用的就是类似这样中架构，但是它进行了进一步优化。</p>
-<h2 id="多线程多selector的reactor">多线程多Selector的Reactor</h2>
+<h2 id="多线程多selector的reactor"><strong>多线程多Selector的Reactor</strong></h2>
 <p>上面的架构中只有一个Selector，所有的事件都注册到它上面。如果同一时间出现大量I/O事件，单个Selector就可能在分发事件时阻塞。因此可以使用多个Selector。</p>
 <center><img src="/大数据/kafka/Kafka Server端的网络层/多线程多Selector的Reactor.png" width = "500" height = "300"/></center>
 <p>首先用一个Selector去接收连接事件。这一点与前面的设计一致。Acceptor内部会维护一个Selector集合，这样可以让不同的连接在不同的Selector上注册I/O事件。</p>

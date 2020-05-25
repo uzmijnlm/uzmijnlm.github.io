@@ -157,15 +157,15 @@
   </div>
 </div>
     <div class="post-content">
-      <h2 id="核心概念">核心概念</h2>
-<h3 id="副本leaderfollower">副本、leader、follower</h3>
+      <h2 id="核心概念"><strong>核心概念</strong></h2>
+<h3 id="副本leaderfollower"><strong>副本、leader、follower</strong></h3>
 <p>分布式系统常用副本(Replica)来实现数据的备份，进而实现容错、高可用等功能。在Kafka中，副本是针对分区Partition而言的，即每个分区会有一个或多个副本。所有副本中，必须有一个为leader副本，对外提供读写服务，其余为follower副本，不对外提供服务，只会去同步leader的数据。当分区只有一个副本时，就只有leader副本，没有follower副本。</p>
-<h3 id="ar与isr">AR与ISR</h3>
+<h3 id="ar与isr"><strong>AR与ISR</strong></h3>
 <p>分区的所有副本称为AR(Assigned Replicas)，所有与leader副本保持一定程度同步的副本（包括leader副本）叫做ISR(In-Sync Replicas)。只有处于ISR集合中的副本才有资格参与leader的选举（比如之前的leader挂了，新选举的leader必须处于ISR集合中）。</p>
-<h3 id="leo与hw">LEO与HW</h3>
+<h3 id="leo与hw"><strong>LEO与HW</strong></h3>
 <p>另外还有两个非常重要的概念：LEO(log end offset)和HW(high watermark)。</p>
 <p>每个副本对象都会有这两个属性（注意不是只有leader副本才有）。LEO表示该副本最后一条日志的下一条消息的offset，HW表示消费者可以消费到的最后一条数据的offset。由于只有leader副本才负责读写，所以可以认为follower副本的HW值只有当其变成了leader时才有用。HW的值等于ISR集合中副本LEO的最小值。</p>
-<h2 id="replica与partition类">Replica与Partition类</h2>
+<h2 id="replica与partition类"><strong>Replica与Partition类</strong></h2>
 <p>在分析日志写入的过程中，说到Kafka用Log类表示一个分区的日志，但Log并不代表一个文件，而是代表一个目录。在一个Log中，有多个LogSegment。LogSegment对应磁盘上一个日志文件和一个索引文件。具体的读写操作都会落到对这些对象的操作。</p>
 <p>那么Replica和Partition又代表什么呢？</p>
 <p>回顾写日志的方法，在appendToLocalLog方法中，会根据传入的topic和partition取出一个Partition对象，然后调用它的appendMessagesToLeader方法。</p>
@@ -353,8 +353,8 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>其中assignedReplicaMap表示AR集合，inSyncReplicas表示ISR集合。Partition类中还有replicaManager和logManager，意味着它可以对副本和日志进行一些管理。</p>
-<h2 id="partition的功能">Partition的功能</h2>
-<h3 id="写入消息">写入消息</h3>
+<h2 id="partition的功能"><strong>Partition的功能</strong></h2>
+<h3 id="写入消息"><strong>写入消息</strong></h3>
 <p>这个功能就是上面说到的appendMessagesToLeader。之前我们只知道它取出了一个Log对象然后写入消息，现在还知道了它是先从Partition维护的集合中取出leader副本对应的Replica对象，然后从Replica对象中取出Log对象开始写入。而且写入之前还有这样的判断：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -375,7 +375,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>获取了配置制定的最小ISR集合大小的限制，然后判断当前ISR集合中副本的数量是不是小于该限制。</p>
-<h3 id="副本角色切换">副本角色切换</h3>
+<h3 id="副本角色切换"><strong>副本角色切换</strong></h3>
 <p>副本角色的切换是由Kafka另一个组件KafkaController负责的，它会发送LeaderAndISRRequest请求到Server端，然后进入handleLeaderAndIsrRequest方法：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -764,7 +764,7 @@
 </div>
 </div><p>核心逻辑就是成为leader后要对LEO、HW等信息做更新。</p>
 <p>makeFollower方法与此类似，不展开讨论。</p>
-<h3 id="isr集合管理">ISR集合管理</h3>
+<h3 id="isr集合管理"><strong>ISR集合管理</strong></h3>
 <p>Partition类还负责ISR集合的管理。当follower副本拉取消息时，会判断是否需要将这个副本加入到ISR集合中。最终调用的方法是maybeExpandIsr。这个方法比较简单，就是对ISR集合的操作。只需要注意其判断条件：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -806,9 +806,9 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>其中maybeShrinkIsr方法就是用来检查ISR集合中是否有副本需要删除。该方法中，会将长时间没有追上leader的副本删除。</p>
-<h3 id="创建副本">创建副本</h3>
+<h3 id="创建副本"><strong>创建副本</strong></h3>
 <p>注意到在上面makeLeader等方法中，会调用到getOrCreateReplica方法。这个方法用来创建或查找副本。如果是创建本地副本，则会创建或恢复对应的Log并初始化HW。HW会保存到replication-offset-checkpoint文件中。ReplicaManager启动时会读取此文件。</p>
-<h2 id="replicamanager">ReplicaManager</h2>
+<h2 id="replicamanager"><strong>ReplicaManager</strong></h2>
 <p>上面提到的很多操作，都看到了ReplicaManager的身影。比如消息写入时，一开始就是调用的replicaManager.appendMessages方法进行消息的写入。上面提及的ISR缩减操作，也是利用ReplicaManager启动的定时任务。包括副本角色的切换，最外层也是调用replicaManager.becomeLeaderOrFollower方法。可以说，与副本相关的操作都是由ReplicaManager来管理。ReplicaManager的方法最终会调用到上面提到的Partition的方法，进而对具体的Replica进行操作。</p>
 <p>显然，ReplicaManager必然需要维护一个Partition集合。</p>
 <p>ReplicaManager类如下：</p>
@@ -883,7 +883,7 @@
 <p>replicaFetcherManager: 负责follower副本向leader副本同步数据的任务。</p>
 <p>delayedProducePurgatory和delayedFetchPurgatory: 负责定时任务。在定时任务的文章中有详细的分析。</p>
 <p>许多功能的底层实现依靠Replica和Partition类，replicaFetcherManager的任务会有其他线程执行。</p>
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 <p>本文总结了副本机制相关的核心概念，介绍了最重要的Replica类和Partition类。ReplicaManager负责总体的管理，它在Server启动时初始化，并启动定时任务。ReplicaManager的底层实现依靠Replica类和Partition类。</p>
 
     </div>

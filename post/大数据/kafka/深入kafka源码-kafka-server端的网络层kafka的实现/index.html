@@ -142,7 +142,7 @@
   </div>
 </div>
     <div class="post-content">
-      <h2 id="网络层">网络层</h2>
+      <h2 id="网络层"><strong>网络层</strong></h2>
 <p>Kafka Server端的网络层使用的就是多线程多Selector的Reactor模式。</p>
 <center><img src="/大数据/kafka/Kafka Server端的网络层/多线程多Selector的Reactor.png" width = "500" height = "300"/></center>
 <p>Kafka Server端的启动在KafkaServer类的startup方法中完成。其中有如下两行代码：</p>
@@ -666,7 +666,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>从requestChannel中的requestQueue取出请求，进行处理。</p>
-<h2 id="api层">API层</h2>
+<h2 id="api层"><strong>API层</strong></h2>
 <p>上面的代码中调用了apis.handle方法。这个apis对象是在初始化时传入的。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -786,7 +786,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>这个requestChannel就是初始化时传入的构造器参数。正因为了有了这个参数，所以API层的这些方法执行完后可以将响应写回到requestChannel的responseQueues中。</p>
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 <p>Kafka Server的网络层用的是多线程多Selector的Reactor模式，网络层获取到请求后，放入一个共享队列，会有其他线程取出交给API层来处理。不同的请求交给不同的方法。处理完成后又将响应写入到共享队列，由网络层将其发送给客户端。</p>
 
     </div>

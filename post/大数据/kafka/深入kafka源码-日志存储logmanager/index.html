@@ -135,9 +135,7 @@
     <nav id="TableOfContents">
   <ul>
     <li><a href="#logmanager的启动">LogManager的启动</a></li>
-  </ul>
-
-  <ul>
+    <li><a href="#log-flusher">log-flusher</a></li>
     <li><a href="#log-retention">log-retention</a></li>
     <li><a href="#recovery-point-checkpoint">recovery-point-checkpoint</a></li>
   </ul>
@@ -150,7 +148,7 @@
 <p>1.log-flusher（日志刷写）任务。</p>
 <p>2.log-retention（日志保留）任务。</p>
 <p>3.recovery-point-checkpoint（检查点刷新）任务。</p>
-<h2 id="logmanager的启动">LogManager的启动</h2>
+<h2 id="logmanager的启动"><strong>LogManager的启动</strong></h2>
 <p>LogManager是在Kafka Server启动时初始化并启动的。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -394,7 +392,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>schedule方法的第二个参数是一个函数，定义了任务的逻辑。</p>
-<h1 id="log-flusher">log-flusher</h1>
+<h2 id="log-flusher"><strong>log-flusher</strong></h2>
 <p>该任务的方法如下：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -524,7 +522,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>再下面就是IO层的操作了。</p>
-<h2 id="log-retention">log-retention</h2>
+<h2 id="log-retention"><strong>log-retention</strong></h2>
 <p>该任务的方法如下：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -726,7 +724,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>shouldDelete方法定义了判断条件，大致意思是segment的大小有没有超出某个范围。之后调用的还是deleteOldSegments方法，不再赘述。</p>
-<h2 id="recovery-point-checkpoint">recovery-point-checkpoint</h2>
+<h2 id="recovery-point-checkpoint"><strong>recovery-point-checkpoint</strong></h2>
 <p>该任务的方法如下：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">

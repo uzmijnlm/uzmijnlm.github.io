@@ -141,14 +141,14 @@
   </div>
 </div>
     <div class="post-content">
-      <h2 id="基本概念">基本概念</h2>
+      <h2 id="基本概念"><strong>基本概念</strong></h2>
 <p>生产者将消息发送到服务端后，服务端要把消息存储到本地日志文件。</p>
 <p>Kafka用Log代表一个TopicPartition的日志。但Log并不代表一个文件，而是代表一个目录。其命名规则是&lt;topic_name&gt;_&lt;partition_id&gt;。</p>
 <p>在一个Log中，有多个LogSegment。LogSegment对应磁盘上一个日志文件和一个索引文件。日志文件用于记录消息，索引文件记录消息的索引。当文件大小达到一个阈值时，就会创建新的日志文件和索引文件。日志文件的命名规则时[baseOffset].log，其中baseOffset表示文件中第一条消息的offset。如下图所示：</p>
 <center><img src="/大数据/kafka/日志存储/Log.png" width = "650" height = "180"/></center>
 <p>而索引文件的内容，就是记录数据的位置。但它不会为每条数据都建立索引，而是稀疏地建立。如下图所示：</p>
 <center><img src="/大数据/kafka/日志存储/index.png" width = "450" height = "200"/></center>
-<h2 id="消息的写入流程">消息的写入流程</h2>
+<h2 id="消息的写入流程"><strong>消息的写入流程</strong></h2>
 <p>直接来到Kafka Server的API层：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">

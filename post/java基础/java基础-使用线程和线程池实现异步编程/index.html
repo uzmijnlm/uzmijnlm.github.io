@@ -163,7 +163,7 @@
 </blockquote>
 <p>这种理解非常的不严谨，但也有一定的道理。因为异步操作是基于“通知”，所以一般会定义一个回调函数；而使用多线程自然可以避免线程的等待，实现非阻塞。</p>
 <p>由于本文不涉及I/O模型的讨论，所以将模糊处理这两对概念的定义。下面说到“异步”，仅表示开启另一个线程去执行一个任务，即与主线程不是同步。</p>
-<h2 id="开启一个新的线程执行异步任务">开启一个新的线程执行异步任务</h2>
+<h2 id="开启一个新的线程执行异步任务"><strong>开启一个新的线程执行异步任务</strong></h2>
 <p>先看一个同步的例子：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -241,7 +241,7 @@
 <p>1.实际场景中任务个数非常多，如果每次都创建一个新的线程则资源消耗太大。</p>
 <p>2.获取一个线程任务运行结束后的结果比较麻烦。</p>
 <p>第一个问题可以直接用线程池来解决。第二个问题有多种解决方式，其中一种是用共享变量，但是这要求变量定义在外部，而不是属于thread对象本身；另一种方式基于JDK的Future。本文深入探讨第一个问题。</p>
-<h2 id="使用线程池实现异步编程">使用线程池实现异步编程</h2>
+<h2 id="使用线程池实现异步编程"><strong>使用线程池实现异步编程</strong></h2>
 <p>使用线程池实现异步编程的思路与手动创建线程完全一致，只不过需要先构造一个线程池，然后把任务放入线程池即可。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -295,7 +295,7 @@
 <span class="o">}</span>
 </code></pre></td></tr></table>
 </div>
-</div><h2 id="线程池的初始化">线程池的初始化</h2>
+</div><h2 id="线程池的初始化"><strong>线程池的初始化</strong></h2>
 <p>上面的构造方法如下：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -429,7 +429,7 @@
 </span><span class="c1"></span><span class="kd">private</span> <span class="kd">static</span> <span class="kt">int</span> <span class="nf">workerCountOf</span><span class="o">(</span><span class="kt">int</span> <span class="n">c</span><span class="o">)</span>  <span class="o">{</span> <span class="k">return</span> <span class="n">c</span> <span class="o">&amp;</span> <span class="n">CAPACITY</span><span class="o">;</span> <span class="o">}</span>
 </code></pre></td></tr></table>
 </div>
-</div><h2 id="提交任务">提交任务</h2>
+</div><h2 id="提交任务"><strong>提交任务</strong></h2>
 <p>线程池提交任务会调用到execute方法传入一个Runnable对象，或者会调用submit方法传入一个Runnable对象或Callable对象。因为submit方法涉及到Future对象，本文不讨论，仅仅关注最简单的实现。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -810,7 +810,7 @@
 </div>
 </div><p>回到execute方法，这样第二步添加任务就成功了。</p>
 <p>如果当前线程池线程个数大于等于核心线程数，则执行到execute方法的第三步。如果状态为RUNNING，则把任务添加到workQueue队列中。后续操作如注释所写，都是一些细节上的条件判断和拒绝策略，直接略过。</p>
-<h2 id="执行任务">执行任务</h2>
+<h2 id="执行任务"><strong>执行任务</strong></h2>
 <p>上文已经看到，addWorker方法中有这么一段代码：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -910,7 +910,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>核心逻辑就是注释的部分。</p>
-<h2 id="线程的关闭和任务的拒绝策略">线程的关闭和任务的拒绝策略</h2>
+<h2 id="线程的关闭和任务的拒绝策略"><strong>线程的关闭和任务的拒绝策略</strong></h2>
 <p>线程池有shutdown和shutdownNow两种方式关闭。调用shutdown后，线程池就不会再接收新的任务，但是工作队列里的任务还是要执行。调用shutdownNow后，工作队列中的任务也会丢弃，正在执行的任务会中断。其中涉及到线程池状态的转换，本文不展开讨论。</p>
 <p>而在execute方法中我们看到符合某些条件时会执行拒绝策略。其中默认的拒绝策略如下：</p>
 <div class="highlight"><div class="chroma">
@@ -930,7 +930,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>它会直接执行线程的run方法。如果线程池已经关闭，则会丢弃该任务。</p>
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 <p>使用线程可以实现异步的效果，但是创建和销毁线程非常消耗资源，所以实际场景中常用线程池来实现线程的复用。线程池的基本原理是，添加一个任务时，正常情况下直接创建线程执行；如果线程数大于等于线程池中的核心线程数，则将任务放入队列，依次由之前创建的线程来执行。</p>
 
     </div>

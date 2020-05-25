@@ -149,7 +149,7 @@
     <div class="post-content">
       <p>生产者给服务端发送消息后，服务端不会立刻返回响应，而是创建一个DelayedProduce对象做延迟操作。消费者那边的情况与此类似。</p>
 <p>前文已经分析了时间轮的工作原理，本文以DelayedProduce和DelayedFetch为例，分析定时任务的执行流程。文末会总结为什么需要做延迟操作。</p>
-<h2 id="delayedproduce">DelayedProduce</h2>
+<h2 id="delayedproduce"><strong>DelayedProduce</strong></h2>
 <p>在Kafka Server的API层，会根据不同的请求调用不同的方法。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -409,7 +409,7 @@
 <span class="o">}</span>
 </code></pre></td></tr></table>
 </div>
-</div><h3 id="trycomplete">tryComplete</h3>
+</div><h3 id="trycomplete"><strong>tryComplete</strong></h3>
 <p>我们先分析tryComplete方法的逻辑。</p>
 <p>进入到该方法，可以看到它是接口的一个未实现的方法，具体的逻辑随实现类不同而不同。</p>
 <div class="highlight"><div class="chroma">
@@ -494,7 +494,7 @@
 <span class="o">}</span>
 </code></pre></td></tr></table>
 </div>
-</div><h3 id="watchers">Watchers</h3>
+</div><h3 id="watchers"><strong>Watchers</strong></h3>
 <p>tryCompleteElseWatch方法的另一个操作就是监控任务。注意到tryCompleteElseWatch方法的另一个参数watchKeys。这个参数就是在调用tryCompleteElseWatch方法前一步构造的。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -688,7 +688,7 @@
 </div>
 </div><p>可以看到调用了tryComplete方法，与之前的分析一致。</p>
 <p>这样我们就分析清楚了tryCompleteElseWatch方法中几个重要的概念。不过还有一个细节，就是第一步调用了tryComplete，然后对其进行监控，之后再次调用了tryComplete，这是为了效率的提升，否则之后就需要遍历key来执行这个任务，当key非常多时整个过程会很慢，所以这里尝试直接执行任务。</p>
-<h2 id="delayedfetch">DelayedFetch</h2>
+<h2 id="delayedfetch"><strong>DelayedFetch</strong></h2>
 <p>DelayedFetch任务与DelayedProduce流程几乎完全一样。它是在服务端接收到FETCH请求时构造的。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -784,7 +784,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>同样构造了keys，执行tryCompleteElseWatch方法。这个方法定义是DelayedOperationPurgatory的方法，因此与刚刚是同样的逻辑。其中的tryComplete方法实现与之前不同，但核心逻辑也是判断是否能够完成任务，如果可以的话调用forceComplete，最终调用到DelayedFetch的onComplete方法，执行回调方法。</p>
-<h2 id="delayedproduce和delayedfetch的执行条件">DelayedProduce和DelayedFetch的执行条件</h2>
+<h2 id="delayedproduce和delayedfetch的执行条件"><strong>DelayedProduce和DelayedFetch的执行条件</strong></h2>
 <p>上面分析到两种任务都有一个tryComplete方法，里面包含了其执行触发的条件，都写在了方法的注释上。</p>
 <p>对于DelayedProduce，其条件为：</p>
 <div class="highlight"><div class="chroma">

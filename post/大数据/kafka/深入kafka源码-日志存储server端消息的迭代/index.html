@@ -233,7 +233,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>这个方法中的analyzeAndValidateMessageSet方法和validateMessagesAndAssignOffsets方法都会涉及到迭代操作。</p>
-<h2 id="analyzeandvalidatemessageset">analyzeAndValidateMessageSet</h2>
+<h2 id="analyzeandvalidatemessageset"><strong>analyzeAndValidateMessageSet</strong></h2>
 <p>该方法内容如下：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -600,7 +600,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>由于调用internalIterator方法时传入的参数为true，所以会进入if分支，直接返回MessageAndOffset对象。如果是没有压缩过的消息，messages.shallowIterator方法会一条条遍历；如果是压缩过的消息，这里只做到浅层迭代，因此对于外层来说就只有一条消息。如果debug就可以看到对于压缩过的消息，迭代结束后shallowMessageCount变量的值为1。</p>
-<h2 id="validatemessagesandassignoffsets">validateMessagesAndAssignOffsets</h2>
+<h2 id="validatemessagesandassignoffsets"><strong>validateMessagesAndAssignOffsets</strong></h2>
 <p>经过analyzeAndValidateMessageSet方法后，返回了一个描述信息，里面包含的内容上文已经分析过。接下来需要给消息分配真实的offset。首先经过了这么两步：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">

@@ -152,9 +152,9 @@
       <p>在进行数据库查询并展示结果时，主要因为两个原因需要做分页：</p>
 <p>1.给用户展示数据时，一次性显示太多对用户不友好。</p>
 <p>2.数据量太大，全部加载的话会占用太多内存空间。</p>
-<h2 id="逻辑分页">逻辑分页</h2>
+<h2 id="逻辑分页"><strong>逻辑分页</strong></h2>
 <p>第一个问题仅靠逻辑分页就能解决，比如返回值是一个List，那么调用subList方法就可以获得其子集。另外，Mybatis还提供了一个RowBounds类，可以用来进行逻辑分页。</p>
-<h3 id="rowbounds">RowBounds</h3>
+<h3 id="rowbounds"><strong>RowBounds</strong></h3>
 <p>在定义方法的时候，需要定义RowBounds参数：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -281,10 +281,10 @@
 <span class="o">}</span>
 </code></pre></td></tr></table>
 </div>
-</div><h2 id="物理分页">物理分页</h2>
+</div><h2 id="物理分页"><strong>物理分页</strong></h2>
 <p>以上是逻辑分页的实现，但仍然需要先把所有结果加载到内存中。要解决上述第二个问题，需要物理分页。最简单的做法就是在sql语句中加limit关键字。但是很显然，我们要分多少页，每页返回多少数据，这些都需要再编写一条count语句来获取数据量的信息。</p>
 <p>我们可以直接在映射文件中对这些语句进行管理，也可以通过编写插件来实现同样的功能，即定义一个拦截器。分页拦截器的代码实现较长，但逻辑并不复杂。本文只介绍编写插件的基本原理。</p>
-<h3 id="插件拦截器">插件（拦截器）</h3>
+<h3 id="插件拦截器"><strong>插件（拦截器）</strong></h3>
 <p>要实现一个插件，必须要实现Interceptor接口：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -641,7 +641,7 @@
 </div>
 </div><p>对于分页器来说，需要拦截的就是StatementHandler中的prepare方法。因为BaseStatementHandler中维护了boundSql字段，可以用反射的方式对其进行修改。该方法所做的事情就是通过sql语句生成一个Statement对象。</p>
 <p>修改的逻辑就是得先在拦截器中维护几个字段，分别用来表示当前读到的页数、总条数等信息，然后在interceptor方法中，先执行一条count语句，获取数据量的信息，然后给sql语句拼接上limit语句。</p>
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 <p>本文介绍了Mybatis分页的四种方法：</p>
 <p>1.对返回的列表调用subList等方法获取子集。</p>
 <p>2.使用Mybatis提供的RowBounds对象。</p>

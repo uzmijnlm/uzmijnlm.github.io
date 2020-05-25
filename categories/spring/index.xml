@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Spring on Even - A super concise theme for Hugo</title>
+    <link>http://localhost:1313/categories/spring/</link>
+    <description>Recent content in Spring on Even - A super concise theme for Hugo</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Mon, 25 May 2020 16:11:40 +0800</lastBuildDate>
+    
+	<atom:link href="http://localhost:1313/categories/spring/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>深入Spring源码 - 自动注入的几种方式</title>
+      <link>http://localhost:1313/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/</link>
+      <pubDate>Mon, 25 May 2020 16:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/</guid>
+      <description>一个简单的例子 Spring有三种依赖注入方式，XML-based、Annotation-based和Java-based。三者之间没有冲突。</description>
+    </item>
+    
+  </channel>
+</rss>

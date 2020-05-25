@@ -145,7 +145,7 @@
 </div>
     <div class="post-content">
       <p>Kafka Server端用一个组件（即一个类）叫做DelayedOperationPurgatory，负责定时任务的执行。而我们知道JDK自带了定时任务的相关实现，比如Timer类。不过JDK相关实现的插入和删除操作平均时间复杂度为 $O(n\log n)$ ，而Kafka采用了时间轮的方式，更为高效，也更为复杂，时间复杂度降为了 $O(1)$ 。本文先对JDK Timer的原理进行了解。</p>
-<h2 id="用timer实现一个简单的定时任务">用Timer实现一个简单的定时任务</h2>
+<h2 id="用timer实现一个简单的定时任务"><strong>用Timer实现一个简单的定时任务</strong></h2>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre class="chroma"><code><span class="lnt"> 1
@@ -173,7 +173,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>用Timer实现定时任务十分简单，只需实例化一个Timer对象，然后调用方法将任务添加进去即可。TimerTask定义了任务的逻辑。其中scheduleAtFixedRate方法的后两个参数分别表示延时和执行周期，即5s后执行，每1s执行一次。</p>
-<h2 id="timer">Timer</h2>
+<h2 id="timer"><strong>Timer</strong></h2>
 <p>Timer类中有两个重要字段：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -286,7 +286,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>具体的逻辑封装在mainLoop方法中。</p>
-<h2 id="timertask">TimerTask</h2>
+<h2 id="timertask"><strong>TimerTask</strong></h2>
 <p>TimerTask类十分简单，就是一个实现了Runnable接口的抽象类。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -297,7 +297,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>其中定义了很多字段，都不是特别重要，业务逻辑都自定义在run方法中。可以做出一个最粗略的推测，上面mainLoop方法的逻辑应该就是从Timer的queue字段中取出任务来执行，即取出一个TimerTask对象，执行其run方法。</p>
-<h2 id="mainloop方法">mainLoop方法</h2>
+<h2 id="mainloop方法"><strong>mainLoop方法</strong></h2>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre class="chroma"><code><span class="lnt"> 1
@@ -381,7 +381,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>上面的关键步骤已添加注释。整个过程先从队列中取出最先需要执行的任务，显然在这个mainLoop方法中，队列已经按照添加任务时的第二个参数排好序了，所以可以直接用getMin方法取出队首元素。然后判断如果需要重复执行则调用rescheduleMin方法重新设置一个时间，可以推测出这一步需要重新给队列排序。最后执行刚刚取出的任务。整个过程不断循环。</p>
-<h2 id="小顶堆">小顶堆</h2>
+<h2 id="小顶堆"><strong>小顶堆</strong></h2>
 <p>queue的数据结构是一个小顶堆，用数组索引为1的位置表示顶部元素。索引为0的位置没有元素，为null，这样主要是为了表达方便。</p>
 <p>先来看添加任务时的操作。</p>
 <div class="highlight"><div class="chroma">

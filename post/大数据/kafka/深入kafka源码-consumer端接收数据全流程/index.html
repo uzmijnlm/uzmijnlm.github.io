@@ -204,7 +204,7 @@
 </div>
 </div><p>复杂一些的处理，比如Flink与Kafka集成的FlinkKafkaConsumer，分析下来其实也是这么4步，只不过封装较多而已。</p>
 <p>本文将将对这4个步骤进行详细分析。</p>
-<h2 id="kafkaconsumer构造方法">KafkaConsumer构造方法</h2>
+<h2 id="kafkaconsumer构造方法"><strong>KafkaConsumer构造方法</strong></h2>
 <p>Consumer段重要字段有：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -359,7 +359,7 @@
 </div><p>它们都封装了刚才的client、subscriptions。从命名上推测，coordinator负责与Kafka Server的协调工作，fetcher负责拉取数据。它们与Kafka Server的通信都依靠client对象。</p>
 <p>注意到coordinator还封装了一个assignors对象，这个对象有重要作用。</p>
 <p>整个构造方法除了初始化以外几乎没有做别的操作，也没有创建其他的线程。</p>
-<h2 id="subscriptionstate的作用">SubscriptionState的作用</h2>
+<h2 id="subscriptionstate的作用"><strong>SubscriptionState的作用</strong></h2>
 <p>构造好一个consumer对象后，可以订阅topics：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -558,7 +558,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>由此可以得知，subscriptions字段保存的是topics订阅信息以及它们的消费情况。</p>
-<h2 id="kafkaconsumer的poll方法">KafkaConsumer的poll方法</h2>
+<h2 id="kafkaconsumer的poll方法"><strong>KafkaConsumer的poll方法</strong></h2>
 <p>业务代码中会通过consumer的poll方法拉取数据，这个方法是整个consumer端最重要的方法。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -695,7 +695,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>这个方法几乎全部都是对coordinator、fetcher和client的操作。注意这个方法中出现的client都是ConsumerNetworkClient对象，它内部封装了NetworkClient对象。</p>
-<h3 id="consumercoordinator">ConsumerCoordinator</h3>
+<h3 id="consumercoordinator"><strong>ConsumerCoordinator</strong></h3>
 <p>第一步和第二步涉及到coordinator。这个coordinator有什么用？</p>
 <p>Kafka中同一个消费者组的每个consumer能够消费一个或者多个特定的TopicPartition中的数据，因此一开始就需要给每个consumer分配好它应该去消费哪个分区。KafkaConsumer端会跟Kafka Server端的GroupCoodinator组件通信，先发送一个请求找到这个GroupCoordinator的位置，然后所有consumer都往该节点发送JoinGroup请求，GroupCoodinator会选择一个consumer作为leader。这个leader会完成TopicPartition的分配。最后所有consumer发送SyncGroup请求，获取这个分配结果。整个过程中，KafkaConsumer端负责与GroupCoordinator通信的对象就是这个coordinator字段。</p>
 <p>第一步与GroupCoordinator建立连接。</p>
@@ -1922,7 +1922,7 @@
 </div>
 </div><p>这个参数value就是上面的syncResponse.memberAssignment()返回值。这里的onJoinComplete方法主要就是更新每个consumer的assignment信息。</p>
 <p>至此整个ConsumerCoordinator所做的事情分析完毕。</p>
-<h3 id="fetcher">Fetcher</h3>
+<h3 id="fetcher"><strong>Fetcher</strong></h3>
 <p>pollOnce方法中的第三步和第四步比较简单，直接跳过。后面的几步，可以看到出现了两次拉取消息的操作，这是因为IO模型为异步，所以这样做会提高效率。而client.poll方法上面已经分析过。因此这需要分析构造请求的过程sendFetches方法，以及拉取消息的fetchedRecords方法。</p>
 <p>构造请求的套路与之前一致。</p>
 <div class="highlight"><div class="chroma">
@@ -2278,7 +2278,7 @@
 </div><p>其中的parseRecord方法就是用序列化器对数据进行反序列化。最后将所有数据封装到parsedRecords对象中返回。</p>
 <p>append方法会建立TopicPartition与消息的关系，比较简单，不展开讨论。</p>
 <p>至此与Fetcher有关的操作都已分析完毕。pollOnce的整个流程结束。</p>
-<h3 id="poll方法中的if分支">poll方法中的if分支</h3>
+<h3 id="poll方法中的if分支"><strong>poll方法中的if分支</strong></h3>
 <p>在pollOnce方法下面有一个if分支，之前没有分析为什么会出现该分支。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -2305,7 +2305,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>现在已经了解了fetcher对象的作用，也知道了client.pollNoWakeup方法的作用（与poll类似）。这个分支存在的目的，也是因为IO是异步模型，当接收到消息时，可以先不急着处理，而是进入这个if分支，再次发送一个请求出去，然后再做业务处理。当业务处理结束再次进入到pollOnce方法时，响应可能就已经到了，刚好可以处理。</p>
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 <p>Consumer端与Producer端用了同样的网络IO模型，有大量的代码复用。</p>
 <p>流程上来说，先是通过coordinator完成消费者的分配，即哪个consumer消费哪些TopicPartition。期间会发送多个请求，处理多个响应。然后发送请求拉取消息，收到消息响应后解析并返回给业务代码。</p>
 <p>从设计上来说，主要关注每个请求发送过后都会给返回的future对象添加监听器，定义了处理响应的逻辑。其中用到了适配器模式，值得学习。</p>

@@ -146,7 +146,7 @@
 <center><img src="/大数据/kafka/日志存储/compressed_message_set.png" width = "680" height = "140"/></center>
 <p>那么自然而然，要对这个消息进行处理，就需要迭代地进行处理。</p>
 <p>本文分析Consumer端如何处理接收到的消息。</p>
-<h2 id="recordsiterator">RecordsIterator</h2>
+<h2 id="recordsiterator"><strong>RecordsIterator</strong></h2>
 <p>回顾Consumer端的流程，最终是调用Fetcher的fetchedRecords方法获取消息。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -305,7 +305,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>重点关注shallow字段和innerIter字段。这里做初始化时，shallow为false，它表示该迭代器是深层迭代器（若为true则表示浅层迭代器）。由于这里并不知道消息有没有经过压缩，很可能需要迭代处理，因此这里创建的是一个深层迭代器，也就是外层迭代。如果需要内层的深层迭代，则需要在后面某一步给innerIter字段做初始化。</p>
-<h2 id="处理未压缩的消息">处理未压缩的消息</h2>
+<h2 id="处理未压缩的消息"><strong>处理未压缩的消息</strong></h2>
 <p>for循环语法糖会调用到hasNext方法：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -584,7 +584,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>这样就完整地完成了一次for循环。注意到next方法也调用了hasNext方法，同时也对state状态做了修改。这里我们不需要将注意力分散到这些操作，正常情况下都是直接返回next字段。</p>
-<h2 id="处理压缩的消息">处理压缩的消息</h2>
+<h2 id="处理压缩的消息"><strong>处理压缩的消息</strong></h2>
 <p>上面分析完了未压缩的情况，下面来分析压缩的情况。如果有压缩，那么会进入到这个分支：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">

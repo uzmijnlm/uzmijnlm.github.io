@@ -207,7 +207,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>上文分析了NioEventLoopGroup的构造过程。接下来是对ServerBootstrap进行操作。</p>
-<h2 id="基本信息配置">基本信息配置</h2>
+<h2 id="基本信息配置"><strong>基本信息配置</strong></h2>
 <p>该对象就是一个引导类，把各种信息封装到一起。</p>
 <p>首先通过构造器进行实例化。构造方法为空，没有做任何事情。</p>
 <p>进入到group方法：</p>
@@ -316,7 +316,7 @@
 </div>
 </div><p>因此NioServerSocketChannel.class这个类对象被放在了channelFactory的constructor字段中。很显然，之后一定会在某处利用这个构造器进行实例化。</p>
 <p>然后option和childOption方法，分别是将配置信息存入AbstractBootstrap的options这个Map中和ServerBootstrap的childOptions这个Map中。handler和childHandler方法是分别将handler对象存入AbstractBootstrap的handler字段和ServerBootstrap的childHandler字段。</p>
-<h2 id="bind方法">bind方法</h2>
+<h2 id="bind方法"><strong>bind方法</strong></h2>
 <p>接下来调用bind方法，经过几层调用后进入doBind方法：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -382,7 +382,7 @@
 <span class="o">}</span>
 </code></pre></td></tr></table>
 </div>
-</div><h3 id="初始化并注册">初始化并注册</h3>
+</div><h3 id="初始化并注册"><strong>初始化并注册</strong></h3>
 <p>首先进入到initAndRegister方法：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -1411,7 +1411,7 @@
 </div>
 </div><p>selectStrategy对象就是最开始初始化时赋的值。这个方法中的selectSupplier.get方法是去调用Java NIO的Selector的select方法轮询网络事件，而hasTasks的值由外面的hasTasks方法决定，该方法判断队列中有没有任务。</p>
 <p>那这时任务队列里有什么任务呢？就是之前看到的那个包含register0方法的任务。这个任务会在runAllTasks方法中执行。这个register0方法，就是注册网络事件，因此再一次循环的时候，就可以获取到网络事件，进而调用processSelectedKeys方法进行处理。</p>
-<h3 id="添加channelhandler">添加ChannelHandler</h3>
+<h3 id="添加channelhandler"><strong>添加ChannelHandler</strong></h3>
 <p>在init方法的第四步，调用了addLast方法添加ChannelHandler。该方法如下：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -1542,7 +1542,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>这个方法目前记住pendingHandlerCallbackHead字段的值被赋成了PendingHandlerAddedTask对象，而且该对象封装了handler。这里的handler，就是外层的ChannelInitializer。</p>
-<h3 id="register0方法">register0方法</h3>
+<h3 id="register0方法"><strong>register0方法</strong></h3>
 <p>接下来看之前的register0方法究竟做了什么。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -1921,7 +1921,7 @@
 </div>
 </div><p>所做的事情是将一个新的Runnable对象添加到任务队列中，这里的execute方法与之前是同一个方法，不再分析。这个Runnable对象所做的事情是添加新的handler到pipeline。这个handler就是ServerBootstrapAcceptor。</p>
 <p>然后在上面的finally代码块中，将ChannelInitializer这个handler从pipeline中移除。</p>
-<h3 id="dobind0方法">doBind0方法</h3>
+<h3 id="dobind0方法"><strong>doBind0方法</strong></h3>
 <p>doBind方法中，执行完initAndRegister后返回的是一个异步任务的结果。接下来判断任务有没有执行完，无论有没有执行完，最后都会调用到doBind0方法。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">

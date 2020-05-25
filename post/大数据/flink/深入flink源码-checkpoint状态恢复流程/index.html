@@ -158,7 +158,7 @@
 <p>flink checkpoint文件是自描述的，_metadata文件保存了所有状态数据文件的路径、文件大小、状态数据在文件的位置等信息，状态数据文件的开头保存了该文件中状态数据的序列化信息，通过解析可以得到序列化器对象，直接反序列化文件内容。整个解析过程可以不需要运行时信息。</p>
 <p>在checkpoint的写入过程中，是每个Task独自生成状态数据文件，然后最终由JobManager端将这些文件信息写入到_metadata文件中，所以在解析的过程中也是从JobManager端开始解析 _metadata文件，然后在Task端读取数据文件进行恢复。</p>
 <p>本文将_metadata中的数据叫做“<strong>文件元信息</strong>”，状态数据文件中关于序列化器的信息称为“<strong>状态元信息</strong>”。</p>
-<h2 id="jobmanager端">JobManager端</h2>
+<h2 id="jobmanager端"><strong>JobManager端</strong></h2>
 <p>在创建ExecutionGraph时，会调用LegacyScheduler.createAndRestoreExecutionGraph方法。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -744,7 +744,7 @@
 </div>
 </div><p>所以整个逻辑的核心就是reDistributePartitionableStates和reDistributeKeyedStates方法。</p>
 <p>本文仅分析reDistributePartitionableStates方法。而reDistributeKeyedStates方法也留在分析并行度和最大并行度一文中。</p>
-<h3 id="文件元信息的重分配">文件元信息的重分配</h3>
+<h3 id="文件元信息的重分配"><strong>文件元信息的重分配</strong></h3>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre class="chroma"><code><span class="lnt"> 1
@@ -1148,7 +1148,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>repartitionState方法将情况分为两种：并行度未发生改变和发生改变。我们先分析完并行度未发生改变时的整个重分配流程，再回过头来分析并行度改变时的重分配。</p>
-<h3 id="并行度未发生改变">并行度未发生改变</h3>
+<h3 id="并行度未发生改变"><strong>并行度未发生改变</strong></h3>
 <p>当并行度未发生改变时，只会将模式为UNION的状态进行重分配。</p>
 <p>对于OperatorState（与KeyedState类型对应）来说，有三种模式：SPLIT_DISTRIBUTE、UNION、BROADCAST。三种模式意味着在Job恢复过程中，状态会按照不同的分配策略重新分配到各并行实例中，分别对应下图从左到右三种策略。</p>
 <p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/Checkpoint%E7%8A%B6%E6%80%81%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B/StateType.jpg" alt="StateType"></p>
@@ -1268,7 +1268,7 @@
 <p>最终，就得到了所有新的并行实例与其负责的文件元信息的关系：</p>
 <p><img src="/%E5%A4%A7%E6%95%B0%E6%8D%AE/flink/Checkpoint%E7%8A%B6%E6%80%81%E6%81%A2%E5%A4%8D%E6%B5%81%E7%A8%8B/newManagedOperatorStatesComplete.png" alt="newManagedOperatorStatesComplete"></p>
 <p>至此分析完了StateAssignmentOperation.assignAttemptState方法中对OperatorState分配的整个流程。KeyedState流程与此类似。</p>
-<h3 id="并行度发生改变">并行度发生改变</h3>
+<h3 id="并行度发生改变"><strong>并行度发生改变</strong></h3>
 <p>当并行度发生改变时，流程一致，只是需要对三种模式都进行重分配。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -1354,7 +1354,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>可以看到对UNION模式重分配时调用的还是之前的方法。对另两种模式的重分配也是类似的流程，这里不再分析。</p>
-<h3 id="将文件元信息发往taskexecutor端">将文件元信息发往TaskExecutor端</h3>
+<h3 id="将文件元信息发往taskexecutor端"><strong>将文件元信息发往TaskExecutor端</strong></h3>
 <p>状态重分配结束后，进入到assignTaskStateToExecutionJobVertices方法进行一些设置。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -1519,8 +1519,8 @@
 <span class="o">}</span>
 </code></pre></td></tr></table>
 </div>
-</div><h2 id="taskexecutor端">TaskExecutor端</h2>
-<h3 id="tdd对象如何被封装和传递">tdd对象如何被封装和传递</h3>
+</div><h2 id="taskexecutor端"><strong>TaskExecutor端</strong></h2>
+<h3 id="tdd对象如何被封装和传递"><strong>tdd对象如何被封装和传递</strong></h3>
 <p>顺着上面的taskManagerGateway.submitTask方法往下走，就来到了Task端。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -2031,7 +2031,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>也就是说，之前env对象中的TaskStateManager字段，传递给了StreamTaskStateInitializerImpl的一个实例。</p>
-<h3 id="状态恢复的核心逻辑">状态恢复的核心逻辑</h3>
+<h3 id="状态恢复的核心逻辑"><strong>状态恢复的核心逻辑</strong></h3>
 <p>恢复状态的核心逻辑在AbstractStreamOperator.initializeState方法中的这段代码：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -3002,7 +3002,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>可以看到，就是从registeredOperatorStates中取到了数据。</p>
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 <p>状态恢复就是状态写入的逆过程，先在JobManager端读取_metadata文件中的文件元信息，然后在Task端根据文件元信息读取状态数据文件，对每个并行实例进行恢复。</p>
 <p>在JobManager端有一个关键步骤，就是将文件元信息分配给每个并行实例。这样每个并行实例才知道自己应该去哪个文件取状态数据。重分配的过程中涉及到了并行度、最大并行度发生变化的情况，文件元数据会根据并行度的变化以及状态本身的模式（UNION、SPLIT_DISTRIBUTE、BROADCAST）按照规则进行重分配。</p>
 

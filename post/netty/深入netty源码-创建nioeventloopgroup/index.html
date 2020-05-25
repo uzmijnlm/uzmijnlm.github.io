@@ -203,7 +203,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>我们知道Netty遵循Reactor模式，所以一开始需要创建两个NioEventLoopGroup对象，分别代表Reactor模式中的主从。根据对Java NIO和Reactor模式的理解，可以推测NioEventLoopGroup中应该是维护了多个Selector对象和多个线程。本文将深入到源码内部，分析NioEventLoopGroup具体封装了哪些对象，以及初始化过程做了什么事情。</p>
-<h2 id="构造方法">构造方法</h2>
+<h2 id="构造方法"><strong>构造方法</strong></h2>
 <p>其构造方法如下：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -376,7 +376,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>核心逻辑可以分为上面的三步，下面逐个分析。</p>
-<h2 id="executor">Executor</h2>
+<h2 id="executor"><strong>Executor</strong></h2>
 <p>上面代码的第一步，是实例化一个Executor对象。首先需要调用newDefaultThreadFactory方法获得一个ThreadFactory对象。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -519,7 +519,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>这里就调用到了newThread方法，并且直接调用start将线程启动了。往下分析的时候关注何时调用的execute方法，以及传入的参数表示的是什么。</p>
-<h2 id="eventexecutor">EventExecutor</h2>
+<h2 id="eventexecutor"><strong>EventExecutor</strong></h2>
 <p>回到上面MultithreadEventExecutorGroup的构造方法。</p>
 <p>根据对Reactor的理解，一个NioEventLoopGroup对象（上面的MultithreadEventExecutorGroup就是它的父类）应该封装了多个Selector对象。实际上在Netty中，Selector对象就在上面构造方法创建的children数组中。</p>
 <p>每个children属于EventExecutor类，调用newChild方法进行实例化。注意到其参数有上面获得的那个executor，也包括了最开始的SelectorProvider对象、SelectStrategyFactory对象和RejectedExecutionHandler对象（即args）。</p>
@@ -712,7 +712,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>然后NioEventLoop构造方法中剩下的操作也都是简单的赋值操作。这样就封装好了NioEventLoop对象返回给children数组。</p>
-<h2 id="eventexecutorchooser">EventExecutorChooser</h2>
+<h2 id="eventexecutorchooser"><strong>EventExecutorChooser</strong></h2>
 <p>回到MultithreadEventExecutorGroup构造方法中，第三步就是生成了选择器。</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -756,7 +756,7 @@
 </code></pre></td></tr></table>
 </div>
 </div><p>在后面的分析中，关注何时调用next方法。</p>
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 <p>NioEventLoopGroup的构造方法中，核心逻辑是生成了ThreadPerTaskExecutor对象，封装到了children数组的每个元素中。children数组的每个元素为NioEventLoop类型，其中封装了Selector对象，而且Selector对象的字段用反射的方法赋了值。最后children被封装到了选择器中。选择器的next方法会返回一个ΝioEventLoop对象，该对象的execute方法会创建并启动线程。</p>
 
     </div>

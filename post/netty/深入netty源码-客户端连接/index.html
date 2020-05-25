@@ -732,7 +732,7 @@
 </div>
 </div><p>就是一个ChannelInitializer。</p>
 <p>接下来进入到childGroup.register方法中。到了这一步，后面的步骤就比较熟悉了，与ServerSocketChannel的pipeline类似，在注册过程中会执行ChannelInitializer的initChannel方法，这个方法中会添加业务处理逻辑（即一些handler）到pipeline中。添加完会把ChannelInitializer删除。</p>
-<h2 id="注册网络事件">注册网络事件</h2>
+<h2 id="注册网络事件"><strong>注册网络事件</strong></h2>
 <p>注册网络事件的过程也与ServerSocketChannel的过程一样，在register0方法中，会执行到channel的read方法，最后到doBeginRead方法中：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -819,7 +819,7 @@
 </div>
 </div><p>这里是一个OP_READ事件。</p>
 <p>这样就完成了整个SocketChannel的初始化过程。</p>
-<h2 id="总结">总结</h2>
+<h2 id="总结"><strong>总结</strong></h2>
 <p>客户端连接初始化的过程（即Reactor模式中的工作线程的初始化）与服务端初始化（即Reactor模式中的主线程的初始化）过程几乎一摸一样。先接收到连接事件，然后为每一个连接创建一个SocketChannel，将其封装成了NioSocketChannel，然后对其遍历，为每个对象创建一个pipeline。创建pipeline的过程以及注册事件的过程也与服务端一模一样，不再赘述。</p>
 <p>整个流程图如下：</p>
 <center><img src="/Netty/流程图.png" width = "1050" height = "400"/></center>
