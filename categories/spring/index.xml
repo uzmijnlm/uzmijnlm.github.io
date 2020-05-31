@@ -6,10 +6,19 @@
     <description>Recent content in Spring on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Mon, 25 May 2020 16:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Sun, 31 May 2020 16:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/categories/spring/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>深入Spring源码 - 初始化过程</title>
+      <link>http://localhost:1313/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E5%88%9D%E5%A7%8B%E5%8C%96%E8%BF%87%E7%A8%8B/</link>
+      <pubDate>Sun, 31 May 2020 16:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E5%88%9D%E5%A7%8B%E5%8C%96%E8%BF%87%E7%A8%8B/</guid>
+      <description>初始化ApplicationContext有多种方式，比如如果配置了XML文件，则可以通过如下方式： 1 ApplicationContext applicationContext = new ClassPathXmlApplicationContext(&amp;#34;application.xml&amp;#34;); 如果是利用注解注入，则可以如</description>
+    </item>
     
     <item>
       <title>深入Spring源码 - 自动注入的几种方式</title>
