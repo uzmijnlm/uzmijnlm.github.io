@@ -48,7 +48,7 @@
 <meta itemprop="description" content="初始化ApplicationContext有多种方式，比如如果配置了XML文件，则可以通过如下方式： 1 ApplicationContext applicationContext = new ClassPathXmlApplicationContext(&#34;application.xml&#34;); 如果是利用注解注入，则可以如">
 <meta itemprop="datePublished" content="2020-05-31T16:11:40&#43;08:00" />
 <meta itemprop="dateModified" content="2020-05-31T16:11:40&#43;08:00" />
-<meta itemprop="wordCount" content="7113">
+<meta itemprop="wordCount" content="7110">
 
 
 
@@ -1389,7 +1389,7 @@
 <h3 id="registerlisteners"><strong>registerListeners</strong></h3>
 <p>将实现了ApplicationListener接口的bean添加进上下文。</p>
 <h3 id="finishbeanfactoryinitialization"><strong>finishBeanFactoryInitialization</strong></h3>
-<p>beanFactory初始化结束后的一些工作。</p>
+<p>实例化非懒加载的单例bean。后文详述。</p>
 <h3 id="finishrefresh"><strong>finishRefresh</strong></h3>
 <p>refresh方法最后的收尾工作。</p>
 <h2 id="总结"><strong>总结</strong></h2>
