@@ -48,7 +48,7 @@
 <meta itemprop="description" content="初始化ApplicationContext有多种方式，比如如果配置了XML文件，则可以通过如下方式： 1 ApplicationContext applicationContext = new ClassPathXmlApplicationContext(&#34;application.xml&#34;); 如果是利用注解注入，则可以如">
 <meta itemprop="datePublished" content="2020-05-31T16:11:40&#43;08:00" />
 <meta itemprop="dateModified" content="2020-05-31T16:11:40&#43;08:00" />
-<meta itemprop="wordCount" content="7163">
+<meta itemprop="wordCount" content="7113">
 
 
 
@@ -1379,7 +1379,7 @@
 <p>总而言之，从流程上看，就是在invokeBeanFactoryPostProcessors方法中，调用了ConfigurationClassPostProcessor类的postProcessBeanDefinitionRegistry方法，对配置类进行了解析，将所有类都注册进了上下文中。</p>
 <p>第五步结束后，后面的步骤也是类似的，都是对不同的后置处理器调用其方法。</p>
 <h3 id="registerbeanpostprocessors"><strong>registerBeanPostProcessors</strong></h3>
-<p>该方法的逻辑与invokeBeanFactoryPostProcessors类似，只不过这里是对BeanPostProcessor进行处理。这些后置处理器的作用会在其他文章中分析。</p>
+<p>注册BeanPostProcessor。这些后置处理器的作用会在其他文章中分析。</p>
 <h3 id="initmessagesource"><strong>initMessageSource</strong></h3>
 <p>初始化MessageSource。</p>
 <h3 id="initapplicationeventmulticaster"><strong>initApplicationEventMulticaster</strong></h3>
