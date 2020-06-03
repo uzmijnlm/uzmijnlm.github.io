@@ -48,7 +48,7 @@
 <meta itemprop="description" content="初始化ApplicationContext有多种方式，比如如果配置了XML文件，则可以通过如下方式： 1 ApplicationContext applicationContext = new ClassPathXmlApplicationContext(&#34;application.xml&#34;); 如果是利用注解注入，则可以如">
 <meta itemprop="datePublished" content="2020-05-31T16:11:40&#43;08:00" />
 <meta itemprop="dateModified" content="2020-05-31T16:11:40&#43;08:00" />
-<meta itemprop="wordCount" content="7110">
+<meta itemprop="wordCount" content="7239">
 
 
 
@@ -866,7 +866,7 @@
 <h3 id="preparerefresh"><strong>prepareRefresh</strong></h3>
 <p>准备refresh操作的上下文环境。此方法可以认为没有做任何事，留给以后扩展使用。</p>
 <h3 id="obtainfreshbeanfactory"><strong>obtainFreshBeanFactory</strong></h3>
-<p>可以认为就是获得了之前那个beanFactory对象。</p>
+<p>可以认为就是获得了之前那个beanFactory对象。实际上该方法会解析Spring配置文件，将所有bean都注册到工厂中，如果有包需要扫描，则会将其中所有加了指定注解（@Component、@Service等）的类封装成bd注册到工厂中。不过由于现在很少用XML配置文件来定义bean，所以这部分代码直接略过。</p>
 <h3 id="preparebeanfactory"><strong>prepareBeanFactory</strong></h3>
 <p>这个方法是对beanFactory做一些准备工作：</p>
 <div class="highlight"><div class="chroma">
