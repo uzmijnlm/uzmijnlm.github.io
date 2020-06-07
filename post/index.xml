@@ -6,10 +6,28 @@
     <description>Recent content in Posts on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Sun, 31 May 2020 16:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Sat, 06 Jun 2020 16:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/post/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>深入Spring源码 - 增强配置类</title>
+      <link>http://localhost:1313/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E5%A2%9E%E5%BC%BA%E9%85%8D%E7%BD%AE%E7%B1%BB/</link>
+      <pubDate>Sat, 06 Jun 2020 16:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E5%A2%9E%E5%BC%BA%E9%85%8D%E7%BD%AE%E7%B1%BB/</guid>
+      <description>回顾两个知识点。 第一个知识点是—— 前面分析过，只要业务代码这样写，AppConfig类就有可能会进入到解析的逻辑： 1 2 3 AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(); ac.register(AppConfig.class); ac.refresh(); 有两种</description>
+    </item>
+    
+    <item>
+      <title>深入Spring源码 - 解析配置类</title>
+      <link>http://localhost:1313/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E8%A7%A3%E6%9E%90%E9%85%8D%E7%BD%AE%E7%B1%BB/</link>
+      <pubDate>Sat, 06 Jun 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E8%A7%A3%E6%9E%90%E9%85%8D%E7%BD%AE%E7%B1%BB/</guid>
+      <description>在前文中我们已经大致了解了Spring初始化的流程（主要针对AnnotationConfigApplicationContext）。主要流程</description>
+    </item>
     
     <item>
       <title>深入Spring源码 - 初始化过程</title>
