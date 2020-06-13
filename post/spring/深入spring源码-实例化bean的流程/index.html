@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Spring源码 - 实例化bean的流程 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="前面已经分析完了bd的注册、配置类的解析以及配置类的@Configuration注解的作用等内容，上述事情做完后，剩下最重要的事情就是根据b" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E5%AE%9E%E4%BE%8B%E5%8C%96bean%E7%9A%84%E6%B5%81%E7%A8%8B/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Spring源码 - 实例化bean的流程" />
+<meta property="og:description" content="前面已经分析完了bd的注册、配置类的解析以及配置类的@Configuration注解的作用等内容，上述事情做完后，剩下最重要的事情就是根据b" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E5%AE%9E%E4%BE%8B%E5%8C%96bean%E7%9A%84%E6%B5%81%E7%A8%8B/" />
+<meta property="article:published_time" content="2020-06-07T16:11:40+08:00" />
+<meta property="article:modified_time" content="2020-06-07T16:11:40+08:00" />
+<meta itemprop="name" content="深入Spring源码 - 实例化bean的流程">
+<meta itemprop="description" content="前面已经分析完了bd的注册、配置类的解析以及配置类的@Configuration注解的作用等内容，上述事情做完后，剩下最重要的事情就是根据b">
+<meta itemprop="datePublished" content="2020-06-07T16:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-06-07T16:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="7553">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Spring源码 - 实例化bean的流程"/>
+<meta name="twitter:description" content="前面已经分析完了bd的注册、配置类的解析以及配置类的@Configuration注解的作用等内容，上述事情做完后，剩下最重要的事情就是根据b"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Spring源码 - 实例化bean的流程</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-06-07 </span>
+        <div class="post-category">
+            <a href="/categories/spring/"> Spring </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#实例化bean">实例化bean</a>
+      <ul>
+        <li><a href="#已经实例化过的bean对象">已经实例化过的bean对象</a></li>
+        <li><a href="#之前未实例化过的bean对象">之前未实例化过的bean对象</a></li>
+      </ul>
+    </li>
+    <li><a href="#循环依赖">循环依赖</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <p>前面已经分析完了bd的注册、配置类的解析以及配置类的@Configuration注解的作用等内容，上述事情做完后，剩下最重要的事情就是根据bd生成bean对象。</p>
+<p>在前面几篇文章中，有两处已经涉及到了bean的实例化。一处是在invokeBeanFactoryPostProcessors方法中，需要用ConfigurationClassPostProcessor类去解析配置类，这个类就是在该方法中通过getBean方法生成的。其他的BeanFactoryPostProcessor也是同理。另一处就是讲到增强配置类时，里面添加了@Bean注解的方法的调用，也是在实例化bean的过程中调用的。</p>
+<p>本文将粗略地梳理bean的实例化流程。中间涉及到的aop、属性注入、构造方法推断等逻辑将会在其他文章中详细分析。</p>
+<h2 id="实例化bean"><strong>实例化bean</strong></h2>
+<p>refresh方法中，执行完invokeBeanFactoryPostProcessors方法后，最重要的方法就是finishBeanFactoryInitialization方法，在这里完成所有非懒加载的bean的实例化过程。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">finishBeanFactoryInitialization</span><span class="o">(</span><span class="n">ConfigurableListableBeanFactory</span> <span class="n">beanFactory</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+   <span class="c1">// Instantiate all remaining (non-lazy-init) singletons.
+</span><span class="c1"></span>   <span class="n">beanFactory</span><span class="o">.</span><span class="na">preInstantiateSingletons</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>preInstantiateSingletons方法的逻辑也比较清晰：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">preInstantiateSingletons</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+   <span class="n">List</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">beanNames</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">beanDefinitionNames</span><span class="o">)</span><span class="o">;</span>
+
+   <span class="k">for</span> <span class="o">(</span><span class="n">String</span> <span class="n">beanName</span> <span class="o">:</span> <span class="n">beanNames</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">RootBeanDefinition</span> <span class="n">bd</span> <span class="o">=</span> <span class="n">getMergedLocalBeanDefinition</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">bd</span><span class="o">.</span><span class="na">isAbstract</span><span class="o">(</span><span class="o">)</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">bd</span><span class="o">.</span><span class="na">isSingleton</span><span class="o">(</span><span class="o">)</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="o">!</span><span class="n">bd</span><span class="o">.</span><span class="na">isLazyInit</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">isFactoryBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// 如果是一个FactoryBean，则进入if分支。
+</span><span class="c1"></span>            <span class="n">Object</span> <span class="n">bean</span> <span class="o">=</span> <span class="n">getBean</span><span class="o">(</span><span class="n">FACTORY_BEAN_PREFIX</span> <span class="o">+</span> <span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">bean</span> <span class="k">instanceof</span> <span class="n">FactoryBean</span><span class="o">)</span> <span class="o">{</span>
+               <span class="kd">final</span> <span class="n">FactoryBean</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">factory</span> <span class="o">=</span> <span class="o">(</span><span class="n">FactoryBean</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span><span class="o">)</span> <span class="n">bean</span><span class="o">;</span>
+               <span class="kt">boolean</span> <span class="n">isEagerInit</span><span class="o">;</span>
+               <span class="k">if</span> <span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">getSecurityManager</span><span class="o">(</span><span class="o">)</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">factory</span> <span class="k">instanceof</span> <span class="n">SmartFactoryBean</span><span class="o">)</span> <span class="o">{</span>
+                  <span class="n">isEagerInit</span> <span class="o">=</span> <span class="n">AccessController</span><span class="o">.</span><span class="na">doPrivileged</span><span class="o">(</span><span class="o">(</span><span class="n">PrivilegedAction</span><span class="o">&lt;</span><span class="n">Boolean</span><span class="o">&gt;</span><span class="o">)</span>
+                              <span class="o">(</span><span class="o">(</span><span class="n">SmartFactoryBean</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span><span class="o">)</span> <span class="n">factory</span><span class="o">)</span><span class="o">:</span><span class="o">:</span><span class="n">isEagerInit</span><span class="o">,</span>
+                        <span class="n">getAccessControlContext</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+               <span class="o">}</span>
+               <span class="k">else</span> <span class="o">{</span>
+                  <span class="n">isEagerInit</span> <span class="o">=</span> <span class="o">(</span><span class="n">factory</span> <span class="k">instanceof</span> <span class="n">SmartFactoryBean</span> <span class="o">&amp;</span><span class="o">&amp;</span>
+                        <span class="o">(</span><span class="o">(</span><span class="n">SmartFactoryBean</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span><span class="o">)</span> <span class="n">factory</span><span class="o">)</span><span class="o">.</span><span class="na">isEagerInit</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+               <span class="o">}</span>
+               <span class="k">if</span> <span class="o">(</span><span class="n">isEagerInit</span><span class="o">)</span> <span class="o">{</span>
+                  <span class="n">getBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+               <span class="o">}</span>
+            <span class="o">}</span>
+         <span class="o">}</span>
+         <span class="k">else</span> <span class="o">{</span> <span class="c1">// 如果是普通的Bean，则进入else分支。
+</span><span class="c1"></span>            <span class="n">getBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+         <span class="o">}</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>beanNames包含了所有注册的bd名称。在遍历它们的时候判断是否为FactoryBean，会做不同的处理。FactoryBean的处理会在其他文章单独分析。不管进入哪个条件分支，都会调用到getBean方法。</p>
+<p>这里存在一个很容易让人疑惑的点。按照一般的理解，这个过程要做的事情应该是实例化bean，因此在初始化过程全部结束后，我们才可以在业务代码中获得bean对象。我们都知道在业务代码里获取bean对象的方法就是getBean，通过简单的分析可以看到该方法调用的就是上面这个getBean方法。也就是说，实例化bean的过程与获取实例化后的bean的过程，调用的是同一个方法，直观上感觉这是很不合理的。Spring这样设计的其中一个重要原因是，bean对象之间可能存在循环依赖，如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="nd">@Component</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">A</span> <span class="o">{</span>
+
+    <span class="nd">@Autowired</span>
+    <span class="kd">private</span> <span class="n">B</span> <span class="n">b</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">A</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&#34;A&#34;</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="nd">@Component</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">B</span> <span class="o">{</span>
+
+    <span class="nd">@Autowired</span>
+    <span class="kd">private</span> <span class="n">A</span> <span class="n">a</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">B</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&#34;B&#34;</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在实例化A的时候，需要注入B，因此又需要实例化B；而实例化B时又需要把A注入进来。这就使得在逻辑上实例化和获取bean的过程彼此密不可分。将这两种操作放在一个方法里，用递归（加上缓存等其他方式）就可以解决循环依赖的问题。本文在后面会分析这个过程。</p>
+<p>此时我们进入到getBean方法中：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Object</span> <span class="nf">getBean</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+   <span class="k">return</span> <span class="n">doGetBean</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">false</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">protected</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">T</span> <span class="nf">doGetBean</span><span class="o">(</span><span class="kd">final</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="nd">@Nullable</span> <span class="kd">final</span> <span class="n">Class</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">requiredType</span><span class="o">,</span>
+      <span class="nd">@Nullable</span> <span class="kd">final</span> <span class="n">Object</span><span class="o">[</span><span class="o">]</span> <span class="n">args</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">typeCheckOnly</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span> <span class="o">{</span>
+
+   <span class="kd">final</span> <span class="n">String</span> <span class="n">beanName</span> <span class="o">=</span> <span class="n">transformedBeanName</span><span class="o">(</span><span class="n">name</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">Object</span> <span class="n">bean</span><span class="o">;</span>
+
+   <span class="n">Object</span> <span class="n">sharedInstance</span> <span class="o">=</span> <span class="n">getSingleton</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">if</span> <span class="o">(</span><span class="n">sharedInstance</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">args</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// 如果之前已经实例化了该对象。
+</span><span class="c1"></span>     
+     <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+       
+   <span class="o">}</span>
+
+   <span class="k">else</span> <span class="o">{</span> <span class="c1">// 如果之前没有实例化过该对象。
+</span><span class="c1"></span>     
+     <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+   <span class="o">}</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+   <span class="k">return</span> <span class="o">(</span><span class="n">T</span><span class="o">)</span> <span class="n">bean</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>doGetBean方法的核心逻辑如上所示。第一步调用了transformedBeanName方法，这个方法是对bean的名称做一些处理，也与FactoryBean有关，这里直接跳过。</p>
+<p>下面调用getSingleton方法，获取一个对象，然后进入if-else分支。两个分支已有注释说明。来看一下该方法的内部逻辑：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="n">Object</span> <span class="nf">getSingleton</span><span class="o">(</span><span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">Object</span> <span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">isSingletonCurrentlyInCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+         <span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">ObjectFactory</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">singletonFactory</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">singletonFactory</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+               <span class="n">singletonObject</span> <span class="o">=</span> <span class="n">singletonFactory</span><span class="o">.</span><span class="na">getObject</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+               <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">)</span><span class="o">;</span>
+               <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+            <span class="o">}</span>
+         <span class="o">}</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+   <span class="k">return</span> <span class="n">singletonObject</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>它就是从singletonObjects中拿bean对象。从狭义上讲，Spring容器指的就是这个singletonObjects。所有实例化的bean都会放在这个对象中，在业务代码里面获取一个bean对象也会经过上面的代码，最后来到这里，由于彼时所有bean都完成了实例化，所以直接就可以从singletonObjects中获取。另外，严格地说这个singletonObjects中保存的那个对象并不一定是最终我们想要得到的那个返回对象，而是要经过一些转换，不过为了叙述方便，本文统一称之为bean对象。</p>
+<p>因为前面我们已经实例化过了Bean工厂后置处理器，所以这几个bean对象可以直接返回。而其他对象则需要进入getSingleton方法的if分支。稍后回来分析这个分支的逻辑，下面先分析那些之前已经实例化过的bean对象。</p>
+<h3 id="已经实例化过的bean对象"><strong>已经实例化过的bean对象</strong></h3>
+<p>对于已经实例化过的singletonObject对象，在getSingleton方法中可以直接获取并返回，然后进入到doGetBean方法的if分支：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">if</span> <span class="o">(</span><span class="n">sharedInstance</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">args</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+   <span class="n">bean</span> <span class="o">=</span> <span class="n">getObjectForBeanInstance</span><span class="o">(</span><span class="n">sharedInstance</span><span class="o">,</span> <span class="n">name</span><span class="o">,</span> <span class="n">beanName</span><span class="o">,</span> <span class="kc">null</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">protected</span> <span class="n">Object</span> <span class="nf">getObjectForBeanInstance</span><span class="o">(</span>
+      <span class="n">Object</span> <span class="n">beanInstance</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="nd">@Nullable</span> <span class="n">RootBeanDefinition</span> <span class="n">mbd</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+   <span class="k">return</span> <span class="kd">super</span><span class="o">.</span><span class="na">getObjectForBeanInstance</span><span class="o">(</span><span class="n">beanInstance</span><span class="o">,</span> <span class="n">name</span><span class="o">,</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">protected</span> <span class="n">Object</span> <span class="nf">getObjectForBeanInstance</span><span class="o">(</span>
+      <span class="n">Object</span> <span class="n">beanInstance</span><span class="o">,</span> <span class="n">String</span> <span class="n">name</span><span class="o">,</span> <span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="nd">@Nullable</span> <span class="n">RootBeanDefinition</span> <span class="n">mbd</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+   <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="o">(</span><span class="n">beanInstance</span> <span class="k">instanceof</span> <span class="n">FactoryBean</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">return</span> <span class="n">beanInstance</span><span class="o">;</span>
+   <span class="o">}</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面的代码中省略了FactoryBean的相关逻辑。可以看到返回的普通的bean其实就是上面获得的那个sharedInstance对象。</p>
+<h3 id="之前未实例化过的bean对象"><strong>之前未实例化过的bean对象</strong></h3>
+<p>对于之前未实例化过的bean来说，在getSingleton方法的第一步获取到的对象一定是null。但接下来的if判断如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">isSingletonCurrentlyInCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">)</span>
+  
+  
+<span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">isSingletonCurrentlyInCreation</span><span class="o">(</span><span class="n">String</span> <span class="n">beanName</span><span class="o">)</span> <span class="o">{</span>
+   <span class="k">return</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonsCurrentlyInCreation</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="cm">/** Names of beans that are currently in creation. */</span>
+<span class="kd">private</span> <span class="kd">final</span> <span class="n">Set</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">singletonsCurrentlyInCreation</span> <span class="o">=</span> <span class="n">Collections</span><span class="o">.</span><span class="na">newSetFromMap</span><span class="o">(</span><span class="k">new</span> <span class="n">ConcurrentHashMap</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="n">16</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>对于一个一般的bean来说，isSingletonCurrentlyInCreation方法得到的是false。因为singletonsCurrentlyInCreation为空。至于这个集合会在什么时候放元素进去，会在后面分析到。所以这里仍然不会做任何处理，直接将singletonObject返回了出去。</p>
+<p>else分支代码如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">else</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+   <span class="c1">// 将bean的名称放入alreadyCreated集合中，表示至少被创建过一次。
+</span><span class="c1"></span>   <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">typeCheckOnly</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">markBeanAsCreated</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+
+   <span class="k">try</span> <span class="o">{</span>
+     
+     <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+      <span class="k">if</span> <span class="o">(</span><span class="n">mbd</span><span class="o">.</span><span class="na">isSingleton</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+         <span class="c1">// 创建bean。
+</span><span class="c1"></span>         <span class="n">sharedInstance</span> <span class="o">=</span> <span class="n">getSingleton</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="o">(</span><span class="o">)</span> <span class="o">-</span><span class="o">&gt;</span> <span class="o">{</span>
+            <span class="k">try</span> <span class="o">{</span>
+               <span class="k">return</span> <span class="n">createBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">args</span><span class="o">)</span><span class="o">;</span>
+            <span class="o">}</span>
+            <span class="k">catch</span> <span class="o">(</span><span class="n">BeansException</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+              
+              <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+                
+            <span class="o">}</span>
+         <span class="o">}</span><span class="o">)</span><span class="o">;</span>
+         <span class="n">bean</span> <span class="o">=</span> <span class="n">getObjectForBeanInstance</span><span class="o">(</span><span class="n">sharedInstance</span><span class="o">,</span> <span class="n">name</span><span class="o">,</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span>
+     
+     <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+       
+   <span class="o">}</span>
+   <span class="k">catch</span> <span class="o">(</span><span class="n">BeansException</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+     
+     <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+       
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>核心逻辑就是重新给sharedInstance对象赋值，然后调用与上面相同的getObjectForBeanInstance方法返回一个bean对象。因此关键逻辑在于这一次如何创建sharedInstance。</p>
+<p>调用的方法也叫getSingleton，只不过是重载的方法，第二个参数类型是ObjectFactory，这是一个接口且只有一个方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">ObjectFactory</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="o">{</span>
+
+   <span class="n">T</span> <span class="nf">getObject</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">BeansException</span><span class="o">;</span>
+
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>因此传参的时候可以传入一个lambda表达式，表示这个getObject方法的实现。简单的说就是getSingleton方法内部如果调用到了这个ObjectFactory对象的getObject方法，实际上就会执行createBean方法。</p>
+<p>这个getSingleton方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Object</span> <span class="nf">getSingleton</span><span class="o">(</span><span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">ObjectFactory</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">singletonFactory</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">Assert</span><span class="o">.</span><span class="na">notNull</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="s">&#34;Bean name must not be null&#34;</span><span class="o">)</span><span class="o">;</span>
+   <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">Object</span> <span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+         
+         <span class="c1">// 1.将beanName添加到singletonsCurrentlyInCreation中。
+</span><span class="c1"></span>         <span class="n">beforeSingletonCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+        
+         <span class="kt">boolean</span> <span class="n">newSingleton</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+         <span class="kt">boolean</span> <span class="n">recordSuppressedExceptions</span> <span class="o">=</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">suppressedExceptions</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span><span class="o">;</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">recordSuppressedExceptions</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">this</span><span class="o">.</span><span class="na">suppressedExceptions</span> <span class="o">=</span> <span class="k">new</span> <span class="n">LinkedHashSet</span><span class="o">&lt;</span><span class="o">&gt;</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+         <span class="o">}</span>
+         <span class="k">try</span> <span class="o">{</span>
+            <span class="c1">// 2.获取bean对象。
+</span><span class="c1"></span>            <span class="n">singletonObject</span> <span class="o">=</span> <span class="n">singletonFactory</span><span class="o">.</span><span class="na">getObject</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+            <span class="n">newSingleton</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+         <span class="o">}</span>
+         <span class="k">catch</span> <span class="o">(</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">)</span> <span class="o">{</span>
+           
+           <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+             
+         <span class="o">}</span>
+         <span class="k">finally</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">recordSuppressedExceptions</span><span class="o">)</span> <span class="o">{</span>
+               <span class="k">this</span><span class="o">.</span><span class="na">suppressedExceptions</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+            <span class="o">}</span>
+            <span class="c1">// 3.将beanName从singletonsCurrentlyInCreation中移除。
+</span><span class="c1"></span>            <span class="n">afterSingletonCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+         <span class="o">}</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">newSingleton</span><span class="o">)</span> <span class="o">{</span>
+            <span class="c1">// 4.将bean添加到singletonObjects中。
+</span><span class="c1"></span>            <span class="n">addSingleton</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">)</span><span class="o">;</span>
+         <span class="o">}</span>
+      <span class="o">}</span>
+      <span class="k">return</span> <span class="n">singletonObject</span><span class="o">;</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>第一步将beanName添加到singletonsCurrentlyInCreation中。这就是刚才isSingletonCurrentlyInCreation方法判断时用到的集合。</p>
+<p>第二步获取bean对象。</p>
+<p>第三步将beanName从singletonsCurrentlyInCreation中移除。</p>
+<p>第四步将bean添加到singletonObjects中。</p>
+<p>第一步和第三步很简单，直接跳过。第四步的内部如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">addSingleton</span><span class="o">(</span><span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">Object</span> <span class="n">singletonObject</span><span class="o">)</span> <span class="o">{</span>
+   <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">registeredSingletons</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到不仅仅是对singletonObjects集合做操作，还对singletonFactories和earlySingletonObjects做了操作。registeredSingletons保存的就是已经实例化的bean的名称。singletonFactories和earlySingletonObjects的作用会在分析第二步时涉及到。</p>
+<p>下面着重分析第二步。</p>
+<p>第二步进入到createBean方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="n">Object</span> <span class="nf">createBean</span><span class="o">(</span><span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">RootBeanDefinition</span> <span class="n">mbd</span><span class="o">,</span> <span class="nd">@Nullable</span> <span class="n">Object</span><span class="o">[</span><span class="o">]</span> <span class="n">args</span><span class="o">)</span>
+      <span class="kd">throws</span> <span class="n">BeanCreationException</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+   <span class="k">try</span> <span class="o">{</span>
+      <span class="n">Object</span> <span class="n">beanInstance</span> <span class="o">=</span> <span class="n">doCreateBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbdToUse</span><span class="o">,</span> <span class="n">args</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">return</span> <span class="n">beanInstance</span><span class="o">;</span>
+   <span class="o">}</span>
+   <span class="k">catch</span> <span class="o">(</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">)</span> <span class="o">{</span>
+     
+     <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+       
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个方法会先用后置处理器做一些处理（在上面的代码中已经略过），核心逻辑是调用doCreateBean方法。doCreateBean方法内容非常多，这里直接分析创建bean的逻辑。是在这段代码中：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">if</span> <span class="o">(</span><span class="n">instanceWrapper</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">instanceWrapper</span> <span class="o">=</span> <span class="n">createBeanInstance</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">args</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>而对于一般的bean来说，又会直接来到该方法内部的instantiateBean方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="n">BeanWrapper</span> <span class="nf">instantiateBean</span><span class="o">(</span><span class="kd">final</span> <span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="kd">final</span> <span class="n">RootBeanDefinition</span> <span class="n">mbd</span><span class="o">)</span> <span class="o">{</span>
+   <span class="k">try</span> <span class="o">{</span>
+      <span class="n">Object</span> <span class="n">beanInstance</span><span class="o">;</span>
+      <span class="kd">final</span> <span class="n">BeanFactory</span> <span class="n">parent</span> <span class="o">=</span> <span class="k">this</span><span class="o">;</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">getSecurityManager</span><span class="o">(</span><span class="o">)</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+          
+      <span class="o">}</span>
+      <span class="k">else</span> <span class="o">{</span>
+         <span class="c1">// 利用反射拿到构造器，用该构造器实例化一个bean。
+</span><span class="c1"></span>         <span class="n">beanInstance</span> <span class="o">=</span> <span class="n">getInstantiationStrategy</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">instantiate</span><span class="o">(</span><span class="n">mbd</span><span class="o">,</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">parent</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span>
+      <span class="n">BeanWrapper</span> <span class="n">bw</span> <span class="o">=</span> <span class="k">new</span> <span class="n">BeanWrapperImpl</span><span class="o">(</span><span class="n">beanInstance</span><span class="o">)</span><span class="o">;</span>
+      <span class="n">initBeanWrapper</span><span class="o">(</span><span class="n">bw</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">return</span> <span class="n">bw</span><span class="o">;</span>
+   <span class="o">}</span>
+   <span class="k">catch</span> <span class="o">(</span><span class="n">Throwable</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="n">BeanCreationException</span><span class="o">(</span>
+            <span class="n">mbd</span><span class="o">.</span><span class="na">getResourceDescription</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="n">beanName</span><span class="o">,</span> <span class="s">&#34;Instantiation of bean failed&#34;</span><span class="o">,</span> <span class="n">ex</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个方法的核心逻辑也比较简单，就是利用反射构造bean对象然后返回一个包装类。</p>
+<p>返回到doCreateBean方法，拿到这个包装类后，将bean对象取出。经过一些后置处理器的处理，来到这段代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kt">boolean</span> <span class="n">earlySingletonExposure</span> <span class="o">=</span> <span class="o">(</span><span class="n">mbd</span><span class="o">.</span><span class="na">isSingleton</span><span class="o">(</span><span class="o">)</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="k">this</span><span class="o">.</span><span class="na">allowCircularReferences</span> <span class="o">&amp;</span><span class="o">&amp;</span>
+      <span class="n">isSingletonCurrentlyInCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+<span class="k">if</span> <span class="o">(</span><span class="n">earlySingletonExposure</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+   <span class="n">addSingletonFactory</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="o">(</span><span class="o">)</span> <span class="o">-</span><span class="o">&gt;</span> <span class="n">getEarlyBeanReference</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">bean</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里有一个判断逻辑：如果bd为单例，且允许循环依赖，且singletonsCurrentlyInCreation中含有beanName，则调用addSingletonFactory方法。</p>
+<p>这个addSingletonFactory方法与上面的addSingleton方法类似，只不过这里是将bean和一个singletonFactory放入singletonFactories中。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">addSingletonFactory</span><span class="o">(</span><span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">ObjectFactory</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">singletonFactory</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">Assert</span><span class="o">.</span><span class="na">notNull</span><span class="o">(</span><span class="n">singletonFactory</span><span class="o">,</span> <span class="s">&#34;Singleton factory must not be null&#34;</span><span class="o">)</span><span class="o">;</span>
+   <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">containsKey</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+         <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonFactory</span><span class="o">)</span><span class="o">;</span>
+         <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+         <span class="k">this</span><span class="o">.</span><span class="na">registeredSingletons</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>根据上面的分析，addSingleton方法是在最后finally代码块中调用的，因此我们可以得知，在实例化的过程中，是要先将某些信息放入singletonFactories，最后将singletonFactories中的信息删除，将bean对象添加到singletonObjects中。</p>
+<p>而singletonFactories的value值是一个ObjectFactory对象，上面见过这个类型，是用来指定创建bean的实际逻辑的。这个对象的getObject方法就是在最初的getSingleton方法中调用的：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="n">Object</span> <span class="nf">getSingleton</span><span class="o">(</span><span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">Object</span> <span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">isSingletonCurrentlyInCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+         <span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">ObjectFactory</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">singletonFactory</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">singletonFactory</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+               <span class="c1">// 从singletonFactories取出singletonFactory调用其getObject方法。
+</span><span class="c1"></span>               <span class="n">singletonObject</span> <span class="o">=</span> <span class="n">singletonFactory</span><span class="o">.</span><span class="na">getObject</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+               <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">)</span><span class="o">;</span>
+               <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+            <span class="o">}</span>
+         <span class="o">}</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+   <span class="k">return</span> <span class="n">singletonObject</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从getSingleton方法本身可以得知，是先从singletonObjects中获取对象；如果没有的话，并且isSingletonCurrentlyInCreation判断为true，就从earlySingletonObjects中获取对象；如果还是没有，并且allowEarlyReference为true，则从singletonFactories中获取bean对应的工厂对象，调用其getObject方法创建bean并返回。</p>
+<p>这个逻辑在第一次调用getSingleton方法时没有走到，下面需要关注它会在何时再次调用到这个方法并进入到这个分支。</p>
+<p>在doCreateBean方法中执行完addSingletonFactory方法后，来到两行关键代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">populateBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">instanceWrapper</span><span class="o">)</span><span class="o">;</span>
+<span class="n">exposedObject</span> <span class="o">=</span> <span class="n">initializeBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">exposedObject</span><span class="o">,</span> <span class="n">mbd</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>populateBean方法会给bean中的字段赋值，initializeBean方法会执行一些初始化方法。接着会执行这行代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">Object</span> <span class="n">earlySingletonReference</span> <span class="o">=</span> <span class="n">getSingleton</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="kc">false</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里又调用了getSingleton。这一次会进入到if分支里：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+<span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">ObjectFactory</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">singletonFactory</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">if</span> <span class="o">(</span><span class="n">singletonFactory</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">singletonObject</span> <span class="o">=</span> <span class="n">singletonFactory</span><span class="o">.</span><span class="na">getObject</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果这个bean对象是第一次进入到这个分支，那么earlySingletonObjects集合中肯定没有它。由于外部传入的allowEarlyReference字段为false，所以这一次还是不会进入到后面的代码中。</p>
+<p>如果earlySingletonObjects中有了这个对象，那么返回值就会赋值给exposedObject对象。最后，doCreateBean方法返回exposedObject对象。</p>
+<p>一个没有循环依赖的bean，可以说这段代码没有太大的意义，返回的其实就是initializeBean方法执行后的那个对象。而singletonFactories中的那个工厂也没有调用过。</p>
+<p>到此为止，bean的实例化流程结束。下面来分析如果有循环依赖的话整个过程是什么样的。</p>
+<h2 id="循环依赖"><strong>循环依赖</strong></h2>
+<p>在bean之间有循环依赖时，其他步骤都是一样的。在populateBean这一步会给里面的字段赋值，这一步是需要详细分析的。</p>
+<p>该方法关于循环依赖的逻辑主要是在这一步：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">for</span> <span class="o">(</span><span class="n">BeanPostProcessor</span> <span class="n">bp</span> <span class="o">:</span> <span class="n">getBeanPostProcessors</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+   <span class="k">if</span> <span class="o">(</span><span class="n">bp</span> <span class="k">instanceof</span> <span class="n">InstantiationAwareBeanPostProcessor</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">InstantiationAwareBeanPostProcessor</span> <span class="n">ibp</span> <span class="o">=</span> <span class="o">(</span><span class="n">InstantiationAwareBeanPostProcessor</span><span class="o">)</span> <span class="n">bp</span><span class="o">;</span>
+      <span class="n">PropertyValues</span> <span class="n">pvsToUse</span> <span class="o">=</span> <span class="n">ibp</span><span class="o">.</span><span class="na">postProcessProperties</span><span class="o">(</span><span class="n">pvs</span><span class="o">,</span> <span class="n">bw</span><span class="o">.</span><span class="na">getWrappedInstance</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">pvsToUse</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">filteredPds</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">filteredPds</span> <span class="o">=</span> <span class="n">filterPropertyDescriptorsForDependencyCheck</span><span class="o">(</span><span class="n">bw</span><span class="o">,</span> <span class="n">mbd</span><span class="o">.</span><span class="na">allowCaching</span><span class="o">)</span><span class="o">;</span>
+         <span class="o">}</span>
+         <span class="n">pvsToUse</span> <span class="o">=</span> <span class="n">ibp</span><span class="o">.</span><span class="na">postProcessPropertyValues</span><span class="o">(</span><span class="n">pvs</span><span class="o">,</span> <span class="n">filteredPds</span><span class="o">,</span> <span class="n">bw</span><span class="o">.</span><span class="na">getWrappedInstance</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">pvsToUse</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">return</span><span class="o">;</span>
+         <span class="o">}</span>
+      <span class="o">}</span>
+      <span class="n">pvs</span> <span class="o">=</span> <span class="n">pvsToUse</span><span class="o">;</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>当遍历到AutowiredAnnotationBeanPostprocessor时，调用其postProcessProperties方法就会完成添加了@Autowired注解的字段的赋值。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">PropertyValues</span> <span class="nf">postProcessProperties</span><span class="o">(</span><span class="n">PropertyValues</span> <span class="n">pvs</span><span class="o">,</span> <span class="n">Object</span> <span class="n">bean</span><span class="o">,</span> <span class="n">String</span> <span class="n">beanName</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">InjectionMetadata</span> <span class="n">metadata</span> <span class="o">=</span> <span class="n">findAutowiringMetadata</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">bean</span><span class="o">.</span><span class="na">getClass</span><span class="o">(</span><span class="o">)</span><span class="o">,</span> <span class="n">pvs</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">try</span> <span class="o">{</span>
+      <span class="n">metadata</span><span class="o">.</span><span class="na">inject</span><span class="o">(</span><span class="n">bean</span><span class="o">,</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">pvs</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+   <span class="k">catch</span> <span class="o">(</span><span class="n">BeanCreationException</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">throw</span> <span class="n">ex</span><span class="o">;</span>
+   <span class="o">}</span>
+   <span class="k">catch</span> <span class="o">(</span><span class="n">Throwable</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="n">BeanCreationException</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="s">&#34;Injection of autowired dependencies failed&#34;</span><span class="o">,</span> <span class="n">ex</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+   <span class="k">return</span> <span class="n">pvs</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">inject</span><span class="o">(</span><span class="n">Object</span> <span class="n">target</span><span class="o">,</span> <span class="nd">@Nullable</span> <span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="nd">@Nullable</span> <span class="n">PropertyValues</span> <span class="n">pvs</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Throwable</span> <span class="o">{</span>
+   <span class="n">Collection</span><span class="o">&lt;</span><span class="n">InjectedElement</span><span class="o">&gt;</span> <span class="n">checkedElements</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">checkedElements</span><span class="o">;</span>
+   <span class="n">Collection</span><span class="o">&lt;</span><span class="n">InjectedElement</span><span class="o">&gt;</span> <span class="n">elementsToIterate</span> <span class="o">=</span>
+         <span class="o">(</span><span class="n">checkedElements</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span> <span class="o">?</span> <span class="n">checkedElements</span> <span class="o">:</span> <span class="k">this</span><span class="o">.</span><span class="na">injectedElements</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">elementsToIterate</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">for</span> <span class="o">(</span><span class="n">InjectedElement</span> <span class="n">element</span> <span class="o">:</span> <span class="n">elementsToIterate</span><span class="o">)</span> <span class="o">{</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">logger</span><span class="o">.</span><span class="na">isTraceEnabled</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">logger</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">&#34;Processing injected element of bean &#39;&#34;</span> <span class="o">+</span> <span class="n">beanName</span> <span class="o">+</span> <span class="s">&#34;&#39;: &#34;</span> <span class="o">+</span> <span class="n">element</span><span class="o">)</span><span class="o">;</span>
+         <span class="o">}</span>
+         <span class="n">element</span><span class="o">.</span><span class="na">inject</span><span class="o">(</span><span class="n">target</span><span class="o">,</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">pvs</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>element.inject方法内部非常复杂，调用链也很长。简单地讲，就是解析出这个bean需要给哪几个字段赋值，然后分别对这些字段调用getBean方法获取bean对象，最后通过反射的方式赋值。但在这个过程中的getBean方法，与一个普通的没有循环依赖的bean的getBean过程有很大差别。</p>
+<p>还是以下面这个循环依赖为例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="nd">@Component</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">A</span> <span class="o">{</span>
+
+    <span class="nd">@Autowired</span>
+    <span class="kd">private</span> <span class="n">B</span> <span class="n">b</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">A</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&#34;A&#34;</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="nd">@Component</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">B</span> <span class="o">{</span>
+
+    <span class="nd">@Autowired</span>
+    <span class="kd">private</span> <span class="n">A</span> <span class="n">a</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">B</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&#34;B&#34;</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>首先对A进行populateBean。发现需要注入字段b，于是调用getBean方法去得到b对应的bean对象。这时又会来到doGetBean方法的getSingleton方法。注意到这个方法传入的第二个参数为true：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="n">Object</span> <span class="nf">getSingleton</span><span class="o">(</span><span class="n">String</span> <span class="n">beanName</span><span class="o">)</span> <span class="o">{</span>
+   <span class="k">return</span> <span class="n">getSingleton</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+
+<span class="kd">protected</span> <span class="n">Object</span> <span class="nf">getSingleton</span><span class="o">(</span><span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">Object</span> <span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">isSingletonCurrentlyInCreation</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">singletonObjects</span><span class="o">)</span> <span class="o">{</span>
+         <span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">ObjectFactory</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">singletonFactory</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">singletonFactory</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+               <span class="n">singletonObject</span> <span class="o">=</span> <span class="n">singletonFactory</span><span class="o">.</span><span class="na">getObject</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+               <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">)</span><span class="o">;</span>
+               <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+            <span class="o">}</span>
+         <span class="o">}</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+   <span class="k">return</span> <span class="n">singletonObject</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这时显然singletonObject为null，而且singletonsCurrentlyInCreation中只有A的bean对象（因为之前将A的bean对象放入了其中，并且此时A的bean实例化过程并没有结束，所以还没有进入到finally代码块，还没有将其从singletonsCurrentlyInCreation删除），因此直接返回一个null。</p>
+<p>然后与之前一样，将这个beanName放入alreadyCreated中。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">typeCheckOnly</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">markBeanAsCreated</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>同理，还是进入这个代码块：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">if</span> <span class="o">(</span><span class="n">mbd</span><span class="o">.</span><span class="na">isSingleton</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">sharedInstance</span> <span class="o">=</span> <span class="n">getSingleton</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="o">(</span><span class="o">)</span> <span class="o">-</span><span class="o">&gt;</span> <span class="o">{</span>
+      <span class="k">try</span> <span class="o">{</span>
+         <span class="k">return</span> <span class="n">createBean</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">args</span><span class="o">)</span><span class="o">;</span>
+      <span class="o">}</span>
+      <span class="k">catch</span> <span class="o">(</span><span class="n">BeansException</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+        
+        <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+          
+      <span class="o">}</span>
+   <span class="o">}</span><span class="o">)</span><span class="o">;</span>
+   <span class="n">bean</span> <span class="o">=</span> <span class="n">getObjectForBeanInstance</span><span class="o">(</span><span class="n">sharedInstance</span><span class="o">,</span> <span class="n">name</span><span class="o">,</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>进入getSingleton方法将这个beanName也放入singletonsCurrentlyInCreation中。执行createBean方法，来到doCreateBean方法。</p>
+<p>与之前一样，生成一个bean对象：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="k">if</span> <span class="o">(</span><span class="n">instanceWrapper</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">instanceWrapper</span> <span class="o">=</span> <span class="n">createBeanInstance</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">args</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+<span class="kd">final</span> <span class="n">Object</span> <span class="n">bean</span> <span class="o">=</span> <span class="n">instanceWrapper</span><span class="o">.</span><span class="na">getWrappedInstance</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个bean对象属于B类型，其中a字段的值也为null。然后又会来到populateBean方法。</p>
+<p>此时，还是经过同样的调用链，现在要给B对象的a字段赋值。于是又会对A的bean对象调用getBean方法。进而来到getSingleton方法。而这一次，isSingletonCurrentlyInCreation方法返回为true，进入到下面的逻辑：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">singletonObject</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+<span class="k">if</span> <span class="o">(</span><span class="n">singletonObject</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">allowEarlyReference</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">ObjectFactory</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">singletonFactory</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+   <span class="k">if</span> <span class="o">(</span><span class="n">singletonFactory</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">singletonObject</span> <span class="o">=</span> <span class="n">singletonFactory</span><span class="o">.</span><span class="na">getObject</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">earlySingletonObjects</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">beanName</span><span class="o">,</span> <span class="n">singletonObject</span><span class="o">)</span><span class="o">;</span>
+      <span class="k">this</span><span class="o">.</span><span class="na">singletonFactories</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+   <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>earlySingletonObjects中仍然没有任何值。因为传入的参数为true，所以会进入到if分支。这时终于调用到了之前放入singletonFactories的那个对象的getObject方法，即getEarlyBeanReference方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="n">Object</span> <span class="nf">getEarlyBeanReference</span><span class="o">(</span><span class="n">String</span> <span class="n">beanName</span><span class="o">,</span> <span class="n">RootBeanDefinition</span> <span class="n">mbd</span><span class="o">,</span> <span class="n">Object</span> <span class="n">bean</span><span class="o">)</span> <span class="o">{</span>
+   <span class="n">Object</span> <span class="n">exposedObject</span> <span class="o">=</span> <span class="n">bean</span><span class="o">;</span>
+   <span class="k">if</span> <span class="o">(</span><span class="o">!</span><span class="n">mbd</span><span class="o">.</span><span class="na">isSynthetic</span><span class="o">(</span><span class="o">)</span> <span class="o">&amp;</span><span class="o">&amp;</span> <span class="n">hasInstantiationAwareBeanPostProcessors</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">for</span> <span class="o">(</span><span class="n">BeanPostProcessor</span> <span class="n">bp</span> <span class="o">:</span> <span class="n">getBeanPostProcessors</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+         <span class="k">if</span> <span class="o">(</span><span class="n">bp</span> <span class="k">instanceof</span> <span class="n">SmartInstantiationAwareBeanPostProcessor</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">SmartInstantiationAwareBeanPostProcessor</span> <span class="n">ibp</span> <span class="o">=</span> <span class="o">(</span><span class="n">SmartInstantiationAwareBeanPostProcessor</span><span class="o">)</span> <span class="n">bp</span><span class="o">;</span>
+            <span class="n">exposedObject</span> <span class="o">=</span> <span class="n">ibp</span><span class="o">.</span><span class="na">getEarlyBeanReference</span><span class="o">(</span><span class="n">exposedObject</span><span class="o">,</span> <span class="n">beanName</span><span class="o">)</span><span class="o">;</span>
+         <span class="o">}</span>
+      <span class="o">}</span>
+   <span class="o">}</span>
+   <span class="k">return</span> <span class="n">exposedObject</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>第三个参数就是早先生成的那个bean，所以这里的操作就是对该bean对象利用后置处理器做了一些处理然后返回。因为要保证此刻注入的字段是一个完整的bean（即已经经过所有后置处理器处理过的bean），因此会在这里就用这些后置处理器完成这些操作。</p>
+<p>返回这个bean对象后，将其放入earlySingletonObjects中，并从singletonFactories中将其移除。</p>
+<p>返回bean对象后利用反射就完成了B对象中a字段的注入。但是此时A对象中b字段的值还是为null。那么什么时候会给这个字段赋值呢？其实很简单，B的bean对象返回后，利用反射给A对象的b字段注入时，就完成了赋值。</p>
+<p>总而言之，循环依赖的字段注入过程看起来非常复杂，但其实核心思想很简单。每当要实例化一个bean时，会先生成一个bean对象放入缓存，在对其字段赋值时，如果需要构造bean对象，则对该bean进行构造，也放入缓存中。当后面这个bean对象又引用了前一个bean时，则从缓存中将该对象取出赋值即可。后面这个对象实例化结束后，返回回来再完成前一个bean的字段赋值操作，就解决了循环依赖的问题。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-06-07
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        <a class="prev" href="/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E6%8E%A8%E6%96%AD%E6%9E%84%E9%80%A0%E6%96%B9%E6%B3%95/">
+            <i class="iconfont icon-left"></i>
+            <span class="prev-text nav-default">深入Spring源码 - 推断构造方法</span>
+            <span class="prev-text nav-mobile">上一篇</span>
+          </a>
+        <a class="next" href="/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E5%A2%9E%E5%BC%BA%E9%85%8D%E7%BD%AE%E7%B1%BB/">
+            <span class="next-text nav-default">深入Spring源码 - 增强配置类</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>
