@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <title> - Even - A super concise theme for Hugo</title>
+  <title>深入Tomcat源码 - 处理请求流程 - Even - A super concise theme for Hugo</title>
   <meta name="renderer" content="webkit" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
 
@@ -16,13 +16,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
 
 
-<meta name="author" content="Weizhe Huang" /><meta name="description" content="深入Tomcat源码 - 处理请求流程 以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求，然后调用到processSocket方法。这个方法为每个请求创建一个线程来处理。对于Nio来说，就是创建一个SocketProcessor。在其doRun方法中，会执行到这一行：
-1  state = getHandler().process(socketWrapper, event);   进而调用到AbstractProcessorLight的process方法，然后调用到具体实现类的service方法。这个类中有这样一个字段：
-1  protected final Http11InputBuffer inputBuffer;   socket中的数据会放入这个字段中，基于它进行数据的解析。依次解析请求行、请求方法等，封装到org.apache.coyote.Request对象中。该对象也是这个类中的一个字段。
-1 2  protected final Request request; protected final Response response;   接下来会调用到这一行：
-1  getAdapter().service(request, response);   进而来到这一行：
-1 2  connector.getService().getContainer().getPipeline().getFirst().invoke( request, response);   首先会进入到StandardEngineValva的invoke方法：
-1 2 3 4 5 6 7 8 9 10 11 12  public final void invoke(Request request, Response response) throws IOException, ServletException { // Select the Host to be used for this Request  Host host = request." /><meta name="keywords" content="Hugo, theme, even" />
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求" /><meta name="keywords" content="Hugo, theme, even" />
 
 
 
@@ -44,39 +38,23 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
 
 
-<meta property="og:title" content="" />
-<meta property="og:description" content="深入Tomcat源码 - 处理请求流程 以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求，然后调用到processSocket方法。这个方法为每个请求创建一个线程来处理。对于Nio来说，就是创建一个SocketProcessor。在其doRun方法中，会执行到这一行：
-1  state = getHandler().process(socketWrapper, event);   进而调用到AbstractProcessorLight的process方法，然后调用到具体实现类的service方法。这个类中有这样一个字段：
-1  protected final Http11InputBuffer inputBuffer;   socket中的数据会放入这个字段中，基于它进行数据的解析。依次解析请求行、请求方法等，封装到org.apache.coyote.Request对象中。该对象也是这个类中的一个字段。
-1 2  protected final Request request; protected final Response response;   接下来会调用到这一行：
-1  getAdapter().service(request, response);   进而来到这一行：
-1 2  connector.getService().getContainer().getPipeline().getFirst().invoke( request, response);   首先会进入到StandardEngineValva的invoke方法：
-1 2 3 4 5 6 7 8 9 10 11 12  public final void invoke(Request request, Response response) throws IOException, ServletException { // Select the Host to be used for this Request  Host host = request." />
+<meta property="og:title" content="深入Tomcat源码 - 处理请求流程" />
+<meta property="og:description" content="以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%A4%84%E7%90%86%E8%AF%B7%E6%B1%82%E6%B5%81%E7%A8%8B/" />
-
-<meta itemprop="name" content="">
-<meta itemprop="description" content="深入Tomcat源码 - 处理请求流程 以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求，然后调用到processSocket方法。这个方法为每个请求创建一个线程来处理。对于Nio来说，就是创建一个SocketProcessor。在其doRun方法中，会执行到这一行：
-1  state = getHandler().process(socketWrapper, event);   进而调用到AbstractProcessorLight的process方法，然后调用到具体实现类的service方法。这个类中有这样一个字段：
-1  protected final Http11InputBuffer inputBuffer;   socket中的数据会放入这个字段中，基于它进行数据的解析。依次解析请求行、请求方法等，封装到org.apache.coyote.Request对象中。该对象也是这个类中的一个字段。
-1 2  protected final Request request; protected final Response response;   接下来会调用到这一行：
-1  getAdapter().service(request, response);   进而来到这一行：
-1 2  connector.getService().getContainer().getPipeline().getFirst().invoke( request, response);   首先会进入到StandardEngineValva的invoke方法：
-1 2 3 4 5 6 7 8 9 10 11 12  public final void invoke(Request request, Response response) throws IOException, ServletException { // Select the Host to be used for this Request  Host host = request.">
-
-<meta itemprop="wordCount" content="92">
+<meta property="article:published_time" content="2020-07-04T15:11:40+08:00" />
+<meta property="article:modified_time" content="2020-07-04T15:11:40+08:00" />
+<meta itemprop="name" content="深入Tomcat源码 - 处理请求流程">
+<meta itemprop="description" content="以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求">
+<meta itemprop="datePublished" content="2020-07-04T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-07-04T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="585">
 
 
 
 <meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content=""/>
-<meta name="twitter:description" content="深入Tomcat源码 - 处理请求流程 以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求，然后调用到processSocket方法。这个方法为每个请求创建一个线程来处理。对于Nio来说，就是创建一个SocketProcessor。在其doRun方法中，会执行到这一行：
-1  state = getHandler().process(socketWrapper, event);   进而调用到AbstractProcessorLight的process方法，然后调用到具体实现类的service方法。这个类中有这样一个字段：
-1  protected final Http11InputBuffer inputBuffer;   socket中的数据会放入这个字段中，基于它进行数据的解析。依次解析请求行、请求方法等，封装到org.apache.coyote.Request对象中。该对象也是这个类中的一个字段。
-1 2  protected final Request request; protected final Response response;   接下来会调用到这一行：
-1  getAdapter().service(request, response);   进而来到这一行：
-1 2  connector.getService().getContainer().getPipeline().getFirst().invoke( request, response);   首先会进入到StandardEngineValva的invoke方法：
-1 2 3 4 5 6 7 8 9 10 11 12  public final void invoke(Request request, Response response) throws IOException, ServletException { // Select the Host to be used for this Request  Host host = request."/>
+<meta name="twitter:title" content="深入Tomcat源码 - 处理请求流程"/>
+<meta name="twitter:description" content="以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求"/>
 
 <!--[if lte IE 9]>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
@@ -139,11 +117,13 @@
           <article class="post">
     
     <header class="post-header">
-      <h1 class="post-title"></h1>
+      <h1 class="post-title">深入Tomcat源码 - 处理请求流程</h1>
 
       <div class="post-meta">
-        <span class="post-time"> 0001-01-01 </span>
-        
+        <span class="post-time"> 2020-07-04 </span>
+        <div class="post-category">
+            <a href="/categories/tomcat/"> Tomcat </a>
+            </div>
         
       </div>
     </header>
@@ -155,8 +135,7 @@
   </div>
 </div>
     <div class="post-content">
-      <h1 id="深入tomcat源码---处理请求流程">深入Tomcat源码 - 处理请求流程</h1>
-<p>以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求，然后调用到processSocket方法。这个方法为每个请求创建一个线程来处理。对于Nio来说，就是创建一个SocketProcessor。在其doRun方法中，会执行到这一行：</p>
+      <p>以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求，然后调用到processSocket方法。这个方法为每个请求创建一个线程来处理。对于Nio来说，就是创建一个SocketProcessor。在其doRun方法中，会执行到这一行：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre class="chroma"><code><span class="lnt">1
@@ -257,7 +236,7 @@
   <p class="copyright-item">
     <span class="item-title">上次更新</span>
     <span class="item-content">
-        0001-01-01
+        2020-07-04
         
     </span>
   </p>
@@ -267,12 +246,16 @@
 <footer class="post-footer">
       
       <nav class="post-nav">
-        <a class="prev" href="/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%80%E9%99%8D%E7%BB%B4/">
+        <a class="prev" href="/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">
             <i class="iconfont icon-left"></i>
-            <span class="prev-text nav-default">深入浅出 PCA（一）——降维</span>
+            <span class="prev-text nav-default">深入Tomcat源码 - 启动流程</span>
             <span class="prev-text nav-mobile">上一篇</span>
           </a>
-        
+        <a class="next" href="/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E8%8B%8F%E6%A0%BC%E6%8B%89%E5%BA%95%E4%B8%8E%E6%9F%8F%E6%8B%89%E5%9B%BE/">
+            <span class="next-text nav-default">哲学随笔 - 苏格拉底与柏拉图</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
       </nav>
     </footer>
   </article>

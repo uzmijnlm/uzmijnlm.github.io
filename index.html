@@ -132,6 +132,27 @@
 
     <article class="post">
   <header class="post-header">
+    <h1 class="post-title"><a class="post-link" href="/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%A4%84%E7%90%86%E8%AF%B7%E6%B1%82%E6%B5%81%E7%A8%8B/">深入Tomcat源码 - 处理请求流程</a></h1>
+    <div class="post-meta">
+      <span class="post-time"> 2020-07-04 </span>
+      <div class="post-category">
+          <a href="/categories/tomcat/"> Tomcat </a>
+          </div>
+    </div>
+  </header>
+  
+  <div class="post-content">
+    <div class="post-summary">
+      以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求
+    </div>
+    <div class="read-more">
+      <a href="/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%A4%84%E7%90%86%E8%AF%B7%E6%B1%82%E6%B5%81%E7%A8%8B/" class="read-more-link">阅读更多</a>
+    </div>
+  </div>
+</article>
+
+    <article class="post">
+  <header class="post-header">
     <h1 class="post-title"><a class="post-link" href="/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E8%8B%8F%E6%A0%BC%E6%8B%89%E5%BA%95%E4%B8%8E%E6%9F%8F%E6%8B%89%E5%9B%BE/">哲学随笔 - 苏格拉底与柏拉图</a></h1>
     <div class="post-meta">
       <span class="post-time"> 2020-07-01 </span>
@@ -294,27 +315,6 @@
     </div>
     <div class="read-more">
       <a href="/post/spring/%E6%B7%B1%E5%85%A5spring%E6%BA%90%E7%A0%81-%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/" class="read-more-link">阅读更多</a>
-    </div>
-  </div>
-</article>
-
-    <article class="post">
-  <header class="post-header">
-    <h1 class="post-title"><a class="post-link" href="/post/mybatis/%E6%B7%B1%E5%85%A5mybatis%E6%BA%90%E7%A0%81-%E4%B8%80%E7%BA%A7%E7%BC%93%E5%AD%98%E5%92%8C%E4%BA%8C%E7%BA%A7%E7%BC%93%E5%AD%98/">深入Mybatis源码 - 一级缓存和二级缓存</a></h1>
-    <div class="post-meta">
-      <span class="post-time"> 2020-05-24 </span>
-      <div class="post-category">
-          <a href="/categories/mybatis/"> Mybatis </a>
-          </div>
-    </div>
-  </header>
-  
-  <div class="post-content">
-    <div class="post-summary">
-      Mybatis提供了缓存机制，分为一级缓存和二级缓存。 一级缓存的作用域是单个SqlSession，如下： 1 2 3 4 5 6 7 8 9 10 SqlSession sqlSession = sqlSessionFactory.openSession(); DemoMapper mapper = sqlSession.getMapper(DemoMapper.class);
-    </div>
-    <div class="read-more">
-      <a href="/post/mybatis/%E6%B7%B1%E5%85%A5mybatis%E6%BA%90%E7%A0%81-%E4%B8%80%E7%BA%A7%E7%BC%93%E5%AD%98%E5%92%8C%E4%BA%8C%E7%BA%A7%E7%BC%93%E5%AD%98/" class="read-more-link">阅读更多</a>
     </div>
   </div>
 </article>
