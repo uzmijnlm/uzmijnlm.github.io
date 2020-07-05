@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tomcat on Even - A super concise theme for Hugo</title>
+    <link>http://localhost:1313/categories/tomcat/</link>
+    <description>Recent content in Tomcat on Even - A super concise theme for Hugo</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Sat, 04 Jul 2020 15:11:40 +0800</lastBuildDate>
+    
+	<atom:link href="http://localhost:1313/categories/tomcat/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>深入Tomcat源码 - 启动流程</title>
+      <link>http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/</link>
+      <pubDate>Sat, 04 Jul 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/</guid>
+      <description>整体架构 我们通常将Tomcat视为一个Servlet容器。不过从架构和源码的意义上来说，它不仅仅是一个用于装载Servlet的容器，而是一个</description>
+    </item>
+    
+  </channel>
+</rss>

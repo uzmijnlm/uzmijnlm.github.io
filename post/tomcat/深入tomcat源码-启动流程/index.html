@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>深入Tomcat源码 - 启动流程 - Even - A super concise theme for Hugo</title>
+  <meta name="renderer" content="webkit" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+<meta name="theme-color" content="#f8f5ec" />
+<meta name="msapplication-navbutton-color" content="#f8f5ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="#f8f5ec">
+
+
+<meta name="author" content="Weizhe Huang" /><meta name="description" content="整体架构 我们通常将Tomcat视为一个Servlet容器。不过从架构和源码的意义上来说，它不仅仅是一个用于装载Servlet的容器，而是一个" /><meta name="keywords" content="Hugo, theme, even" />
+
+
+
+
+
+
+<meta name="generator" content="Hugo 0.64.0 with theme even" />
+
+
+<link rel="canonical" href="http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+
+
+<link href="/dist/even.c2a46f00.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.css" integrity="sha256-7TyXnr2YU040zfSP+rEcz29ggW4j56/ujTPwjMzyqFY=" crossorigin="anonymous">
+
+
+<meta property="og:title" content="深入Tomcat源码 - 启动流程" />
+<meta property="og:description" content="整体架构 我们通常将Tomcat视为一个Servlet容器。不过从架构和源码的意义上来说，它不仅仅是一个用于装载Servlet的容器，而是一个" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/" />
+<meta property="article:published_time" content="2020-07-04T15:11:40+08:00" />
+<meta property="article:modified_time" content="2020-07-04T15:11:40+08:00" />
+<meta itemprop="name" content="深入Tomcat源码 - 启动流程">
+<meta itemprop="description" content="整体架构 我们通常将Tomcat视为一个Servlet容器。不过从架构和源码的意义上来说，它不仅仅是一个用于装载Servlet的容器，而是一个">
+<meta itemprop="datePublished" content="2020-07-04T15:11:40&#43;08:00" />
+<meta itemprop="dateModified" content="2020-07-04T15:11:40&#43;08:00" />
+<meta itemprop="wordCount" content="3407">
+
+
+
+<meta itemprop="keywords" content="" /><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="深入Tomcat源码 - 启动流程"/>
+<meta name="twitter:description" content="整体架构 我们通常将Tomcat视为一个Servlet容器。不过从架构和源码的意义上来说，它不仅仅是一个用于装载Servlet的容器，而是一个"/>
+
+<!--[if lte IE 9]>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/classlist/1.1.20170427/classList.min.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+  <script src="https://cdn.jsdelivr.net/npm/html5shiv@3.7.3/dist/html5shiv.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/respond.js@1.4.2/dest/respond.min.js"></script>
+<![endif]-->
+
+</head>
+<body>
+  <div id="mobile-navbar" class="mobile-navbar">
+  <div class="mobile-header-logo">
+    <a href="/" class="logo">Even</a>
+  </div>
+  <div class="mobile-navbar-icon">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+<nav id="mobile-menu" class="mobile-menu slideout-menu">
+  <ul class="mobile-menu-list">
+    <a href="/">
+        <li class="mobile-menu-item">Home</li>
+      </a><a href="/post/">
+        <li class="mobile-menu-item">Archives</li>
+      </a><a href="/tags/">
+        <li class="mobile-menu-item">Tags</li>
+      </a><a href="/categories/">
+        <li class="mobile-menu-item">Categories</li>
+      </a>
+  </ul>
+</nav>
+  <div class="container" id="mobile-panel">
+    <header id="header" class="header">
+        <div class="logo-wrapper">
+  <a href="/" class="logo">Even</a>
+</div>
+
+<nav class="site-navbar">
+  <ul id="menu" class="menu">
+    <li class="menu-item">
+        <a class="menu-item-link" href="/">Home</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/post/">Archives</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/tags/">Tags</a>
+      </li><li class="menu-item">
+        <a class="menu-item-link" href="/categories/">Categories</a>
+      </li>
+  </ul>
+</nav>
+    </header>
+
+    <main id="main" class="main">
+      <div class="content-wrapper">
+        <div id="content" class="content">
+          <article class="post">
+    
+    <header class="post-header">
+      <h1 class="post-title">深入Tomcat源码 - 启动流程</h1>
+
+      <div class="post-meta">
+        <span class="post-time"> 2020-07-04 </span>
+        <div class="post-category">
+            <a href="/categories/tomcat/"> Tomcat </a>
+            </div>
+        
+      </div>
+    </header>
+
+    <div class="post-toc" id="post-toc">
+  <h2 class="post-toc-title">文章目录</h2>
+  <div class="post-toc-content always-active">
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#整体架构">整体架构</a></li>
+    <li><a href="#启动流程">启动流程</a>
+      <ul>
+        <li><a href="#bootstrap">Bootstrap</a></li>
+        <li><a href="#catalina">Catalina</a></li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav>
+  </div>
+</div>
+    <div class="post-content">
+      <h2 id="整体架构"><strong>整体架构</strong></h2>
+<p>我们通常将Tomcat视为一个Servlet容器。不过从架构和源码的意义上来说，它不仅仅是一个用于装载Servlet的容器，而是一个多层级的容器结构。</p>
+<p>Tomcat的配置文件server.xml清晰地阐明了层次关系，这里给出一个示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-xml" data-lang="xml"><span class="nt">&lt;Engine</span> <span class="na">name=</span><span class="s">&#34;Catalina&#34;</span> <span class="na">defaultHost=</span><span class="s">&#34;localhost&#34;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;Realm</span> <span class="na">className=</span><span class="s">&#34;org.apache.catalina.realm.LockOutRealm&#34;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;Realm</span> <span class="na">className=</span><span class="s">&#34;org.apache.catalina.realm.UserDatabaseRealm&#34;</span>
+           <span class="na">resourceName=</span><span class="s">&#34;UserDatabase&#34;</span><span class="nt">/&gt;</span>
+  <span class="nt">&lt;/Realm&gt;</span>
+
+  <span class="nt">&lt;Host</span> <span class="na">name=</span><span class="s">&#34;localhost&#34;</span>  <span class="na">appBase=</span><span class="s">&#34;webapps&#34;</span>
+        <span class="na">unpackWARs=</span><span class="s">&#34;true&#34;</span> <span class="na">autoDeploy=</span><span class="s">&#34;true&#34;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;Valve</span> <span class="na">className=</span><span class="s">&#34;org.apache.catalina.valves.AccessLogValve&#34;</span> <span class="na">directory=</span><span class="s">&#34;logs&#34;</span>
+           <span class="na">prefix=</span><span class="s">&#34;localhost_access_log&#34;</span> <span class="na">suffix=</span><span class="s">&#34;.txt&#34;</span>
+           <span class="na">pattern=</span><span class="s">&#34;%h %l %u %t &amp;quot;%r&amp;quot; %s %b&#34;</span> <span class="nt">/&gt;</span>
+    <span class="nt">&lt;Context</span> <span class="na">docBase=</span><span class="s">&#34;servlet&#34;</span> <span class="na">path=</span><span class="s">&#34;/servlet&#34;</span> <span class="na">reloadable=</span><span class="s">&#34;true&#34;</span> <span class="na">source=</span><span class="s">&#34;org.eclipse.jst.jee.server:servlet&#34;</span><span class="nt">/&gt;</span>
+  <span class="nt">&lt;/Host&gt;</span>
+<span class="nt">&lt;/Engine&gt;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><strong>Engine</strong>表示Servlet引擎，引擎内部可以有多个<strong>Host</strong>，<strong>Host</strong>表示一个虚拟主机。一个<strong>Host</strong>内部可以有多个<strong>Context</strong>，一个<strong>Context</strong>表示一个应用。到了这一层就不需要在servlet.xml文件中配置了。servlet的映射在web.xml文件中有配置，或者可以通过注解等方式表示映射关系。一个<strong>Context</strong>中还包含多个<strong>Wrapper</strong>，<strong>Wrapper</strong>中包含多个<strong>Servlet</strong>。之所以还需要<strong>Wrapper</strong>这一层概念，是因为同一个<strong>Servlet</strong>类可能会有多个实例，可以用<strong>Wrapper</strong>来表示同一个类的<strong>Servlet</strong>。</p>
+<p>这些概念在源码中都有接口一一对应。</p>
+<p>这些接口都有相应的实现类。而这些接口又继承了更上层的接口——Container，Container又继承了LifeCycle。</p>
+<p>此外，Tomcat中用Server类表示整个容器，在server.xml文件中，这个标签也是最外层的。用Service表示整个服务。Service中不仅包含Engine，还包含Connector，Connector用于接收不同协议的请求，然后让Engine来处理。这些都可以在server.xml文件中找到。</p>
+<p>总的来说，整体架构如下图所示：</p>
+<center><img src="/Tomcat/启动流程/整体架构.png" width = "600" height = "400"/></center>
+<p>而启动流程，基本上可以认为是从Server开始，依次对Service、Engine以及后面的容器从上至下完成初始化（并不准确，但大致可以这样认为）。</p>
+<p>对于一个请求来说，先经过Connector解析成请求对象。Connector中有Endpoint，表示不同的IO模型。接着将数据传递给容器的部分，从Engine开始，一层层往下传。每一层都有一个Pipeline，每个Pipeline中有多个Valve，可以自定义Valve对请求做一些处理。到了Wrapper这一层的Pipeline后会进入到FilterChain，可以自定义过滤器，最后会进入到Servlet的service方法。</p>
+<p>下面进入源码分析其启动流程。</p>
+<h2 id="启动流程"><strong>启动流程</strong></h2>
+<h3 id="bootstrap"><strong>Bootstrap</strong></h3>
+<p>启动入口是Bootstrap类。</p>
+<p>这个类有一个静态代码块，主要是设置一些HOME目录。接着进入main方法。该方法可分为两部分，第一部分如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">synchronized</span> <span class="o">(</span><span class="n">daemonLock</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">daemon</span> <span class="o">=</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">Bootstrap</span> <span class="n">bootstrap</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Bootstrap</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="n">bootstrap</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">handleThrowable</span><span class="o">(</span><span class="n">t</span><span class="o">)</span><span class="o">;</span>
+            <span class="n">t</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+            <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="n">daemon</span> <span class="o">=</span> <span class="n">bootstrap</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+        
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>daemon是Bootstrap中的一个字段：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="kd">static</span> <span class="kd">volatile</span> <span class="n">Bootstrap</span> <span class="n">daemon</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>实例化Bootstrap得到一个对象，实例化过程没有其他逻辑。因此这段代码主要逻辑就是init方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">init</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+
+    <span class="n">initClassLoaders</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+    <span class="n">Class</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">startupClass</span> <span class="o">=</span> <span class="n">catalinaLoader</span><span class="o">.</span><span class="na">loadClass</span><span class="o">(</span><span class="s">&#34;org.apache.catalina.startup.Catalina&#34;</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">Object</span> <span class="n">startupInstance</span> <span class="o">=</span> <span class="n">startupClass</span><span class="o">.</span><span class="na">getConstructor</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">newInstance</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+    <span class="n">String</span> <span class="n">methodName</span> <span class="o">=</span> <span class="s">&#34;setParentClassLoader&#34;</span><span class="o">;</span>
+    <span class="n">Class</span><span class="o">&lt;</span><span class="o">?</span><span class="o">&gt;</span> <span class="n">paramTypes</span><span class="o">[</span><span class="o">]</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Class</span><span class="o">[</span><span class="n">1</span><span class="o">]</span><span class="o">;</span>
+    <span class="n">paramTypes</span><span class="o">[</span><span class="n">0</span><span class="o">]</span> <span class="o">=</span> <span class="n">Class</span><span class="o">.</span><span class="na">forName</span><span class="o">(</span><span class="s">&#34;java.lang.ClassLoader&#34;</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">Object</span> <span class="n">paramValues</span><span class="o">[</span><span class="o">]</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Object</span><span class="o">[</span><span class="n">1</span><span class="o">]</span><span class="o">;</span>
+    <span class="n">paramValues</span><span class="o">[</span><span class="n">0</span><span class="o">]</span> <span class="o">=</span> <span class="n">sharedLoader</span><span class="o">;</span>
+    <span class="n">Method</span> <span class="n">method</span> <span class="o">=</span>
+        <span class="n">startupInstance</span><span class="o">.</span><span class="na">getClass</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">getMethod</span><span class="o">(</span><span class="n">methodName</span><span class="o">,</span> <span class="n">paramTypes</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">startupInstance</span><span class="o">,</span> <span class="n">paramValues</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="n">catalinaDaemon</span> <span class="o">=</span> <span class="n">startupInstance</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>initClassLoaders方法初始化Tomcat中三个类加载器，它们也是Bootstrap的字段：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">ClassLoader</span> <span class="n">commonLoader</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+<span class="n">ClassLoader</span> <span class="n">catalinaLoader</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+<span class="n">ClassLoader</span> <span class="n">sharedLoader</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>Tomcat中的类加载器结构如下：</p>
+<center><img src="/Tomcat/启动流程/类加载器.png" width = "600" height = "550"/></center>
+<p>另外，init方法还实例化了一个Catalina类的对象，并用反射的方式设置了它的parent类加载器。最后将对象的引用赋给了catalinaDaemon字段。该字段定义如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">private</span> <span class="n">Object</span> <span class="n">catalinaDaemon</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>回到外层代码块，最后将bootstrap对象的引用赋给了daemon字段。</p>
+<p>因此，这段代码块所做的事情主要包括：初始化类加载器，给daemon字段和cataalinaDaemon字段赋值（分别为bootstrap对象和Catalina类对象）。</p>
+<p>执行完这段代码块，会进入if-else分支，一般情况下会进入这段代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">daemon</span><span class="o">.</span><span class="na">setAwait</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span><span class="o">;</span>
+<span class="n">daemon</span><span class="o">.</span><span class="na">load</span><span class="o">(</span><span class="n">args</span><span class="o">)</span><span class="o">;</span>
+<span class="n">daemon</span><span class="o">.</span><span class="na">start</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+<span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">=</span><span class="o">=</span> <span class="n">daemon</span><span class="o">.</span><span class="na">getServer</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">System</span><span class="o">.</span><span class="na">exit</span><span class="o">(</span><span class="n">1</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>setAwait方法将Catalina对象的await字段设为true。</p>
+<p>load方法调用的是Catalina对象的load方法。</p>
+<p>start方法调用的是Catalina对象的start方法。</p>
+<p>至此Bootstrap中的逻辑分析完毕，下面进入Catalina类。</p>
+<h3 id="catalina"><strong>Catalina</strong></h3>
+<p>Catalina的load方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kt">void</span> <span class="nf">load</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+    <span class="n">Digester</span> <span class="n">digester</span> <span class="o">=</span> <span class="n">createStartDigester</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="n">InputSource</span> <span class="n">inputSource</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+    <span class="n">InputStream</span> <span class="n">inputStream</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+    <span class="n">File</span> <span class="n">file</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+    <span class="k">try</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">configFile</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+            <span class="n">inputStream</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FileInputStream</span><span class="o">(</span><span class="n">file</span><span class="o">)</span><span class="o">;</span>
+            <span class="n">inputSource</span> <span class="o">=</span> <span class="k">new</span> <span class="n">InputSource</span><span class="o">(</span><span class="n">file</span><span class="o">.</span><span class="na">toURI</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">toURL</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">toString</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+          
+          <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+            
+        <span class="o">}</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="n">inputSource</span><span class="o">.</span><span class="na">setByteStream</span><span class="o">(</span><span class="n">inputStream</span><span class="o">)</span><span class="o">;</span>
+            <span class="n">digester</span><span class="o">.</span><span class="na">push</span><span class="o">(</span><span class="k">this</span><span class="o">)</span><span class="o">;</span>
+            <span class="n">digester</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="n">inputSource</span><span class="o">)</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">SAXParseException</span> <span class="n">spe</span><span class="o">)</span> <span class="o">{</span>
+           
+          <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+            
+        <span class="o">}</span>
+    <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+        
+    <span class="o">}</span>
+
+    <span class="n">getServer</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">setCatalina</span><span class="o">(</span><span class="k">this</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">getServer</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">setCatalinaHome</span><span class="o">(</span><span class="n">Bootstrap</span><span class="o">.</span><span class="na">getCatalinaHomeFile</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">getServer</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">setCatalinaBase</span><span class="o">(</span><span class="n">Bootstrap</span><span class="o">.</span><span class="na">getCatalinaBaseFile</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="c1">// Stream redirection
+</span><span class="c1"></span>    <span class="n">initStreams</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="c1">// Start the new server
+</span><span class="c1"></span>    <span class="k">try</span> <span class="o">{</span>
+        <span class="n">getServer</span><span class="o">(</span><span class="o">)</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">LifecycleException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+      
+      <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+        
+    <span class="o">}</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个用到了一个非常关键的类——Digester。这个类的作用是解析配置文件，原理不深究。在createStartDigester方法中有大量这样的代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">digester</span><span class="o">.</span><span class="na">addObjectCreate</span><span class="o">(</span><span class="s">&#34;Server&#34;</span><span class="o">,</span>
+                         <span class="s">&#34;org.apache.catalina.core.StandardServer&#34;</span><span class="o">,</span>
+                         <span class="s">&#34;className&#34;</span><span class="o">)</span><span class="o">;</span>
+<span class="n">digester</span><span class="o">.</span><span class="na">addSetProperties</span><span class="o">(</span><span class="s">&#34;Server&#34;</span><span class="o">)</span><span class="o">;</span>
+<span class="n">digester</span><span class="o">.</span><span class="na">addSetNext</span><span class="o">(</span><span class="s">&#34;Server&#34;</span><span class="o">,</span>
+                    <span class="s">&#34;setServer&#34;</span><span class="o">,</span>
+                    <span class="s">&#34;org.apache.catalina.Server&#34;</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>正是有了这样的配置，在解析配置文件时才能找到要实例化的具体的实现类。在digester.parse方法中就会解析文件并实例化Server对象。在下面的getServer方法就可以直接得到一个之前已经实例化的StandardServer对象。</p>
+<p>init方法会完成Server对象的初始化操作。核心逻辑在StandardServer的initInternal方法中。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">initInternal</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">LifecycleException</span> <span class="o">{</span>
+  
+  <span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span><span class="o">.</span>
+    
+    <span class="k">for</span> <span class="o">(</span><span class="n">Service</span> <span class="n">service</span> <span class="o">:</span> <span class="n">services</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">service</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里的services也是之前在digester.parse方法初始化的，同样是根据createStartDigester中的设置。这里的services只有一个，即StandardService对象。</p>
+<p>该类的init方法核心逻辑也在initInternal方法中：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">initInternal</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">LifecycleException</span> <span class="o">{</span>
+
+    <span class="kd">super</span><span class="o">.</span><span class="na">initInternal</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="k">if</span> <span class="o">(</span><span class="n">engine</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">engine</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="c1">// Initialize any Executors
+</span><span class="c1"></span>    <span class="k">for</span> <span class="o">(</span><span class="n">Executor</span> <span class="n">executor</span> <span class="o">:</span> <span class="n">findExecutors</span><span class="o">(</span><span class="o">)</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">executor</span> <span class="k">instanceof</span> <span class="n">JmxEnabled</span><span class="o">)</span> <span class="o">{</span>
+            <span class="o">(</span><span class="o">(</span><span class="n">JmxEnabled</span><span class="o">)</span> <span class="n">executor</span><span class="o">)</span><span class="o">.</span><span class="na">setDomain</span><span class="o">(</span><span class="n">getDomain</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+        <span class="o">}</span>
+        <span class="n">executor</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="c1">// Initialize mapper listener
+</span><span class="c1"></span>    <span class="n">mapperListener</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="c1">// Initialize our defined Connectors
+</span><span class="c1"></span>    <span class="kd">synchronized</span> <span class="o">(</span><span class="n">connectorsLock</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">for</span> <span class="o">(</span><span class="n">Connector</span> <span class="n">connector</span> <span class="o">:</span> <span class="n">connectors</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">try</span> <span class="o">{</span>
+                <span class="n">connector</span><span class="o">.</span><span class="na">init</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">String</span> <span class="n">message</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="na">getString</span><span class="o">(</span>
+                        <span class="s">&#34;standardService.connector.initFailed&#34;</span><span class="o">,</span> <span class="n">connector</span><span class="o">)</span><span class="o">;</span>
+                <span class="n">log</span><span class="o">.</span><span class="na">error</span><span class="o">(</span><span class="n">message</span><span class="o">,</span> <span class="n">e</span><span class="o">)</span><span class="o">;</span>
+
+                <span class="k">if</span> <span class="o">(</span><span class="n">Boolean</span><span class="o">.</span><span class="na">getBoolean</span><span class="o">(</span><span class="s">&#34;org.apache.catalina.startup.EXIT_ON_INIT_FAILURE&#34;</span><span class="o">)</span><span class="o">)</span>
+                    <span class="k">throw</span> <span class="k">new</span> <span class="n">LifecycleException</span><span class="o">(</span><span class="n">message</span><span class="o">)</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里对engine、executor、mapperListener、connector完成了初始化。各自的init方法并没有太复杂的逻辑。</p>
+<p>总而言之，Catalina的load方法利用digester对许多对象完成了实例化，并在init方法中对上面这些对象完成了初始化。</p>
+<p>接下来进入到Catalina的start方法。该方法流程与init方法类似，最终进入到StandardService的startInternal方法中，该方法与上面的initInternal方法流程一致。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">startInternal</span><span class="o">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">LifecycleException</span> <span class="o">{</span>
+
+    <span class="k">if</span><span class="o">(</span><span class="n">log</span><span class="o">.</span><span class="na">isInfoEnabled</span><span class="o">(</span><span class="o">)</span><span class="o">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="na">info</span><span class="o">(</span><span class="n">sm</span><span class="o">.</span><span class="na">getString</span><span class="o">(</span><span class="s">&#34;standardService.start.name&#34;</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="na">name</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">setState</span><span class="o">(</span><span class="n">LifecycleState</span><span class="o">.</span><span class="na">STARTING</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="c1">// Start our defined Container first
+</span><span class="c1"></span>    <span class="k">if</span> <span class="o">(</span><span class="n">engine</span> <span class="o">!</span><span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="n">engine</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">engine</span><span class="o">.</span><span class="na">start</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="kd">synchronized</span> <span class="o">(</span><span class="n">executors</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">for</span> <span class="o">(</span><span class="n">Executor</span> <span class="n">executor</span><span class="o">:</span> <span class="n">executors</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">executor</span><span class="o">.</span><span class="na">start</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="n">mapperListener</span><span class="o">.</span><span class="na">start</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+
+    <span class="c1">// Start our defined Connectors second
+</span><span class="c1"></span>    <span class="kd">synchronized</span> <span class="o">(</span><span class="n">connectorsLock</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">for</span> <span class="o">(</span><span class="n">Connector</span> <span class="n">connector</span><span class="o">:</span> <span class="n">connectors</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">try</span> <span class="o">{</span>
+                <span class="c1">// If it has already failed, don&#39;t try and start it
+</span><span class="c1"></span>                <span class="k">if</span> <span class="o">(</span><span class="n">connector</span><span class="o">.</span><span class="na">getState</span><span class="o">(</span><span class="o">)</span> <span class="o">!</span><span class="o">=</span> <span class="n">LifecycleState</span><span class="o">.</span><span class="na">FAILED</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="n">connector</span><span class="o">.</span><span class="na">start</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+                <span class="o">}</span>
+            <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">log</span><span class="o">.</span><span class="na">error</span><span class="o">(</span><span class="n">sm</span><span class="o">.</span><span class="na">getString</span><span class="o">(</span>
+                        <span class="s">&#34;standardService.connector.startFailed&#34;</span><span class="o">,</span>
+                        <span class="n">connector</span><span class="o">)</span><span class="o">,</span> <span class="n">e</span><span class="o">)</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>engine的start方法会启动子容器Host实例，在启动的过程中，会调用到LifcycleBase中的fireLifecycleEvent方法，该方法又会调用到HostConfig的start方法，进而调用到deployApps方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">protected</span> <span class="kt">void</span> <span class="nf">deployApps</span><span class="o">(</span><span class="o">)</span> <span class="o">{</span>
+
+    <span class="n">File</span> <span class="n">appBase</span> <span class="o">=</span> <span class="n">host</span><span class="o">.</span><span class="na">getAppBaseFile</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">File</span> <span class="n">configBase</span> <span class="o">=</span> <span class="n">host</span><span class="o">.</span><span class="na">getConfigBaseFile</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">String</span><span class="o">[</span><span class="o">]</span> <span class="n">filteredAppPaths</span> <span class="o">=</span> <span class="n">filterAppPaths</span><span class="o">(</span><span class="n">appBase</span><span class="o">.</span><span class="na">list</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// Deploy XML descriptors from configBase
+</span><span class="c1"></span>    <span class="n">deployDescriptors</span><span class="o">(</span><span class="n">configBase</span><span class="o">,</span> <span class="n">configBase</span><span class="o">.</span><span class="na">list</span><span class="o">(</span><span class="o">)</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// Deploy WARs
+</span><span class="c1"></span>    <span class="n">deployWARs</span><span class="o">(</span><span class="n">appBase</span><span class="o">,</span> <span class="n">filteredAppPaths</span><span class="o">)</span><span class="o">;</span>
+    <span class="c1">// Deploy expanded folders
+</span><span class="c1"></span>    <span class="n">deployDirectories</span><span class="o">(</span><span class="n">appBase</span><span class="o">,</span> <span class="n">filteredAppPaths</span><span class="o">)</span><span class="o">;</span>
+
+<span class="o">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从该方法可以看出Tomcat部署的几种方式。几种方法的原理类似，也会根据digester对象去解析配置文件，生成Context对象。</p>
+<p>在connector的start方法中会调用到其中的endpoint字段的start方法。endpoint对应一个具体的IO模型，较新的Tomcat版本中默认是NioEndpoint。该类的startInternal方法中有这样一段代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="n">pollers</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Poller</span><span class="o">[</span><span class="n">getPollerThreadCount</span><span class="o">(</span><span class="o">)</span><span class="o">]</span><span class="o">;</span>
+<span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="n">0</span><span class="o">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">pollers</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span><span class="o">+</span><span class="o">+</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">pollers</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Poller</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">Thread</span> <span class="n">pollerThread</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Thread</span><span class="o">(</span><span class="n">pollers</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="o">,</span> <span class="n">getName</span><span class="o">(</span><span class="o">)</span> <span class="o">+</span> <span class="s">&#34;-ClientPoller-&#34;</span><span class="o">+</span><span class="n">i</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">pollerThread</span><span class="o">.</span><span class="na">setPriority</span><span class="o">(</span><span class="n">threadPriority</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">pollerThread</span><span class="o">.</span><span class="na">setDaemon</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span><span class="o">;</span>
+    <span class="n">pollerThread</span><span class="o">.</span><span class="na">start</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="n">startAcceptorThreads</span><span class="o">(</span><span class="o">)</span><span class="o">;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这是一个Reactor通信模型，Poller中封装了Selector，而startAcceptorThreads方法中会启动多个Acceptor。</p>
+<h2 id="总结"><strong>总结</strong></h2>
+<p>在启动流程中，主要是从上至下初始化并启动了多个线程准备接收数据。其中，Server、Service、Connector、Endpoint等组件完成了初始化，容器部分有Engine、Host、Context完成了初始化。在容器启动的过程中，也完成了Pipeline和Valve的初始化工作。</p>
+
+    </div>
+
+    <div class="post-copyright">
+  <p class="copyright-item">
+    <span class="item-title">文章作者</span>
+    <span class="item-content">Weizhe Huang</span>
+  </p>
+  <p class="copyright-item">
+    <span class="item-title">上次更新</span>
+    <span class="item-content">
+        2020-07-04
+        
+    </span>
+  </p>
+  
+  
+</div>
+<footer class="post-footer">
+      
+      <nav class="post-nav">
+        
+        <a class="next" href="/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E8%8B%8F%E6%A0%BC%E6%8B%89%E5%BA%95%E4%B8%8E%E6%9F%8F%E6%8B%89%E5%9B%BE/">
+            <span class="next-text nav-default">哲学随笔 - 苏格拉底与柏拉图</span>
+            <span class="next-text nav-mobile">下一篇</span>
+            <i class="iconfont icon-right"></i>
+          </a>
+      </nav>
+    </footer>
+  </article>
+        </div>
+        
+
+  
+
+  
+
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="social-links">
+      <a href="mailto:your@email.com" class="iconfont icon-email" title="email"></a>
+      <a href="http://localhost:1313" class="iconfont icon-stack-overflow" title="stack-overflow"></a>
+      <a href="http://localhost:1313" class="iconfont icon-twitter" title="twitter"></a>
+      <a href="http://localhost:1313" class="iconfont icon-facebook" title="facebook"></a>
+      <a href="http://localhost:1313" class="iconfont icon-linkedin" title="linkedin"></a>
+      <a href="http://localhost:1313" class="iconfont icon-google" title="google"></a>
+      <a href="http://localhost:1313" class="iconfont icon-github" title="github"></a>
+      <a href="http://localhost:1313" class="iconfont icon-weibo" title="weibo"></a>
+      <a href="http://localhost:1313" class="iconfont icon-zhihu" title="zhihu"></a>
+      <a href="http://localhost:1313" class="iconfont icon-douban" title="douban"></a>
+      <a href="http://localhost:1313" class="iconfont icon-pocket" title="pocket"></a>
+      <a href="http://localhost:1313" class="iconfont icon-tumblr" title="tumblr"></a>
+      <a href="http://localhost:1313" class="iconfont icon-instagram" title="instagram"></a>
+      <a href="http://localhost:1313" class="iconfont icon-gitlab" title="gitlab"></a>
+      <a href="http://localhost:1313" class="iconfont icon-bilibili" title="bilibili"></a>
+  <a href="http://localhost:1313/index.xml" type="application/rss+xml" class="iconfont icon-rss" title="rss"></a>
+</div>
+
+<div class="copyright">
+  <span class="power-by">
+    由 <a class="hexo-link" href="https://gohugo.io">Hugo</a> 强力驱动
+  </span>
+  <span class="division">|</span>
+  <span class="theme-info">
+    主题 - 
+    <a class="theme-link" href="https://github.com/olOwOlo/hugo-theme-even">Even</a>
+  </span>
+
+  
+
+  <span class="copyright-year">
+    &copy; 
+    2017 - 
+    2020
+    <span class="heart">
+      <i class="iconfont icon-heart"></i>
+    </span>
+    <span class="author">Weizhe Huang</span>
+  </span>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({ tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} })
+</script>
+    </footer>
+
+    <div class="back-to-top" id="back-to-top">
+      <i class="iconfont icon-up"></i>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slideout@1.0.1/dist/slideout.min.js" integrity="sha256-t+zJ/g8/KXIJMjSVQdnibt4dlaDxc9zXr/9oNPeWqdg=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.1.20/dist/jquery.fancybox.min.js" integrity="sha256-XVLffZaxoWfGUEbdzuLi7pwaUJv1cecsQJQqGLe7axY=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="/dist/even.26188efa.min.js"></script>
+
+
+
+
+
+
+
+
+</body>
+</html>

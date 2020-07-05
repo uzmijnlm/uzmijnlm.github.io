@@ -6,10 +6,37 @@
     <description>Recent content on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Sat, 13 Jun 2020 16:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Sat, 04 Jul 2020 15:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>深入Tomcat源码 - 启动流程</title>
+      <link>http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/</link>
+      <pubDate>Sat, 04 Jul 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/</guid>
+      <description>整体架构 我们通常将Tomcat视为一个Servlet容器。不过从架构和源码的意义上来说，它不仅仅是一个用于装载Servlet的容器，而是一个</description>
+    </item>
+    
+    <item>
+      <title>哲学随笔 - 苏格拉底与柏拉图</title>
+      <link>http://localhost:1313/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E8%8B%8F%E6%A0%BC%E6%8B%89%E5%BA%95%E4%B8%8E%E6%9F%8F%E6%8B%89%E5%9B%BE/</link>
+      <pubDate>Wed, 01 Jul 2020 16:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E8%8B%8F%E6%A0%BC%E6%8B%89%E5%BA%95%E4%B8%8E%E6%9F%8F%E6%8B%89%E5%9B%BE/</guid>
+      <description>苏格拉底 希波战争胜利后，雅典的辉煌与雅典人的民族自豪到达了顶峰。但很快，伯罗奔尼撒战争就把雅典拉入了谷底。雅典在衰落，整个希腊文明在衰落。 希</description>
+    </item>
+    
+    <item>
+      <title>哲学随笔 - 早期希腊哲学的本体论</title>
+      <link>http://localhost:1313/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E6%97%A9%E6%9C%9F%E5%B8%8C%E8%85%8A%E5%93%B2%E5%AD%A6%E7%9A%84%E6%9C%AC%E4%BD%93%E8%AE%BA/</link>
+      <pubDate>Wed, 01 Jul 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E6%97%A9%E6%9C%9F%E5%B8%8C%E8%85%8A%E5%93%B2%E5%AD%A6%E7%9A%84%E6%9C%AC%E4%BD%93%E8%AE%BA/</guid>
+      <description>哲学的困境 哲学作品晦涩难懂，西方哲学著作尤其如此。当我们翻阅《道德经》，读到“道可道非常道“，即便不能准确地复述出老子想要表达的真实含义，也</description>
+    </item>
     
     <item>
       <title>深入Spring源码 - 推断构造方法</title>
@@ -504,6 +531,21 @@
       
       <guid>http://localhost:1313/post/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0/pca/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BA-pca%E4%B8%80%E9%99%8D%E7%BB%B4/</guid>
       <description>简介 PCA（PrincipalComponents Analysis）即主成分分析，是最常用的降维方法。 我们先不用去理解什么是主成分分析，更不</description>
+    </item>
+    
+    <item>
+      <title></title>
+      <link>http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%A4%84%E7%90%86%E8%AF%B7%E6%B1%82%E6%B5%81%E7%A8%8B/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E5%A4%84%E7%90%86%E8%AF%B7%E6%B1%82%E6%B5%81%E7%A8%8B/</guid>
+      <description>深入Tomcat源码 - 处理请求流程 以Nio为例（Bio的结构和流程类似），Tomcat启动时会Poller线程，该方法会不断轮询事件，利用processKey方法处理一个请求，然后调用到processSocket方法。这个方法为每个请求创建一个线程来处理。对于Nio来说，就是创建一个SocketProcessor。在其doRun方法中，会执行到这一行：
+1  state = getHandler().process(socketWrapper, event);   进而调用到AbstractProcessorLight的process方法，然后调用到具体实现类的service方法。这个类中有这样一个字段：
+1  protected final Http11InputBuffer inputBuffer;   socket中的数据会放入这个字段中，基于它进行数据的解析。依次解析请求行、请求方法等，封装到org.apache.coyote.Request对象中。该对象也是这个类中的一个字段。
+1 2  protected final Request request; protected final Response response;   接下来会调用到这一行：
+1  getAdapter().service(request, response);   进而来到这一行：
+1 2  connector.getService().getContainer().getPipeline().getFirst().invoke( request, response);   首先会进入到StandardEngineValva的invoke方法：
+1 2 3 4 5 6 7 8 9 10 11 12  public final void invoke(Request request, Response response) throws IOException, ServletException { // Select the Host to be used for this Request  Host host = request.</description>
     </item>
     
   </channel>

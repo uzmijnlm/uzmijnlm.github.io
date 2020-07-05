@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>哲学随笔 on Even - A super concise theme for Hugo</title>
+    <link>http://localhost:1313/categories/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/</link>
+    <description>Recent content in 哲学随笔 on Even - A super concise theme for Hugo</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Wed, 01 Jul 2020 16:11:40 +0800</lastBuildDate>
+    
+	<atom:link href="http://localhost:1313/categories/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>哲学随笔 - 苏格拉底与柏拉图</title>
+      <link>http://localhost:1313/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E8%8B%8F%E6%A0%BC%E6%8B%89%E5%BA%95%E4%B8%8E%E6%9F%8F%E6%8B%89%E5%9B%BE/</link>
+      <pubDate>Wed, 01 Jul 2020 16:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E8%8B%8F%E6%A0%BC%E6%8B%89%E5%BA%95%E4%B8%8E%E6%9F%8F%E6%8B%89%E5%9B%BE/</guid>
+      <description>苏格拉底 希波战争胜利后，雅典的辉煌与雅典人的民族自豪到达了顶峰。但很快，伯罗奔尼撒战争就把雅典拉入了谷底。雅典在衰落，整个希腊文明在衰落。 希</description>
+    </item>
+    
+    <item>
+      <title>哲学随笔 - 早期希腊哲学的本体论</title>
+      <link>http://localhost:1313/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E6%97%A9%E6%9C%9F%E5%B8%8C%E8%85%8A%E5%93%B2%E5%AD%A6%E7%9A%84%E6%9C%AC%E4%BD%93%E8%AE%BA/</link>
+      <pubDate>Wed, 01 Jul 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94/%E5%93%B2%E5%AD%A6%E9%9A%8F%E7%AC%94-%E6%97%A9%E6%9C%9F%E5%B8%8C%E8%85%8A%E5%93%B2%E5%AD%A6%E7%9A%84%E6%9C%AC%E4%BD%93%E8%AE%BA/</guid>
+      <description>哲学的困境 哲学作品晦涩难懂，西方哲学著作尤其如此。当我们翻阅《道德经》，读到“道可道非常道“，即便不能准确地复述出老子想要表达的真实含义，也</description>
+    </item>
+    
+  </channel>
+</rss>
