@@ -6,10 +6,19 @@
     <description>Recent content in Tomcat on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Sat, 04 Jul 2020 16:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Sun, 19 Jul 2020 15:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/categories/tomcat/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>深入Tomcat源码 - 热加载与热部署</title>
+      <link>http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E7%83%AD%E5%8A%A0%E8%BD%BD%E4%B8%8E%E7%83%AD%E9%83%A8%E7%BD%B2/</link>
+      <pubDate>Sun, 19 Jul 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/tomcat/%E6%B7%B1%E5%85%A5tomcat%E6%BA%90%E7%A0%81-%E7%83%AD%E5%8A%A0%E8%BD%BD%E4%B8%8E%E7%83%AD%E9%83%A8%E7%BD%B2/</guid>
+      <description>热加载与热部署类似，都是在不重启Tomcat的情况下，使得应用的最新代码生效。 热加载表示重新加载class，执行主体是Context；热部署</description>
+    </item>
     
     <item>
       <title>深入Tomcat源码 - 处理请求流程</title>
