@@ -6,26 +6,35 @@
     <description>Recent content in Java基础 on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Tue, 28 Apr 2020 16:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Fri, 21 Aug 2020 15:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/categories/java%E5%9F%BA%E7%A1%80/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
+      <title>Java基础 - JVM的运行时数据区</title>
+      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/jvm/java%E5%9F%BA%E7%A1%80-jvm%E7%9A%84%E8%BF%90%E8%A1%8C%E6%97%B6%E6%95%B0%E6%8D%AE%E5%8C%BA/</link>
+      <pubDate>Fri, 21 Aug 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/jvm/java%E5%9F%BA%E7%A1%80-jvm%E7%9A%84%E8%BF%90%E8%A1%8C%E6%97%B6%E6%95%B0%E6%8D%AE%E5%8C%BA/</guid>
+      <description>JVM结构主要分为三部分：类装载器子系统、运行时数据区、执行引擎。其中，类加载器负责将class文件加载到运行时数据区，执行引擎负责程序的执</description>
+    </item>
+    
+    <item>
       <title>Java基础 - 基于JDK中的Future实现异步编程</title>
-      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E5%9F%BA%E4%BA%8Ejdk%E4%B8%AD%E7%9A%84future%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</link>
+      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/java%E5%9F%BA%E7%A1%80-%E5%9F%BA%E4%BA%8Ejdk%E4%B8%AD%E7%9A%84future%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</link>
       <pubDate>Tue, 28 Apr 2020 16:11:40 +0800</pubDate>
       
-      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E5%9F%BA%E4%BA%8Ejdk%E4%B8%AD%E7%9A%84future%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</guid>
+      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/java%E5%9F%BA%E7%A1%80-%E5%9F%BA%E4%BA%8Ejdk%E4%B8%AD%E7%9A%84future%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</guid>
       <description>上文讲到说用用线程实现异步编程，有两个问题比较突出： 1.实际场景中任务个数非常多，如果每次都创建一个新的线程则资源消耗太大。 2.获取一个线程</description>
     </item>
     
     <item>
       <title>Java基础 - 使用线程和线程池实现异步编程</title>
-      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E4%BD%BF%E7%94%A8%E7%BA%BF%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</link>
+      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/java%E5%9F%BA%E7%A1%80-%E4%BD%BF%E7%94%A8%E7%BA%BF%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</link>
       <pubDate>Tue, 28 Apr 2020 15:11:40 +0800</pubDate>
       
-      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/java%E5%9F%BA%E7%A1%80-%E4%BD%BF%E7%94%A8%E7%BA%BF%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</guid>
+      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/java%E5%9F%BA%E7%A1%80-%E4%BD%BF%E7%94%A8%E7%BA%BF%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</guid>
       <description>在I/O模型中，有两对概念经常让人混淆——阻塞和非阻塞、同步和异步。 在不同的语境下，这些概念有着不同的内涵。其中一种比较严谨的描述来自UNI</description>
     </item>
     
