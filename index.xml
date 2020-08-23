@@ -6,10 +6,46 @@
     <description>Recent content on Even - A super concise theme for Hugo</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Fri, 21 Aug 2020 15:11:40 +0800</lastBuildDate>
+    <lastBuildDate>Sat, 22 Aug 2020 18:11:40 +0800</lastBuildDate>
     
 	<atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Java基础 - JDK8中的ConcurrentHashMap</title>
+      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/hashmap/java%E5%9F%BA%E7%A1%80-jdk8%E4%B8%AD%E7%9A%84concurrenthashmap/</link>
+      <pubDate>Sat, 22 Aug 2020 18:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/hashmap/java%E5%9F%BA%E7%A1%80-jdk8%E4%B8%AD%E7%9A%84concurrenthashmap/</guid>
+      <description>JDK8中的HashMap主要就是引入了红黑树，使查询和插入的效率都有了保障。但它仍然是线程非安全的。本文分析JDK8中的Concurren</description>
+    </item>
+    
+    <item>
+      <title>Java基础 - JDK8中的HashMap</title>
+      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/hashmap/java%E5%9F%BA%E7%A1%80-jdk8%E4%B8%AD%E7%9A%84hashmap/</link>
+      <pubDate>Sat, 22 Aug 2020 17:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/hashmap/java%E5%9F%BA%E7%A1%80-jdk8%E4%B8%AD%E7%9A%84hashmap/</guid>
+      <description>JDK8中的HashMap在JDK7的基础上引用了红黑树。红黑树的定义以及相关操作本文不做介绍，仅分析JDK8中HashMap本身。 构造方法</description>
+    </item>
+    
+    <item>
+      <title>Java基础 - JDK7中的ConcurrentHashMap</title>
+      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/hashmap/java%E5%9F%BA%E7%A1%80-jdk7%E4%B8%AD%E7%9A%84concurrenthashmap/</link>
+      <pubDate>Sat, 22 Aug 2020 16:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/hashmap/java%E5%9F%BA%E7%A1%80-jdk7%E4%B8%AD%E7%9A%84concurrenthashmap/</guid>
+      <description>因为JDK7中的HashMap是线程不安全的，而如果每次都对整个map加锁来进行操作则效率太低，因此JDK提供了线程安全的Concurren</description>
+    </item>
+    
+    <item>
+      <title>Java基础 - JDK7中的HashMap</title>
+      <link>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/hashmap/java%E5%9F%BA%E7%A1%80-jdk7%E4%B8%AD%E7%9A%84hashmap/</link>
+      <pubDate>Sat, 22 Aug 2020 15:11:40 +0800</pubDate>
+      
+      <guid>http://localhost:1313/post/java%E5%9F%BA%E7%A1%80/hashmap/java%E5%9F%BA%E7%A1%80-jdk7%E4%B8%AD%E7%9A%84hashmap/</guid>
+      <description>众所周知，JDK中的HashMap是通过数组+链表（树）实现的，大致如下图所示： 但是在不同版本中有不同的实现。比较经典的就是JDK1.7和J</description>
+    </item>
     
     <item>
       <title>Java基础 - JVM的运行时数据区</title>
